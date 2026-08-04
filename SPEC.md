@@ -1,0 +1,98 @@
+# Grimoire — Specification
+
+> Grimoire is attempt two at the same destination as Delve (attempt one, archived at `~/Developer/_Archive/yetidark` and `Yetiouz/yetidark`): a multiplayer web app for running Shadowdark RPG campaigns with a human or AI game master. This spec is seeded from a full read of the attempt-1 archive and finalized through the Aug 4 2026 spec interview. **Status: interview complete — ready to build.** Claude: implement only what's specced here; anything unclear gets asked, not invented.
+
+## What Grimoire is
+
+A companion app for Shadowdark RPG serving three seats at the table: the player (character sheet, dice, live table view), the GM (dashboard, encounter tools, secrets, prep), and the AI GM (same validated command interface as a human GM, never a separate rules path). Players and GM share a live game table: scene log, party chat, dice, maps with zone-based positioning, turn order, clocks, and light tracking — all realtime.
+
+## What attempt one actually achieved (the honest baseline)
+
+Delve was further along than "failed prototype." As of its archive date it was a **working, deployed multiplayer app** that passed a structured two-account production playtest (July 29, 2026):
+
+Working in production: GitHub OAuth sign-in (magic-link fallback), campaigns with discovery/join codes/roles, guided character & campaign builders, full character sheets (gear, talents, spells, XP, coin, AC), live game table + GM dashboard (scene log, party chat, dice, hex map with GM-controlled fog, turn order, votes, encounter/monster HP tracking, GM notes), campaign management (settings, house rules, threads, clocks, timeline, light tracking, rules library, NPC/faction/treasure trackers), a first AI-GM edge function, URL routing with session restore, and a player-table status rail.
+
+Under the hood: 36 numbered migrations, an append-only campaign event ledger, authoritative server-side commands for every audited mutation (HP/XP/coin, rests, gear, spells, clocks, light, dice, atomic character creation), authorization hardening with a 152-test database suite, GM secrets separated from player-readable data, private signed-URL map storage, and a one-command verification gate (`pnpm verify`: audit + lint + rules tests + routing tests + build) enforced by GitHub Actions.
+
+**The archive is a reference library, not a starting point.** Key documents to consult, in the archived repo: `docs/ROADMAP.md` (the definitive milestone plan), `docs/PROJECT_STATUS.md`, `docs/BUILD_LOG.md`, `CLAUDE_CONTEXT.md` (technical gotchas), `docs/MULTIPLAYER_PLAYTEST.md` (the acceptance-test template), `supabase/migrations/` (the schema, evolved honestly), and `gm-brain/` (GM persona, house rules, session protocol — the AI GM's source material).
+
+## Design decisions already made (locked in during attempt 1 — carry forward unless deliberately reversed)
+
+These came out of mockup reviews and rules research in late July 2026 and represent real design work; re-deciding them from scratch would be waste:
+
+- **Zones, not hex grids.** Shadowdark's range system is three unmeasured bands — Close (melee), Near (~30ft), Far (sight). In-scene play uses an illustrated scene image with Close/Near/Far zone rings and tokens placed in zones, not cells. Dungeon layout/orientation is a separate concern. (The hex-grid fog map was attempt 1's biggest modeling mistake.)
+- **Light is dynamic and person-centered** — the radius follows whoever carries the active source; no ancestry has darkvision, so "who's lit" is moving, gameplay-critical state.
+- **Exploration has its own counter** (crawling rounds / wandering-monster checks tied to time and noise), separate from combat rounds.
+- **Secrets have three states**: hidden → tell-visible (noticeable by specific classes at normal pace) → revealed. Not a binary flag.
+- **Monster visibility is two independent toggles**: presence-known and HP-visible.
+- **Each PC gets one assigned color** used everywhere: token ring, presence avatar, chat name, party HP list.
+- **GM notes are contextual**, attached to the selected map entity or inline in the log — not a flat notes panel.
+- **Scene log and Party chat are two always-visible panels, never tabs** (tabs bury messages).
+- **Player view gets a top stat strip** (HP/AC/Gear/Luck/Torch) and presence avatars on both views.
+- **Rules corrections already researched** (apply before building advancement/spells): no talent roll at level 2 (1/3/5/7/9 only), level-up HP is flat class die with no CON, XP threshold is current-level×10 then resets, Sea Wolf talent is +2 STR/CON or +1 attacks (no DEX); spell lockout follows the house rule (pre-success failures don't lock; natural 1 always mishaps).
+
+## Technical lessons banked (from CLAUDE_CONTEXT.md and the build log — expensive to relearn)
+
+- **RLS + RETURNING gotcha**: `.insert().select()` fails RLS when the SELECT policy depends on a row that doesn't exist yet (e.g. creating a campaign before campaign_members). Fix: client-side `crypto.randomUUID()`, insert without `.select()`, create dependent rows separately.
+- **Debug RLS as the real user**: rolled-back transaction with `set local role authenticated` + JWT claims in the SQL editor — far better than guessing from errors.
+- **Realtime only fires for tables in the `supabase_realtime` publication** — first thing to check when live updates silently fail.
+- **Echo own actions locally immediately** instead of waiting for the realtime round-trip (that lag read as "dice don't work") — but guard against duplicate render when the realtime insert arrives.
+- **Authoritative commands + append-only event ledger** for every meaningful mutation (actor, reason, before/after). This architecture worked; it's what made the playtest trustworthy. AI GM uses the same commands.
+- **Every schema change is a numbered migration; rebuild + run the authorization test suite before applying.** Attempt 1 had to painfully reverse-engineer its live schema into migrations after the fact — never let schema and migrations drift again.
+- **GitHub OAuth primary, magic links fallback** (Supabase's built-in email sender has a project-wide quota that will lock you out at the worst time).
+- **One verification command** (`verify`: audit + lint + rules tests + routing tests + build) wired into CI from day one.
+- **Process that worked**: backend changes → build directly + PR; visual changes → mockup first, confirm, then build; milestone acceptance = replaying the Bjorn/Allindra test campaign scene end-to-end with two accounts (playtest checklist is in the archive).
+
+## What went wrong (confirmed in the spec interview, Aug 4 2026)
+
+In the user's own words: the core mistake was **building a bunch of pages first and then trying to make them all work together after the fact**. Confirmed contributing factors: the UI never felt right (functional but plain, and retrofitting the visual direction felt worse than starting clean); the code got unwieldy (60KB components made every change feel risky); wrong foundations were baked in early (hex map, screen-first habits from the mock-data prototype). The restart was chosen because a clear path *from the beginning* beats inheriting drift, even from a working app.
+
+**The governing principle for attempt two: no screen gets built until the system underneath it exists.** Every slice is vertical — database → command → UI — working together by construction, never wired together afterward.
+
+**Top priority (user's choice): stay in control** — at any moment the user understands what exists, what's next, and why. One spec, one roadmap, no competing plans, no mystery state.
+
+## Architecture (carried forward deliberately)
+
+Same shape as attempt 1 — it was audited twice and confirmed right; a proposed microservices split was explicitly rejected:
+
+- React 18 + Vite + Tailwind, single frontend on Vercel (repo `Yetiouz/grimoire`, push-to-main deploys)
+- Supabase: Postgres + Auth + Storage + Realtime + Edge Functions
+- pnpm, ESLint, node test runner; `verify` command + GitHub Actions from the first commit
+- **TypeScript** (decided Aug 4): the compiler is an automatic per-change check, and Supabase generates types from the schema so app and database can't silently drift
+- **Design system first** (decided Aug 4): before any screen, build Grimoire's UI kit — colors/fonts seeded from the landing page, panels, buttons, chips, log entries — as a living style-guide page. Screens are assembled from approved pieces; nothing ships plain
+- **Archive reuse rule: reference only** (decided Aug 4): read attempt 1 for lessons and data-model shapes; every line of Grimoire is written fresh. No pasted code
+- **Component size rule**: no component file grows past ~300 lines without being split; screens compose from the UI kit and feature components
+- The app targets phone and laptop from the start (Milestone 1's acceptance explicitly includes "on my phone")
+
+## Milestone plan (reshaped in the Aug 4 interview — solo + AI GM first)
+
+The first real user is the app's owner playing solo with the AI GM; friends across the USA join later to test, using external voice/video. This inverts attempt 1's "AI last" ordering — but keeps its hard-won rule: **the AI GM uses the same validated commands as a human GM, never a separate rules path**, so the command/event architecture is still built first.
+
+**Milestone 1 — Solo campaign with the AI GM.** Acceptance, in one sentence: *"I open grimoire on my phone or laptop, sign in, create a Shadowdark character, and play one short scene solo with the AI GM — it narrates, I roll real dice in the app, my HP/inventory update, and when I come back the next day the campaign remembers everything."* Forces: auth, characters (builder + sheet), campaigns, scene log, authoritative commands + event ledger, server dice, AI GM edge function, session persistence. Zero multiplayer complexity.
+
+*Candidate first slice (today-value): the campaign journal.* The user is actively playing a solo Shadowdark campaign via Claude chat right now and wants play logged as it happens. A campaign + log + event ledger slice is independently useful before the AI GM even lives in the app — session events can be recorded into Grimoire alongside chat-based play, and every later system writes into the same log.
+
+**Milestone 2 — Friends join.** Realtime multiplayer on the working solo loop: invites, roles, presence, live sync (echo-locally pattern), player table vs GM/AI view boundaries. Acceptance: the two-account playtest checklist from the archive, run with a friend remotely.
+
+**Milestone 3 — The full encounter engine.** Clockwise initiative (d20+DEX, surprise re-roll), Close/Near/Far zones, one action + Near move, attacks/damage, dying (1d4+CON timer, nat-20 recovery), stabilizing (DC 15 INT at Close), morale (DC 15 WIS). Acceptance: the bull-statue scene end to end.
+
+**Milestone 4 — Spellcasting & advancement.** Spellbook against the spell-cycle state; real level-ups with the rules corrections above.
+
+**Milestone 5 — Campaign continuity & GM prep.** End-session review, journal views, snapshots over the event ledger; adventure workspace, map management, handouts.
+
+**Milestone 6 — Hardening & launch.** Accessibility, rate limits, backup drills, monitoring.
+
+## Out of scope
+
+No voice or video chat — games run over Discord/FaceTime/etc.; Grimoire is the table, not the call. No microservices. No reproducing licensed Shadowdark rulebook text in the public repo (purchased PDFs belong in the private `rule_documents` storage bucket feature). No virtual-tabletop measured-grid movement. No other rule systems for now.
+
+## Verification standard
+
+Every slice ends with evidence: `pnpm verify` green, plus for gameplay slices the two-account playtest pattern from `docs/MULTIPLAYER_PLAYTEST.md` (role boundaries, realtime sync, refresh persistence, event-ledger audit).
+
+## Decisions log
+
+- 2026-08-04 — Restarted from scratch as Grimoire; attempt one archived at `~/Developer/_Archive/yetidark`.
+- 2026-08-04 — Landing page shipped as placeholder `index.html`; repo `Yetiouz/grimoire` linked to Vercel (live at grimoire-sable.vercel.app); GitHub Desktop is the push path.
+- 2026-08-04 — SPEC seeded from full attempt-1 archive read: feature inventory, locked design decisions, technical lessons, and inherited milestone plan recorded above.
+- 2026-08-04 — Spec interview completed. Root cause named: pages built first, wired together after. Priority: stay in control. First use: solo + AI GM; friends join in M2 (external voice/video). Decisions: TypeScript; design system first; archive is reference-only; ~300-line component cap; phone + laptop from the start. Milestones reordered accordingly; campaign journal flagged as the today-value first slice.
