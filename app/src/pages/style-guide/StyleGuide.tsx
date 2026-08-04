@@ -7,6 +7,11 @@ import { ButtonSection } from './sections/ButtonSection'
 import { BadgeSection } from './sections/BadgeSection'
 import { StatTileSection } from './sections/StatTileSection'
 import { LogEntrySection } from './sections/LogEntrySection'
+import { TorchTimerSection } from './sections/TorchTimerSection'
+import { DiceResultSection } from './sections/DiceResultSection'
+import { PortraitAvatarSection } from './sections/PortraitAvatarSection'
+import { SceneDividerSection } from './sections/SceneDividerSection'
+import { DangerBannerSection } from './sections/DangerBannerSection'
 
 // Shared column: the header and every section below share this exact
 // max-width + padding so their left edges align — one layout system for
@@ -37,6 +42,11 @@ export function StyleGuide() {
         <BadgeSection />
         <StatTileSection />
         <LogEntrySection />
+        <TorchTimerSection />
+        <DiceResultSection />
+        <PortraitAvatarSection />
+        <SceneDividerSection />
+        <DangerBannerSection />
       </main>
     </div>
   )
