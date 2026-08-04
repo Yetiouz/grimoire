@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grimoire — a Shadowdark RPG companion</title>
+<meta name="description" content="Grimoire is a companion app for running and playing Shadowdark RPG — for players, for the GM, and for AI-run tables.">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Pirata+One&family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root{
+    --bg: #050506;
+    --panel: #101013;
+    --panel2: #17171b;
+    --line: #232329;
+    --line-soft: #1c1c22;
+    --ink: #f4f4f6;
+    --ink-dim: #a5a5ae;
+    --ink-faint: #66666f;
+
+    --purple: #9b5cff;
+    --purple-hover: #ab74ff;
+    --purple-line: rgba(155,92,255,0.4);
+
+    --green: #39ff8f;
+    --red: #ff3b52;
+    --yellow: #ffd23f;
+    --orange: #ff8a3d;
+    --pink: #ff3fd6;
+    --cyan: #35f0ff;
+  }
+
+  *{ box-sizing: border-box; }
+  html{ scroll-behavior: smooth; }
+
+  html,body{
+    margin:0;
+    padding:0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .brand-font{ font-family: 'Pirata One', 'Cinzel', serif; }
+
+  a{ color: inherit; }
+
+  .wrap{
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 28px;
+    position: relative;
+  }
+
+  /* ---------- Nav ---------- */
+
+  header.top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap: 16px;
+    padding: 26px 0;
+  }
+
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    font-weight:400;
+    font-size: 19px;
+    letter-spacing: 0em;
+    color: var(--ink);
+  }
+  .brand img{ height: 26px; width:auto; display:block; }
+
+  .nav-right{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+  }
+
+  .nav-search{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 8px 14px;
+  }
+  .nav-search svg{ width:15px; height:15px; stroke: var(--ink-faint); flex-shrink:0; }
+  .nav-search input{
+    background:transparent;
+    border:none;
+    outline:none;
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    width: 130px;
+  }
+  .nav-search input::placeholder{ color: var(--ink-faint); }
+
+  .nav-menu{ position: relative; }
+
+  .nav-hamburger{
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .nav-hamburger svg{ width:18px; height:18px; stroke: var(--ink); }
+  .nav-hamburger:hover{ border-color: #33333c; }
+
+  .nav-dropdown{
+    position:absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 6px;
+    min-width: 180px;
+    display:none;
+    flex-direction:column;
+    gap: 2px;
+    box-shadow: 0 16px 36px -10px rgba(0,0,0,0.6);
+    z-index: 30;
+  }
+  .nav-dropdown.open{ display:flex; }
+  .nav-dropdown a{
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    color: var(--ink-dim);
+    text-decoration:none;
+  }
+  .nav-dropdown a:hover{ background: var(--panel2); color: var(--ink); }
+
+  @media (max-width: 560px){
+    .nav-search{ display:none; }
+  }
+
+  /* ---------- Buttons ---------- */
+
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 11px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.01em;
+    text-decoration:none;
+    cursor:pointer;
+    border: 1px solid transparent;
+    transition: background-color .15s ease, border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+  }
+  .btn:active{ transform: translateY(1px); }
+
+  .btn-primary{
+    background: var(--purple);
+    color: #fff;
+    box-shadow: 0 0 0 1px rgba(155,92,255,0.25), 0 8px 24px -8px rgba(155,92,255,0.55);
+  }
+  .btn-primary:hover{
+    background: var(--purple-hover);
+    box-shadow: 0 0 0 1px rgba(155,92,255,0.35), 0 10px 28px -6px rgba(155,92,255,0.65);
+    transform: translateY(-1px);
+  }
+
+  .btn-ghost{
+    background: transparent;
+    border-color: var(--line);
+    color: var(--ink);
+  }
+  .btn-ghost:hover{
+    border-color: #37373f;
+    background: var(--panel2);
+  }
+
+  /* ---------- Hero ---------- */
+
+  .hero{
+    text-align:center;
+    padding: 20px 0 70px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glow-orb{
+    position:absolute;
+    border-radius:999px;
+    filter: blur(70px);
+    pointer-events:none;
+    z-index:0;
+  }
+  .glow-1{ width:420px; height:420px; background: rgba(155,92,255,0.20); top:-160px; left:50%; margin-left:-330px; }
+  .glow-2{ width:360px; height:360px; background: rgba(53,240,255,0.14); top:-100px; left:50%; margin-left:20px; }
+  .glow-3{ width:320px; height:320px; background: rgba(255,63,214,0.10); top:120px; left:50%; margin-left:-460px; }
+
+  .hero > *:not(.glow-orb){ position:relative; z-index:1; }
+
+  .eyebrow{
+    display:inline-flex;
+    align-items:center;
+    gap: 7px;
+    padding: 6px 14px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    color: var(--ink-dim);
+    margin-bottom: 30px;
+  }
+  .eyebrow .dot{
+    width:6px; height:6px; border-radius:999px;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+  }
+
+  .hero-logo-mark{
+    width: min(200px, 50vw);
+    height:auto;
+    margin: 0 auto 18px;
+    display:block;
+    filter: drop-shadow(0 0 34px rgba(255,255,255,0.10));
+  }
+
+  .hero-wordmark{
+    font-size: clamp(52px, 9vw, 80px);
+    line-height: 1;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    text-shadow: 0 0 40px rgba(255,255,255,0.12);
+    margin-bottom: 44px;
+  }
+
+  .hero h1{
+    font-weight: 600;
+    font-size: clamp(21px, 2.6vw, 25px);
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    margin: 0 auto 16px;
+    max-width: 600px;
+    color: var(--ink);
+  }
+
+  .hero p.tagline{
+    font-size: 15.5px;
+    line-height: 1.65;
+    color: var(--ink-dim);
+    max-width: 500px;
+    margin: 0 auto 38px;
+  }
+
+  .hero .cta-row{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap: 12px;
+    flex-wrap:wrap;
+  }
+
+  /* ---------- Section shell ---------- */
+
+  section{ padding: 76px 0; border-top: 1px solid var(--line); }
+
+  .eyebrow-label{
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    font-weight: 600;
+    margin: 0 0 12px;
+  }
+
+  .section-head{ margin-bottom: 44px; }
+  .section-head h2{
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 10px;
+  }
+  .section-head p{
+    font-size: 14.5px;
+    color: var(--ink-dim);
+    line-height: 1.6;
+    max-width: 480px;
+    margin: 0;
+  }
+
+  /* ---------- Pillars ---------- */
+
+  .pillar-grid{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .pillar{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 26px 24px;
+    transition: border-color .15s ease, transform .15s ease;
+  }
+  .pillar:hover{
+    border-color: #33333c;
+    transform: translateY(-2px);
+  }
+
+  .pillar .icon-chip{
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: var(--panel2);
+    border: 1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom: 18px;
+  }
+  .pillar .icon-chip svg{ width:19px; height:19px; stroke: var(--ink); }
+
+  .pillar h3{
+    font-size: 16.5px;
+    margin: 0 0 9px;
+    font-weight: 600;
+  }
+
+  .pillar p{
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: var(--ink-dim);
+    margin: 0;
+  }
+
+  /* ---------- Ethos ---------- */
+
+  .ethos-grid{
+    display:grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 50px;
+    align-items:center;
+  }
+
+  .ethos-grid h2{
+    font-size: 27px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 16px;
+  }
+
+  .ethos-grid p{
+    font-size: 14.5px;
+    line-height: 1.75;
+    color: var(--ink-dim);
+    margin: 0;
+  }
+
+  .tag-panel{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 22px;
+  }
+
+  .tag-panel .tag-panel-label{
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+
+  .tag-list{
+    display:flex;
+    flex-wrap:wrap;
+    gap: 10px;
+  }
+
+  .dot-tag{
+    display:inline-flex;
+    align-items:center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: var(--panel2);
+    border: 1px solid var(--line-soft);
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .dot-tag .dot{
+    width:7px; height:7px; border-radius:999px;
+    flex-shrink:0;
+  }
+
+  /* ---------- Palette ---------- */
+
+  .palette-groups{
+    display:flex;
+    flex-direction:column;
+    gap: 30px;
+  }
+
+  .palette-group-label{
+    font-size: 12px;
+    color: var(--ink-faint);
+    font-weight: 600;
+    margin-bottom: 14px;
+  }
+
+  .swatch-row{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+  }
+
+  .swatch{
+    display:flex;
+    align-items:center;
+    gap: 12px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+    transition: border-color .15s ease;
+  }
+  .swatch:hover{ border-color: #33333c; }
+
+  .swatch .chip{
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    flex-shrink:0;
+  }
+
+  .swatch .meta .name{
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .swatch .meta .hex{
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    color: var(--ink-faint);
+  }
+
+  /* ---------- Footer ---------- */
+
+  footer{
+    padding: 36px 0 48px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap: 12px;
+  }
+
+  footer .foot-left{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    color: var(--ink-faint);
+    font-size: 13.5px;
+  }
+  footer .foot-left img{ height:16px; width:auto; opacity:0.8; }
+
+  footer .foot-right{
+    color: var(--ink-faint);
+    font-size: 12.5px;
+  }
+
+  @media (max-width: 760px){
+    .pillar-grid{ grid-template-columns: 1fr; }
+    .ethos-grid{ grid-template-columns: 1fr; gap: 30px; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="wrap">
+    <header class="top">
+      <div class="brand brand-font">
+        <img src="/logo.webp" alt="">
+        <span>GRIMOIRE</span>
+      </div>
+      <div class="nav-right">
+        <div class="nav-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+          <input type="text" placeholder="Search" disabled>
+        </div>
+        <div class="nav-menu">
+          <button class="nav-hamburger" id="navToggle" aria-label="Menu" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+          </button>
+          <div class="nav-dropdown" id="navDropdown">
+            <a href="#pillars">Who it's for</a>
+            <a href="#ethos">The idea</a>
+            <a href="#palette">Palette</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="hero" style="border-top:none;">
+      <div class="glow-orb glow-1"></div>
+      <div class="glow-orb glow-2"></div>
+      <div class="glow-orb glow-3"></div>
+
+      <img class="hero-logo-mark" src="/logo.webp" alt="Grimoire logo — an illuminated letter G">
+      <div class="hero-wordmark brand-font">GRIMOIRE</div>
+
+      <p class="tagline">A companion for running and playing Shadowdark RPG — for the player watching their torch burn down, the GM keeping the table moving, and the AI standing in when no human GM is at the wheel.</p>
+
+      <div class="cta-row">
+        <a href="#pillars" class="btn btn-primary">Who it's for</a>
+        <a href="#ethos" class="btn btn-ghost">The idea behind it</a>
+      </div>
+
+      <div class="eyebrow" style="margin-top:34px; margin-bottom:0;"><span class="dot"></span> In development — nothing to sign up for yet</div>
+    </section>
+
+    <section id="pillars">
+      <div class="section-head">
+        <div class="eyebrow-label">Who it's for</div>
+        <h2>Three seats at the table</h2>
+        <p>Grimoire serves whoever's playing, not just whoever's GMing.</p>
+      </div>
+      <div class="pillar-grid">
+        <div class="pillar">
+          <div class="icon-chip">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"></circle><path d="M5 20c0-3.6 3.1-6.4 7-6.4s7 2.8 7 6.4"></path></svg>
+          </div>
+          <h3>Your character, at a glance</h3>
+          <p>HP, gear, and light burning down in real time — the state you need for a quick decision, without digging for it mid-scene.</p>
+        </div>
+        <div class="pillar">
+          <div class="icon-chip">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-2.9 8.3-7 10-4.1-1.7-7-5.4-7-10V6l7-3z"></path></svg>
+          </div>
+          <h3>Run the table, not the spreadsheet</h3>
+          <p>Fast bookkeeping for initiative, monster HP, clocks, and NPCs, so the table doesn't stall while you look something up.</p>
+        </div>
+        <div class="pillar">
+          <div class="icon-chip">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="8" width="14" height="11" rx="2.5"></rect><path d="M12 8V4"></path><circle cx="12" cy="3" r="1"></circle><circle cx="9" cy="13.5" r="1.2" fill="currentColor" stroke="none"></circle><circle cx="15" cy="13.5" r="1.2" fill="currentColor" stroke="none"></circle><path d="M8 18h8"></path></svg>
+          </div>
+          <h3>Solo or async, still Shadowdark</h3>
+          <p>An AI Game Master with the same real actions a human GM has, and the same visible dice — nothing narrated that wasn't actually rolled.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="ethos">
+      <div class="ethos-grid">
+        <div>
+          <div class="eyebrow-label">The idea</div>
+          <h2>Make the pressure legible</h2>
+          <p>Shadowdark runs on a handful of specific pressures — time, darkness, scarce gear, one action per turn, danger that doesn't pull punches. An app for this game only earns its keep if those pressures show up on screen the moment they matter, not as decoration.</p>
+        </div>
+        <div class="tag-panel">
+          <div class="tag-panel-label">Five pressures</div>
+          <div class="tag-list">
+            <span class="dot-tag"><span class="dot" style="background: var(--yellow); box-shadow: 0 0 6px var(--yellow);"></span>Time</span>
+            <span class="dot-tag"><span class="dot" style="background: var(--pink); box-shadow: 0 0 6px var(--pink);"></span>Darkness</span>
+            <span class="dot-tag"><span class="dot" style="background: var(--orange); box-shadow: 0 0 6px var(--orange);"></span>Gear</span>
+            <span class="dot-tag"><span class="dot" style="background: var(--cyan); box-shadow: 0 0 6px var(--cyan);"></span>One action</span>
+            <span class="dot-tag"><span class="dot" style="background: var(--red); box-shadow: 0 0 6px var(--red);"></span>Danger</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="palette">
+      <div class="section-head">
+        <div class="eyebrow-label">Reference</div>
+        <h2>Working palette</h2>
+        <p>Color has a job, not a mood. One action color, a set of status indicators, two reserved accents.</p>
+      </div>
+      <div class="palette-groups">
+        <div>
+          <div class="palette-group-label">Actions</div>
+          <div class="swatch-row">
+            <div class="swatch"><div class="chip" style="background: var(--purple);"></div><div class="meta"><div class="name">Purple</div><div class="hex">#9B5CFF</div></div></div>
+          </div>
+        </div>
+        <div>
+          <div class="palette-group-label">Indicators</div>
+          <div class="swatch-row">
+            <div class="swatch"><div class="chip" style="background: var(--green);"></div><div class="meta"><div class="name">Green</div><div class="hex">#39FF8F</div></div></div>
+            <div class="swatch"><div class="chip" style="background: var(--yellow);"></div><div class="meta"><div class="name">Yellow</div><div class="hex">#FFD23F</div></div></div>
+            <div class="swatch"><div class="chip" style="background: var(--orange);"></div><div class="meta"><div class="name">Orange</div><div class="hex">#FF8A3D</div></div></div>
+            <div class="swatch"><div class="chip" style="background: var(--red);"></div><div class="meta"><div class="name">Red</div><div class="hex">#FF3B52</div></div></div>
+          </div>
+        </div>
+        <div>
+          <div class="palette-group-label">Accents</div>
+          <div class="swatch-row">
+            <div class="swatch"><div class="chip" style="background: var(--pink);"></div><div class="meta"><div class="name">Pink</div><div class="hex">#FF3FD6</div></div></div>
+            <div class="swatch"><div class="chip" style="background: var(--cyan);"></div><div class="meta"><div class="name">Cyan</div><div class="hex">#35F0FF</div></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer style="border-top: 1px solid var(--line);">
+      <div class="foot-left brand-font">
+        <img src="/logo.webp" alt="">
+        <span>Grimoire</span>
+      </div>
+      <div class="foot-right">A Shadowdark RPG companion, in progress.</div>
+    </footer>
+  </div>
+
+  <script>
+    var navToggle = document.getElementById('navToggle');
+    var navDropdown = document.getElementById('navDropdown');
+    navToggle.addEventListener('click', function(e){
+      e.stopPropagation();
+      var isOpen = navDropdown.classList.toggle('open');
+      navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+    document.addEventListener('click', function(e){
+      if (!navDropdown.contains(e.target) && e.target !== navToggle){
+        navDropdown.classList.remove('open');
+        navToggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+    navDropdown.querySelectorAll('a').forEach(function(a){
+      a.addEventListener('click', function(){ navDropdown.classList.remove('open'); });
+    });
+  </script>
+</body>
+</html>
