@@ -66,7 +66,7 @@ Same shape as attempt 1 — it was audited twice and confirmed right; a proposed
 
 ### Visual quality rules (adopted Aug 4 from design research; the style guide page is their living reference)
 
-- **Typography is a closed set**: display (Pirata One, brand moments only — never UI headings), h1/h2/h3 (Inter semibold), body/body-secondary (ink/ink-dim), label (eyebrow style, ink-faint), numeric (tabular-nums for stats and dice). No ad-hoc font sizes or weights on any screen.
+- **Typography is a closed set**: display (Pirata One, brand moments only — never UI headings), h1/h2/h3 (Instrument Sans semibold), body/body-secondary (ink/ink-dim), label (Chivo Mono, eyebrow style, ink-faint), numeric (Chivo Mono, tabular-nums for stats and dice). No ad-hoc font sizes or weights on any screen.
 - **Mobile minimums**: player-facing body text never below 16px on phones (also prevents iOS input auto-zoom); touch targets at least 44px; every screen designed phone-first as a single column that unwraps wider.
 - **Reading measure**: running text (especially the scene log) caps its line length (~35ch phone, ~65ch max desktop) instead of stretching full width.
 - **Alignment**: functional text is left-aligned; centered text is reserved for brand moments.
@@ -107,3 +107,4 @@ Every slice ends with evidence: `pnpm verify` green, plus for gameplay slices th
 - 2026-08-04 — Landing page shipped as placeholder `index.html`; repo `Yetiouz/grimoire` linked to Vercel (live at grimoire-sable.vercel.app); GitHub Desktop is the push path.
 - 2026-08-04 — SPEC seeded from full attempt-1 archive read: feature inventory, locked design decisions, technical lessons, and inherited milestone plan recorded above.
 - 2026-08-04 — Spec interview completed. Root cause named: pages built first, wired together after. Priority: stay in control. First use: solo + AI GM; friends join in M2 (external voice/video). Decisions: TypeScript; design system first; archive is reference-only; ~300-line component cap; phone + laptop from the start. Milestones reordered accordingly; campaign journal flagged as the today-value first slice.
+- 2026-08-04 — Typography pass against rig.ai for inspiration (palette and Pirata One brand face kept unchanged): Inter replaced by Instrument Sans for body/UI headings; Chivo Mono added as a third face for label/numeric/button text; heading contrast increased (h1/h2/h3 sized up with negative tracking; `display` gets a responsive size pair so the brand mark stays safe on phones); body line-height widened to 1.7.

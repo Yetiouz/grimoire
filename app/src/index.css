@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Chivo+Mono:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap');
 
 /*
  * Tailwind v4 theme tokens.
@@ -14,10 +14,16 @@
  * pills/tags (Badge) use Tailwind's built-in rounded-full. See the
  * style-guide page's Button section for both shapes side by side.
  *
- * Inter still loads via Google Fonts (unchanged, working). Pirata One
- * is self-hosted instead (below) — the app owns that asset rather than
- * hotlinking it, per explicit decision after the hotlinked version
- * failed to actually load on the deployed style guide.
+ * Three font families, three jobs (revised after typography-inspiration
+ * pass against rig.ai, keeping Grimoire's palette and Pirata One brand
+ * face unchanged — see CLAUDE.md):
+ *   --font-sans   Instrument Sans — body copy and UI headings. Replaces
+ *                 Inter (same hotlink-via-Google-Fonts approach, just a
+ *                 different family — no self-hosting needed).
+ *   --font-mono   Chivo Mono — labels, stat/dice numerics, and button
+ *                 text. A distinct technical voice for UI chrome,
+ *                 rather than the body face with tracking bolted on.
+ *   --font-brand  Pirata One — unchanged, self-hosted, brand moments only.
  */
 @theme {
   --color-bg: #050506;
@@ -37,13 +43,17 @@
   --color-pink: #ff3fd6;
   --color-cyan: #35f0ff;
 
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Chivo Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
   --font-brand: 'Pirata One', 'Cinzel', serif;
 
   --radius-card: 16px;
   --radius-button: 11px;
 
   --tracking-eyebrow: 0.12em;
+  --tracking-h1: -0.02em;
+  --tracking-h2: -0.015em;
+  --tracking-h3: -0.01em;
 
   /*
    * Typography — the closed set (SPEC.md "Typography is a closed set").
@@ -55,18 +65,34 @@
    * `body` sits at 16px — SPEC's mobile-minimum floor for reading
    * content (also avoids iOS input auto-zoom). `label` and `numeric` may
    * go below that because they're metadata/stat values, never running
-   * text a player reads at length.
+   * text a player reads at length. Body's line-height was widened to
+   * 1.7 (was 1.6) after the rig.ai pass — more generous leading on
+   * reading content, e.g. the scene log.
+   *
+   * Heading contrast was deliberately pushed up (rig.ai's headline runs
+   * ~6-7x its body size with tight negative tracking; Grimoire's was a
+   * flat ~2x). `display` gets a responsive pair — --text-display for
+   * mobile, --text-display-lg from the sm: breakpoint up — because it's
+   * a short brand mark in a compact header, not sprawling hero copy;
+   * going straight to 5x body (80px) on a phone risked overflowing
+   * "Grimoire" set in blackletter. h1/h2/h3 get a single size plus
+   * negative tracking, matching the sans headline treatment — display
+   * itself keeps normal tracking since Pirata One's blackletter forms
+   * are more complex than a grotesk and tightening them is a legibility
+   * risk, not just a style choice.
    */
-  --text-display: 2rem;
-  --text-display--line-height: 1.15;
-  --text-h1: 1.75rem;
-  --text-h1--line-height: 1.25;
-  --text-h2: 1.375rem;
-  --text-h2--line-height: 1.3;
-  --text-h3: 1.125rem;
-  --text-h3--line-height: 1.35;
+  --text-display: 2.5rem;
+  --text-display--line-height: 1.1;
+  --text-display-lg: 5rem;
+  --text-display-lg--line-height: 1.05;
+  --text-h1: 3rem;
+  --text-h1--line-height: 1.1;
+  --text-h2: 2rem;
+  --text-h2--line-height: 1.2;
+  --text-h3: 1.5rem;
+  --text-h3--line-height: 1.3;
   --text-body: 1rem;
-  --text-body--line-height: 1.6;
+  --text-body--line-height: 1.7;
   --text-label: 0.6875rem;
   --text-label--line-height: 1.4;
   --text-numeric: 1rem;
@@ -76,8 +102,8 @@
 /* Self-hosted display face — see app/public/fonts/. Served from Vite's
  * public/ root, so the URL is /fonts/... in both dev and prod. If this
  * file is ever missing, --font-brand falls back to Cinzel/serif; the
- * Tokens section's type specimen calls out what it should look like so
- * that fallback is obvious rather than silent. */
+ * Typography section's display row calls out what it should look like
+ * so that fallback is obvious rather than silent. */
 @font-face {
   font-family: 'Pirata One';
   src: url('/fonts/PirataOne-Regular.woff2') format('woff2');

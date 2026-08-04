@@ -26,8 +26,18 @@ const levels: LevelDemo[] = [
     example: 'Rolled 14 vs AC 13 — hit.',
     use: 'Supporting detail alongside body text — timestamps, metadata lines.',
   },
-  { key: 'label', example: 'Hit Points', use: 'Eyebrow / field label. May shrink below 16px.', as: 'span' },
-  { key: 'numeric', example: '12 / 15', use: 'Stat values and dice results — tabular figures.', as: 'span' },
+  {
+    key: 'label',
+    example: 'Hit Points',
+    use: 'Eyebrow / field label. Chivo Mono — technical UI chrome. May shrink below 16px.',
+    as: 'span',
+  },
+  {
+    key: 'numeric',
+    example: '12 / 15',
+    use: 'Stat values and dice results. Chivo Mono, tabular figures.',
+    as: 'span',
+  },
 ]
 
 export function TypographySection() {

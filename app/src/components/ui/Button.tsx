@@ -11,6 +11,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
  * buttons; pills (see Badge) read as tags. See the style-guide page's
  * Button section for both shapes side by side.
  *
+ * Label text is `font-mono` (Chivo Mono) — UI-chrome text, the same
+ * technical voice as the label/numeric typography levels, rather than
+ * the body face. This is component-internal styling, not one of the
+ * eight closed-set content levels (see src/lib/typography.ts).
+ *
  * The focus-visible ring isn't in the style guide (the landing page
  * never needed keyboard-focus styling on a marketing CTA) — it's a
  * small, necessary addition for a real interactive control.
@@ -20,7 +25,7 @@ export function Button({ variant = 'primary', className, disabled, ...props }: B
     <button
       disabled={disabled}
       className={cx(
-        'rounded-button px-6 py-3 text-sm font-semibold transition-[background-color,border-color,transform,opacity] duration-150',
+        'rounded-button px-6 py-3 font-mono text-sm font-semibold transition-[background-color,border-color,transform,opacity] duration-150',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
         variant === 'primary' &&
           'bg-purple text-white shadow-[0_0_0_1px_rgba(155,92,255,0.25),0_8px_24px_-8px_rgba(155,92,255,0.55)] hover:-translate-y-px hover:bg-purple-hover',
