@@ -37,7 +37,8 @@ export function StatTile({ label, value, accent, className }: StatTileProps) {
       )}
     >
       <p className={text.label}>{label}</p>
-      <p className={cx('mt-0.5', text.numeric)}>{value}</p>
+      {/* mt-1 (4px, "micro") — was mt-0.5 (2px, off the closed spacing scale). */}
+      <p className={cx('mt-1', text.numeric)}>{value}</p>
     </div>
   )
 }

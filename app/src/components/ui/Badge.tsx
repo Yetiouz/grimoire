@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cx } from '../../lib/cx'
+import { text } from '../../lib/typography'
 
 export type BadgeTone = 'green' | 'red' | 'yellow' | 'orange' | 'pink' | 'cyan'
 
@@ -29,17 +30,25 @@ const toneDotClass: Record<BadgeTone, string> = {
 /** Pill-shaped, always full-round (Tailwind's built-in rounded-full) —
  * this is the "tag" shape, deliberately distinct from Button's
  * rounded-button. Color lives in the dot only (style guide §5: keeps a
- * row legible even with several different tones side by side). */
+ * row legible even with several different tones side by side).
+ *
+ * Label text uses the closed-set `caption` level (was ad-hoc `text-xs`)
+ * with an explicit `text-ink` — caption bakes in no color of its own,
+ * see typography.ts. Dot is `h-2 w-2` (8px, on the spacing scale) —
+ * was `h-1.5 w-1.5` (6px, off-scale), bumped to match LogEntryRow's
+ * sender dot, which already used 8px. */
 export function Badge({ children, tone, variant = 'indicator', className }: BadgeProps) {
   return (
     <span
       className={cx(
-        'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-ink',
+        'inline-flex items-center gap-2 rounded-full border px-3 py-1',
+        text.caption,
+        'text-ink',
         variant === 'status' ? 'border-line bg-panel' : 'border-line-soft bg-panel2',
         className,
       )}
     >
-      <span className={cx('h-1.5 w-1.5 rounded-full', toneDotClass[tone])} aria-hidden="true" />
+      <span className={cx('h-2 w-2 rounded-full', toneDotClass[tone])} aria-hidden="true" />
       {children}
     </span>
   )

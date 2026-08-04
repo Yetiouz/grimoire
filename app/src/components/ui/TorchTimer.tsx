@@ -36,7 +36,10 @@ export function TorchTimer({
   return (
     <div className={cx('rounded-card border border-line bg-panel px-3 py-2', className)}>
       <p className={text.label}>{label}</p>
-      <p className={cx('mt-0.5', text.numeric)}>{minutesRemaining}m</p>
+      {/* dataDisplay (was numeric) — this is the prominent standalone
+       * readout dataDisplay was added for, not a compact stat value.
+       * mt-1 (4px, "micro") — was mt-0.5 (2px, off the closed spacing scale). */}
+      <p className={cx('mt-1', text.dataDisplay)}>{minutesRemaining}m</p>
       <div
         className="mt-2 h-1 w-full overflow-hidden rounded-full bg-panel2"
         role="progressbar"

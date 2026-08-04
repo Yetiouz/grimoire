@@ -49,7 +49,9 @@ export function DiceResult({ roll, sides = 20, modifier = 0, outcome = 'default'
       <span className={text.label} style={{ color: outcomeColorVar[outcome] }}>
         {outcome === 'critical' ? 'Critical' : outcome === 'fumble' ? 'Fumble' : `d${sides}`}
       </span>
-      <span className={text.numeric}>{total}</span>
+      {/* dataDisplay (was numeric) — the prominent standalone readout
+       * dataDisplay was added for ("dice math"), not a compact stat value. */}
+      <span className={text.dataDisplay}>{total}</span>
       {modifier !== 0 && (
         <span className={text.bodySecondary}>{`${roll} ${modifier > 0 ? '+' : '−'} ${Math.abs(modifier)}`}</span>
       )}

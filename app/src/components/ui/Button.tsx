@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes } from 'react'
 import { cx } from '../../lib/cx'
+import { text } from '../../lib/typography'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'ghost'
@@ -11,10 +12,17 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
  * buttons; pills (see Badge) read as tags. See the style-guide page's
  * Button section for both shapes side by side.
  *
- * Label text is `font-mono` (Chivo Mono) — UI-chrome text, the same
- * technical voice as the label/numeric typography levels, rather than
- * the body face. This is component-internal styling, not one of the
- * eight closed-set content levels (see src/lib/typography.ts).
+ * Label text now uses the closed-set `caption` level (was ad-hoc
+ * `font-mono text-sm font-semibold`) — caption bakes in no color of its
+ * own (see typography.ts), so the per-variant `text-white`/`text-ink`
+ * below still owns color with no cascade conflict; `font-semibold` is
+ * added back explicitly since caption doesn't bake in a weight either.
+ *
+ * `min-h-11` (44px) guarantees the SPEC touch-target minimum
+ * independent of text metrics — caption is smaller than the old
+ * text-sm, so padding + line-height alone would land a couple px short.
+ * `inline-flex items-center justify-center` keeps the label centered in
+ * that guaranteed box instead of just top-aligned.
  *
  * The focus-visible ring isn't in the style guide (the landing page
  * never needed keyboard-focus styling on a marketing CTA) — it's a
@@ -25,7 +33,8 @@ export function Button({ variant = 'primary', className, disabled, ...props }: B
     <button
       disabled={disabled}
       className={cx(
-        'rounded-button px-6 py-3 font-mono text-sm font-semibold transition-[background-color,border-color,transform,opacity] duration-150',
+        'inline-flex min-h-11 items-center justify-center rounded-button px-6 py-3 font-semibold transition-[background-color,border-color,transform,opacity] duration-150',
+        text.caption,
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
         variant === 'primary' &&
           'bg-purple text-white shadow-[0_0_0_1px_rgba(155,92,255,0.25),0_8px_24px_-8px_rgba(155,92,255,0.55)] hover:-translate-y-px hover:bg-purple-hover',

@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Chivo+Mono:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Chivo+Mono:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap');
 
 /*
  * Tailwind v4 theme tokens.
@@ -14,16 +14,25 @@
  * pills/tags (Badge) use Tailwind's built-in rounded-full. See the
  * style-guide page's Button section for both shapes side by side.
  *
- * Three font families, three jobs (revised after typography-inspiration
+ * Four font families, four jobs (revised after typography-inspiration
  * pass against rig.ai, keeping Grimoire's palette and Pirata One brand
  * face unchanged — see CLAUDE.md):
- *   --font-sans   Instrument Sans — body copy and UI headings. Replaces
- *                 Inter (same hotlink-via-Google-Fonts approach, just a
- *                 different family — no self-hosting needed).
- *   --font-mono   Chivo Mono — labels, stat/dice numerics, and button
- *                 text. A distinct technical voice for UI chrome,
- *                 rather than the body face with tracking bolted on.
- *   --font-brand  Pirata One — unchanged, self-hosted, brand moments only.
+ *   --font-sans     Instrument Sans — body copy and other UI text.
+ *                   Replaces Inter (same hotlink-via-Google-Fonts
+ *                   approach, just a different family).
+ *   --font-heading  Bebas Neue — h1/h2/h3 headlines. Started as a
+ *                   one-off fix for the style-guide page's own cramped
+ *                   all-caps headline, looked better than the Instrument
+ *                   Sans treatment it replaced, and was promoted to the
+ *                   full heading system. Condensed and effectively
+ *                   caps-only by design, so h1/h2/h3 bake in `uppercase`
+ *                   rather than leaving casing ad-hoc per usage.
+ *   --font-mono     Chivo Mono — labels, stat/dice numerics, and button
+ *                   text. A distinct technical voice for UI chrome,
+ *                   rather than the body face with tracking bolted on.
+ *   --font-brand    Pirata One — unchanged, self-hosted, brand moments
+ *                   only (the "Grimoire" wordmark) — never a UI heading,
+ *                   which is what --font-heading is for.
  */
 @theme {
   --color-bg: #050506;
@@ -44,16 +53,21 @@
   --color-cyan: #35f0ff;
 
   --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'Bebas Neue', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Chivo Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
   --font-brand: 'Pirata One', 'Cinzel', serif;
 
   --radius-card: 16px;
   --radius-button: 11px;
 
+  /* Tuned for Bebas Neue (condensed, single-weight caps), not the
+   * Instrument Sans values these replaced. Positive, and growing as size
+   * shrinks — condensed caps need more room to breathe at smaller sizes,
+   * the opposite of the negative tracking a mixed-case grotesk wants. */
   --tracking-eyebrow: 0.12em;
-  --tracking-h1: -0.02em;
-  --tracking-h2: -0.015em;
-  --tracking-h3: -0.01em;
+  --tracking-h1: 0.01em;
+  --tracking-h2: 0.02em;
+  --tracking-h3: 0.03em;
 
   /*
    * Typography — the closed set (SPEC.md "Typography is a closed set").
@@ -75,10 +89,10 @@
    * mobile, --text-display-lg from the sm: breakpoint up — because it's
    * a short brand mark in a compact header, not sprawling hero copy;
    * going straight to 5x body (80px) on a phone risked overflowing
-   * "Grimoire" set in blackletter. h1/h2/h3 get a single size plus
-   * negative tracking, matching the sans headline treatment — display
-   * itself keeps normal tracking since Pirata One's blackletter forms
-   * are more complex than a grotesk and tightening them is a legibility
+   * "Grimoire" set in blackletter. h1/h2/h3 get a single size plus the
+   * Bebas Neue tracking above — display itself keeps normal tracking
+   * since Pirata One's blackletter forms are more complex than a
+   * condensed grotesk and tightening/loosening them is a legibility
    * risk, not just a style choice.
    */
   --text-display: 2.5rem;
@@ -97,7 +111,38 @@
   --text-label--line-height: 1.4;
   --text-numeric: 1rem;
   --text-numeric--line-height: 1.2;
+
+  /* caption: small secondary text — Badge, Button labels, LogEntryRow's
+   * sender/timestamp, Typography section's own key labels. Replaces what
+   * used to be ad-hoc text-xs/text-sm scattered across those components.
+   * No color here (see typography.ts) — every caller sets its own.
+   * dataDisplay: numeric's bigger sibling for prominent standalone
+   * readouts (torch countdown, dice total) rather than compact stat
+   * values. */
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.4;
+  --text-dataDisplay: 1.75rem;
+  --text-dataDisplay--line-height: 1.2;
 }
+
+/*
+ * Spacing — a closed scale (SPEC.md "Spacing is a closed scale"):
+ * 4/8/12/16/24/32/48/64px only, no arbitrary values anywhere (no
+ * `p-5`/`p-7`/`mt-1.5`-style fractional or off-list utilities). Six
+ * named semantic slots cover the common cases — reach for the slot name
+ * when deciding a value, not a pixel figure:
+ *   micro      4px   tight pairs (a dot next to its label)
+ *   related    8-12px  grouped items (a row of stat tiles, a button's
+ *                      icon-to-label gap)
+ *   component  16px  padding inside a card/panel
+ *   separated  24px  distinct blocks on the same screen
+ *   section    48px  space between whole page regions
+ *   page       64px desktop / 24px gutter phone — page-level margin
+ * 32px exists on the scale (it's on-list) but isn't tied to one of the
+ * six named slots — an available in-between value, not a default choice.
+ * Documented live on the style guide's Spacing section (right after
+ * Typography) with a rendered ladder + example for each slot.
+ */
 
 /* Self-hosted display face — see app/public/fonts/. Served from Vite's
  * public/ root, so the URL is /fonts/... in both dev and prod. If this

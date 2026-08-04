@@ -1,3 +1,4 @@
+import { cx } from '../../../lib/cx'
 import { text } from '../../../lib/typography'
 import { Section } from '../Section'
 
@@ -6,16 +7,21 @@ interface LevelDemo {
   example: string
   use: string
   /** Long-form levels (display/h1-h3/body) render their own example text
-   * at the level's real style. label/numeric render a compact real-world
-   * value instead, since a full sentence in either isn't representative. */
+   * at the level's real style. label/numeric/caption/dataDisplay render a
+   * compact real-world value instead, since a full sentence in any of
+   * them isn't representative. */
   as?: 'p' | 'span'
 }
 
 const levels: LevelDemo[] = [
   { key: 'display', example: 'Grimoire', use: 'Brand moments only — never a UI heading.' },
-  { key: 'h1', example: 'Style guide', use: 'Page title. One per screen.' },
-  { key: 'h2', example: 'Typography', use: 'Section heading.' },
-  { key: 'h3', example: 'Bjorn Ironhand', use: 'Sub-heading — card titles, grouped content.' },
+  { key: 'h1', example: 'Style guide', use: 'Page title. One per screen. Bebas Neue — condensed, uppercase.' },
+  { key: 'h2', example: 'Typography', use: 'Section heading. Bebas Neue — condensed, uppercase.' },
+  {
+    key: 'h3',
+    example: 'Bjorn Ironhand',
+    use: 'Sub-heading — card titles, grouped content. Bebas Neue — condensed, uppercase.',
+  },
   {
     key: 'body',
     example: 'The torch gutters as you push open the vault door. Something shifts in the dark ahead.',
@@ -27,6 +33,12 @@ const levels: LevelDemo[] = [
     use: 'Supporting detail alongside body text — timestamps, metadata lines.',
   },
   {
+    key: 'caption',
+    example: 'Bjorn',
+    use: 'Small secondary text — Badge, Button labels, LogEntryRow sender/timestamp. Chivo Mono, no baked-in color (the caller sets one).',
+    as: 'span',
+  },
+  {
     key: 'label',
     example: 'Hit Points',
     use: 'Eyebrow / field label. Chivo Mono — technical UI chrome. May shrink below 16px.',
@@ -35,7 +47,13 @@ const levels: LevelDemo[] = [
   {
     key: 'numeric',
     example: '12 / 15',
-    use: 'Stat values and dice results. Chivo Mono, tabular figures.',
+    use: 'Compact stat values — the header strip. Chivo Mono, tabular figures.',
+    as: 'span',
+  },
+  {
+    key: 'dataDisplay',
+    example: '38m',
+    use: 'Larger standalone readouts — torch time, dice math, coordinates-style values. Chivo Mono, tabular figures.',
     as: 'span',
   },
 ]
@@ -44,16 +62,19 @@ export function TypographySection() {
   return (
     <Section
       title="Typography"
-      description="A closed set of eight named levels (SPEC.md: “Typography is a closed set”). Every screen composes text from these — no ad-hoc font sizes or weights."
+      description="A closed set of ten named levels (SPEC.md: “Typography is a closed set”). Every screen composes text from these — no ad-hoc font sizes or weights."
     >
       <div className="flex flex-col divide-y divide-line rounded-card border border-line bg-panel">
         {levels.map(({ key, example, use, as = 'p' }) => {
           const Tag = as
           return (
             <div key={key} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-baseline sm:gap-6">
-              <span className="w-24 shrink-0 font-mono text-xs text-ink-faint">{key}</span>
+              {/* key label purged from ad-hoc font-mono text-xs to the
+               * closed-set caption level — caption bakes in no color
+               * (typography.ts), so text-ink-faint is set explicitly here. */}
+              <span className={cx('w-24 shrink-0', text.caption, 'text-ink-faint')}>{key}</span>
               <div className="min-w-0 flex-1">
-                <Tag className={text[key]}>{example}</Tag>
+                <Tag className={cx(key === 'caption' ? 'text-ink' : undefined, text[key])}>{example}</Tag>
                 <p className={`mt-1 ${text.label}`}>{use}</p>
                 {key === 'display' && (
                   <p className="mt-1 text-xs text-ink-faint">
@@ -68,7 +89,7 @@ export function TypographySection() {
       </div>
       <div className="rounded-card border border-purple/30 bg-panel2 px-4 py-3">
         <p className={text.body}>
-          Rule: screens use only these eight named levels — no ad-hoc font sizes or weights anywhere.
+          Rule: screens use only these ten named levels — no ad-hoc font sizes or weights anywhere.
         </p>
       </div>
     </Section>
