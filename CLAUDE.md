@@ -4,8 +4,10 @@ A companion web app for running and playing Shadowdark RPG — for players, for 
 
 ## Current state
 
-- `index.html` — the landing page (single self-contained file, dark theme, inline styles/assets). The app itself does not exist yet.
-- Repo `Yetiouz/grimoire`, linked to Vercel: every push to `main` auto-deploys.
+- `index.html` — the landing page (single self-contained file, dark theme, inline styles/assets).
+- `/app` — the Vite + React + TypeScript + Tailwind v4 scaffold (Milestone 1 foundation). No screens yet beyond a placeholder that proves the pieces are wired together. `pnpm verify` (audit + typecheck + lint + test + build) is wired up locally and in `.github/workflows/verify.yml`.
+- **No `pnpm-lock.yaml` committed yet.** The environment that scaffolded `/app` had `registry.npmjs.org` blocked by its network egress settings, so `pnpm install` couldn't be run there and no real lockfile could be generated — every dependency version in `app/package.json` is a hand-picked range, not something `pnpm install` has actually resolved and verified yet. CI currently runs `pnpm install --no-frozen-lockfile` as a stopgap. **As soon as `pnpm install` succeeds anywhere** (your machine, most likely), commit the resulting `app/pnpm-lock.yaml` and switch `.github/workflows/verify.yml` back to `pnpm install --frozen-lockfile` — this is a known gap to close, not a decision to leave in place.
+- Repo `Yetiouz/grimoire`, linked to Vercel: every push to `main` auto-deploys (still pointed at the landing page — `/app` isn't wired to a Vercel deploy target yet).
 
 ## Decided (do not relitigate)
 
