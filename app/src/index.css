@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Pirata+One&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
 /*
  * Tailwind v4 theme tokens.
@@ -14,8 +14,10 @@
  * pills/tags (Badge) use Tailwind's built-in rounded-full. See the
  * style-guide page's Button section for both shapes side by side.
  *
- * The font @import above mirrors the landing page's own approach
- * (index.html) rather than inventing a different loading method.
+ * Inter still loads via Google Fonts (unchanged, working). Pirata One
+ * is self-hosted instead (below) — the app owns that asset rather than
+ * hotlinking it, per explicit decision after the hotlinked version
+ * failed to actually load on the deployed style guide.
  */
 @theme {
   --color-bg: #050506;
@@ -42,6 +44,19 @@
   --radius-button: 11px;
 
   --tracking-eyebrow: 0.12em;
+}
+
+/* Self-hosted display face — see app/public/fonts/. Served from Vite's
+ * public/ root, so the URL is /fonts/... in both dev and prod. If this
+ * file is ever missing, --font-brand falls back to Cinzel/serif; the
+ * Tokens section's type specimen calls out what it should look like so
+ * that fallback is obvious rather than silent. */
+@font-face {
+  font-family: 'Pirata One';
+  src: url('/fonts/PirataOne-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 
 body {

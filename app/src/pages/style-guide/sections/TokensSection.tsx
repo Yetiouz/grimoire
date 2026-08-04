@@ -30,7 +30,13 @@ export function TokensSection() {
         ))}
       </div>
       <div className="flex flex-wrap items-baseline gap-6 rounded-lg border border-line bg-panel p-4">
-        <span className="font-brand text-3xl">Grimoire</span>
+        <div>
+          <span className="font-brand text-3xl">Grimoire</span>
+          <p className="mt-1 text-xs text-ink-faint">
+            Display face: Pirata One (blackletter), self-hosted from app/public/fonts. If this reads as a plain
+            serif instead, the font failed to load — that's the regression to watch for.
+          </p>
+        </div>
         <span className="font-sans text-base text-ink-dim">Inter — body and UI text</span>
       </div>
     </Section>
