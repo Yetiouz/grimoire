@@ -62,6 +62,7 @@ Same shape as attempt 1 — it was audited twice and confirmed right; a proposed
 - **Design system first** (decided Aug 4): before any screen, build Grimoire's UI kit — colors/fonts seeded from the landing page, panels, buttons, chips, log entries — as a living style-guide page. Screens are assembled from approved pieces; nothing ships plain
 - **Archive reuse rule: reference only** (decided Aug 4): read attempt 1 for lessons and data-model shapes; every line of Grimoire is written fresh. No pasted code
 - **Component size rule**: no component file grows past ~300 lines without being split; screens compose from the UI kit and feature components
+- **Shared components rule** (added Aug 4, user's call): domain pieces like a PlayerCard (name, HP, luck, torch-lit state, PC color) are built once and reused on every page that shows a player — GM view and player view render the SAME component and differ only in the data the page passes in. Components display what they're given; pages decide visibility. This makes "the GM's player-view preview exactly matches what players see" true by construction.
 - The app targets phone and laptop from the start (Milestone 1's acceptance explicitly includes "on my phone")
 
 ## Milestone plan (reshaped in the Aug 4 interview — solo + AI GM first)
