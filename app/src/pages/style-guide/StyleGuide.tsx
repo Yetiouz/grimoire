@@ -1,5 +1,7 @@
 import { cx } from '../../lib/cx'
+import { text } from '../../lib/typography'
 import { TokensSection } from './sections/TokensSection'
+import { TypographySection } from './sections/TypographySection'
 import { PanelSection } from './sections/PanelSection'
 import { ButtonSection } from './sections/ButtonSection'
 import { BadgeSection } from './sections/BadgeSection'
@@ -20,15 +22,16 @@ export function StyleGuide() {
     <div className="min-h-screen bg-bg text-ink">
       <header className="border-b border-line">
         <div className={cx(CONTAINER, 'py-8')}>
-          <p className="font-brand text-2xl">Grimoire</p>
-          <h1 className="mt-2 text-2xl font-semibold">Style guide</h1>
-          <p className="mt-1 text-sm text-ink-dim">
+          <p className={text.display}>Grimoire</p>
+          <h1 className={cx('mt-2', text.h1)}>Style guide</h1>
+          <p className={cx('mt-1', text.bodySecondary)}>
             Design tokens and the UI kit's core pieces, each shown in every state it supports.
           </p>
         </div>
       </header>
       <main className={cx(CONTAINER, 'flex flex-col gap-12 py-10')}>
         <TokensSection />
+        <TypographySection />
         <PanelSection />
         <ButtonSection />
         <BadgeSection />

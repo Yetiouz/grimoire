@@ -1,4 +1,5 @@
 import { cx } from '../../lib/cx'
+import { text } from '../../lib/typography'
 
 interface LogEntryRowProps {
   senderName: string
@@ -37,11 +38,9 @@ export function LogEntryRow({
             {senderName}
           </span>
           {timestamp && <span className="text-xs text-ink-faint">{timestamp}</span>}
-          {kind === 'roll' && (
-            <span className="text-[10px] uppercase tracking-eyebrow text-ink-faint">roll</span>
-          )}
+          {kind === 'roll' && <span className={text.label}>roll</span>}
         </div>
-        <p className="text-sm text-ink-dim">{message}</p>
+        <p className={cx(text.bodySecondary, 'max-w-[35ch] sm:max-w-[65ch]')}>{message}</p>
       </div>
     </div>
   )

@@ -44,6 +44,33 @@
   --radius-button: 11px;
 
   --tracking-eyebrow: 0.12em;
+
+  /*
+   * Typography — the closed set (SPEC.md "Typography is a closed set").
+   * Each level pairs a size with a line-height via Tailwind v4's
+   * --text-{name}--line-height convention, so `text-h2` etc. carries both
+   * in one class. See src/lib/typography.ts for the level-to-class map,
+   * and the style guide's Typography section for what each is for.
+   *
+   * `body` sits at 16px — SPEC's mobile-minimum floor for reading
+   * content (also avoids iOS input auto-zoom). `label` and `numeric` may
+   * go below that because they're metadata/stat values, never running
+   * text a player reads at length.
+   */
+  --text-display: 2rem;
+  --text-display--line-height: 1.15;
+  --text-h1: 1.75rem;
+  --text-h1--line-height: 1.25;
+  --text-h2: 1.375rem;
+  --text-h2--line-height: 1.3;
+  --text-h3: 1.125rem;
+  --text-h3--line-height: 1.35;
+  --text-body: 1rem;
+  --text-body--line-height: 1.6;
+  --text-label: 0.6875rem;
+  --text-label--line-height: 1.4;
+  --text-numeric: 1rem;
+  --text-numeric--line-height: 1.2;
 }
 
 /* Self-hosted display face — see app/public/fonts/. Served from Vite's

@@ -63,6 +63,16 @@ Same shape as attempt 1 — it was audited twice and confirmed right; a proposed
 - **Archive reuse rule: reference only** (decided Aug 4): read attempt 1 for lessons and data-model shapes; every line of Grimoire is written fresh. No pasted code
 - **Component size rule**: no component file grows past ~300 lines without being split; screens compose from the UI kit and feature components
 - **Shared components rule** (added Aug 4, user's call): domain pieces like a PlayerCard (name, HP, luck, torch-lit state, PC color) are built once and reused on every page that shows a player — GM view and player view render the SAME component and differ only in the data the page passes in. Components display what they're given; pages decide visibility. This makes "the GM's player-view preview exactly matches what players see" true by construction.
+
+### Visual quality rules (adopted Aug 4 from design research; the style guide page is their living reference)
+
+- **Typography is a closed set**: display (Pirata One, brand moments only — never UI headings), h1/h2/h3 (Inter semibold), body/body-secondary (ink/ink-dim), label (eyebrow style, ink-faint), numeric (tabular-nums for stats and dice). No ad-hoc font sizes or weights on any screen.
+- **Mobile minimums**: player-facing body text never below 16px on phones (also prevents iOS input auto-zoom); touch targets at least 44px; every screen designed phone-first as a single column that unwraps wider.
+- **Reading measure**: running text (especially the scene log) caps its line length (~35ch phone, ~65ch max desktop) instead of stretching full width.
+- **Alignment**: functional text is left-aligned; centered text is reserved for brand moments.
+- **Every screen ships four states**: loading, empty, error, populated — all four appear in the style guide as components exist for them. Empty states may carry flavor text ("No entries yet — the pages await").
+- **One motion rule**: 150ms ease transitions, 1px hover lifts, subtle glows — the landing page's vocabulary, applied everywhere, nothing improvised.
+- **Demo data is part of the design system**: screens are built and reviewed against the Bjorn/Allindra demo fixtures, never lorem ipsum.
 - The app targets phone and laptop from the start (Milestone 1's acceptance explicitly includes "on my phone")
 
 ## Milestone plan (reshaped in the Aug 4 interview — solo + AI GM first)

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cx } from '../../lib/cx'
+import { text } from '../../lib/typography'
 import type { BadgeTone } from './Badge'
 
 interface StatTileProps {
@@ -35,8 +36,8 @@ export function StatTile({ label, value, accent, className }: StatTileProps) {
         className,
       )}
     >
-      <p className="text-[11px] uppercase tracking-eyebrow text-ink-faint">{label}</p>
-      <p className="mt-0.5 text-base font-semibold text-ink">{value}</p>
+      <p className={text.label}>{label}</p>
+      <p className={cx('mt-0.5', text.numeric)}>{value}</p>
     </div>
   )
 }
