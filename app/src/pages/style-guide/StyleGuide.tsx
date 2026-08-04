@@ -27,8 +27,7 @@ export function StyleGuide() {
     <div className="min-h-screen bg-bg text-ink">
       <header className="border-b border-line">
         <div className={cx(CONTAINER, 'py-8')}>
-          <p className={text.display}>Grimoire</p>
-          <h1 className={cx('mt-2', text.h1)}>Style guide</h1>
+          <h1 className={cx('uppercase', text.h1)}>Style guide</h1>
           <p className={cx('mt-1', text.bodySecondary)}>
             Design tokens and the UI kit's core pieces, each shown in every state it supports.
           </p>
