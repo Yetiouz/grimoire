@@ -1,16 +1,10 @@
-// Scaffold placeholder — proves Vite + React + TypeScript + Tailwind are
-// wired together end to end. No real screen work happens here; that
-// starts once the design system (CLAUDE.md: "design system before
-// screens") exists.
+import { StyleGuide } from './pages/style-guide/StyleGuide'
+
+// Design-system stage: no real screens exist yet, so the whole app is
+// the living style guide for now (CLAUDE.md: "design system before
+// screens"). Routing arrives with the first real screen, not before.
 function App() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-bg text-ink">
-      <div className="rounded-2xl border border-line bg-panel px-8 py-6 text-center">
-        <h1 className="text-2xl font-semibold">Grimoire</h1>
-        <p className="mt-2 text-sm text-ink-dim">Scaffold is live. Nothing built yet.</p>
-      </div>
-    </div>
-  )
+  return <StyleGuide />
 }
 
 export default App
