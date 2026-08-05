@@ -32,7 +32,18 @@ export function useAuth() {
   }, [])
 
   async function signInWithGitHub() {
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'github' })
+    // Explicit redirectTo — without it, Supabase falls back to the
+    // project's static Auth "Site URL" setting regardless of where the
+    // app is actually running, which is what sent a local dev session
+    // to a dead port. `window.location.origin` makes this correct on
+    // both local dev and every deployed target, as long as that origin
+    // is also in Supabase's Additional Redirect URLs allow-list
+    // (Authentication → URL Configuration) — Supabase won't honor an
+    // arbitrary redirectTo that isn't allow-listed.
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: { redirectTo: window.location.origin },
+    })
     if (error) throw error
   }
 
