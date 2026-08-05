@@ -196,3 +196,29 @@ body {
 html {
   scroll-behavior: smooth;
 }
+
+/* Journal screen's fixed composer bar (JournalScreen.tsx, per
+ * journal-mockup.html's `.composer`) sits outside normal document flow,
+ * so two things it needs fall outside the closed 4-64px spacing scale —
+ * that scale is for design-system spacing decisions, not fixed-element
+ * clearance/device-inset math, so these are hand-written rather than
+ * bent into a Tailwind utility:
+ *
+ * .composer-clearance reserves room at the bottom of the scrolling
+ * content behind the bar so the feed's last rows don't sit underneath
+ * it. 140px is picked empirically (composer content ~80px + its own
+ * padding/border), the same way the mockup's own `.wrap` padding-bottom
+ * (120px) was — not derived from a spacing token.
+ *
+ * .composer-safe-bottom adds the device's home-indicator inset on top of
+ * the closed-scale `component` (16px) padding already applied via
+ * Tailwind's `pt-3`-equivalent on that element, so the Log button never
+ * sits under it on notched phones. env() falls back to 0 on devices
+ * without a safe area. */
+.composer-clearance {
+  padding-bottom: 140px;
+}
+
+.composer-safe-bottom {
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}

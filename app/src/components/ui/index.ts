@@ -1,4 +1,5 @@
 export { Panel } from './Panel'
+export { PageHeader } from './PageHeader'
 export { Button } from './Button'
 export { Badge } from './Badge'
 export type { BadgeTone } from './Badge'

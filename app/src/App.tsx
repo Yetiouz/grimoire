@@ -4,6 +4,7 @@ import { StyleGuide } from './pages/style-guide/StyleGuide'
 import { SignIn } from './pages/auth/SignIn'
 import { CampaignList } from './pages/campaigns/CampaignList'
 import { JournalScreen } from './pages/journal/JournalScreen'
+import { PageHeader } from './components/ui/PageHeader'
 import { cx } from './lib/cx'
 import { text } from './lib/typography'
 import type { Campaign } from './lib/campaigns'
@@ -42,11 +43,15 @@ function AuthGate() {
 
   return (
     <div>
-      <div className="flex justify-end px-4 pt-4">
-        <button onClick={() => void signOut()} className={text.label}>
-          Sign out
-        </button>
-      </div>
+      <PageHeader
+        left={<span className={text.label}>Grimoire</span>}
+        right={
+          <button onClick={() => void signOut()} className={text.label}>
+            Sign out
+          </button>
+        }
+        title="Campaigns"
+      />
       <CampaignList onOpenCampaign={setCampaign} />
     </div>
   )

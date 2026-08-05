@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { LogEntryRow } from '../ui/LogEntryRow'
 import type { LogEntryKind } from '../ui/LogEntryRow'
@@ -43,6 +43,20 @@ function sessionLabel(session: CampaignSession): string {
  * with the host screen, not here. */
 export function JournalFeed({ entries, sessions, filter, composer, className }: JournalFeedProps) {
   const visible = filter ? entries.filter(filter) : entries
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to the newest entry, just above the composer (the
+  // journal screen pins its composer to the viewport bottom — see
+  // JournalScreen). Runs on mount too, not just on new entries, so
+  // opening a journal with a long history lands on the latest entry
+  // instead of the first. Declared before the empty-state early return
+  // below so the hook still fires on every render (Rules of Hooks) even
+  // though `bottomRef` has nothing to attach to in that branch. Rides
+  // index.css's global `scroll-behavior: smooth` rather than overriding
+  // it per-call, so mount and live updates animate the same way.
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ block: 'end' })
+  }, [visible.length])
 
   if (visible.length === 0) {
     return (
@@ -80,6 +94,7 @@ export function JournalFeed({ entries, sessions, filter, composer, className }: 
           )
         })}
       </div>
+      <div ref={bottomRef} aria-hidden="true" />
       {composer}
     </div>
   )

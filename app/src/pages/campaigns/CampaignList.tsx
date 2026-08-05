@@ -66,8 +66,10 @@ export function CampaignList({ onOpenCampaign }: CampaignListProps) {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-8">
-      <div className="flex items-center justify-between">
-        <h1 className={text.h1}>Campaigns</h1>
+      {/* "Campaigns" itself now lives in the shared PageHeader band
+       * (App.tsx's AuthGate) alongside Sign out — this row is just the
+       * page's primary action, not a heading row anymore. */}
+      <div className="flex justify-end">
         <Button onClick={() => setModalOpen(true)}>New Campaign</Button>
       </div>
 
