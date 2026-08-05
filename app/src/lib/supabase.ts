@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import type { Database } from './database.types'
 
 const url = import.meta.env.VITE_SUPABASE_URL
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -16,7 +17,10 @@ if (!url || !anonKey) {
 }
 
 /** The one Supabase client for the app — every data/auth call goes
- * through this, not a fresh `createClient` per file. No generated
- * `Database` type yet (no tables exist — `generate_typescript_types`
- * has nothing to generate from until the first migration lands). */
-export const supabase = createClient(url, anonKey)
+ * through this, not a fresh `createClient` per file. Typed against
+ * `database.types.ts` (generated from the `grimoire` project after
+ * migrations 0001–0003, journal v1) so `.from('journal_entries')`,
+ * `.rpc('log_journal_entry', ...)` etc. are all checked against the
+ * real schema — app and database can't silently drift apart. Regenerate
+ * that file after every schema change, per CLAUDE.md. */
+export const supabase = createClient<Database>(url, anonKey)
