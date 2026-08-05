@@ -8,7 +8,7 @@ export function PortraitAvatarSection() {
       id="sec-portrait"
       number="011"
       group="Components"
-      title="Portrait & Identity"
+      title="Portraits"
       description="Circular avatar ringed in the character's color — the same 'one PC color everywhere' mechanism Log entry row uses for sender names. Falls back to initials since no portrait images exist yet."
     >
       <SpecimenGrid cols={3}>

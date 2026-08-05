@@ -39,7 +39,7 @@ const INDEX_ENTRIES: IndexEntry[] = [
   { id: 'sec-stats', number: '008', label: 'Stat Tiles' },
   { id: 'sec-torch', number: '009', label: 'Torch Timer' },
   { id: 'sec-dice', number: '010', label: 'Dice Result' },
-  { id: 'sec-portrait', number: '011', label: 'Portrait & Identity' },
+  { id: 'sec-portrait', number: '011', label: 'Portraits' },
   { id: 'sec-divider', number: '012', label: 'Scene Divider' },
   { id: 'sec-log', number: '013', label: 'Log Entries' },
   { id: 'sec-inputs', number: '014', label: 'Inputs & Modals' },
