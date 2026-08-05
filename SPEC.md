@@ -85,6 +85,27 @@ The first real user is the app's owner playing solo with the AI GM; friends acro
 
 *Candidate first slice (today-value): the campaign journal.* The user is actively playing a solo Shadowdark campaign via Claude chat right now and wants play logged as it happens. A campaign + log + event ledger slice is independently useful before the AI GM even lives in the app — session events can be recorded into Grimoire alongside chat-based play, and every later system writes into the same log.
 
+### Slice 1 specced: Journal v1 (interviewed + mockup-approved Aug 4; mockup: `journal-mockup.html` in repo root)
+
+**Auth:** GitHub OAuth only in v1 — the owner is the only user. Email magic-link joins arrive with Milestone 2 (attempt 1's lesson: Supabase's built-in email sender has a quota; OAuth primary). Minimal profile: display name. Sign out.
+
+**Data model (first migrations — the three multi-system seams land here):**
+- `campaigns`: id, owner, name, `system` (default 'shadowdark'), created_at.
+- `campaign_members`: exists from day one with just the owner row (M2 seam — invites later add rows, no schema change).
+- `sessions`: id, campaign_id, number, optional title, started_at, ended_at. "Start session" creates the next number; entries attach to the open session; session dividers render from these rows.
+- `journal_entries`: id, campaign_id, session_id, author, `kind`, body, actor_name, actor_color, created_at.
+- `campaign_events` (append-only ledger): id, campaign_id, actor, kind, payload jsonb, created_at. In v1 the ledger records campaign/session/entry lifecycle; authoritative game commands start writing to it in later slices. RLS: members-only access, owner-only writes in v1; rebuild + authorization tests before applying, per CLAUDE.md.
+
+**Entry taxonomy (from the approved mockup):** `narration` (GM voice — quiet panel background), `action` (a character speaks/acts — PC color dot + name), `roll` (action with ROLL tag; in v1 rolls are hand-typed text — the dice engine is a later slice), `note` (NOTE tag — notes-to-future-self), `system` (receded style; auto-generated from ledger events in later slices, manually creatable in v1 for imports).
+
+**Screens (both from the UI kit, phone-first):**
+1. Campaign list — Panel cards (interactive), each showing name + last-entry time; "New Campaign" opens the Modal component: name field only (system stays hidden, defaulted). Empty state with flavor text.
+2. Journal — built as a reusable `JournalFeed` component (entries + session dividers + optional composer, filter-driven) that this screen renders full-width; the same component later serves the player table, GM dashboard, and session review. Newest at bottom, auto-scroll, reading measure capped. Composer: kind selector chips + TextInput + Log button; "Start new session" action in the header. All four app states designed.
+
+**Out of scope for v1:** the stat strip (needs the character model — next slice), dice mechanics, AI GM, quests, The Black Road import (slice 2, immediately after).
+
+**Acceptance:** on a phone — sign in with GitHub, create "The Black Road," start Session 1, log one entry of every kind, kill the browser, return the next day: everything renders exactly per the mockup, and the ledger shows the full history.
+
 **Milestone 2 — Friends join.** Realtime multiplayer on the working solo loop: invites, roles, presence, live sync (echo-locally pattern), player table vs GM/AI view boundaries. Acceptance: the two-account playtest checklist from the archive, run with a friend remotely.
 
 **Milestone 3 — The full encounter engine.** Clockwise initiative (d20+DEX, surprise re-roll), Close/Near/Far zones, one action + Near move, attacks/damage, dying (1d4+CON timer, nat-20 recovery), stabilizing (DC 15 INT at Close), morale (DC 15 WIS). Acceptance: the bull-statue scene end to end.

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grimoire — Campaign Journal (mockup)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Pirata+One&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg:#050506; --panel:#101013; --panel2:#17171b;
+    --line:#232329; --line-soft:#1c1c22;
+    --ink:#f4f4f6; --ink-dim:#a5a5ae; --ink-faint:#66666f;
+    --purple:#9b5cff; --green:#39ff8f; --red:#ff3b52;
+    --yellow:#ffd23f; --orange:#ff8a3d; --pink:#ff3fd6; --cyan:#35f0ff;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Inter',-apple-system,sans-serif; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:680px; margin:0 auto; padding:0 16px 120px}
+
+  header.top{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 0 14px; border-bottom:1px solid var(--line-soft);
+    position:sticky; top:0; background:rgba(5,5,6,0.92); backdrop-filter:blur(8px); z-index:10;
+  }
+  .brand{font-family:'Pirata One',serif; font-size:17px; color:var(--ink-dim); letter-spacing:0.02em}
+  .campaign{
+    text-align:right;
+  }
+  .campaign .name{font-weight:600; font-size:15px}
+  .campaign .meta{font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.12em; margin-top:2px}
+
+  .statbar{
+    display:flex; gap:8px; overflow-x:auto; padding:14px 0 4px;
+  }
+  .stat{
+    flex:0 0 auto; background:var(--panel); border:1px solid var(--line);
+    border-radius:12px; padding:8px 14px; min-width:78px; position:relative; overflow:hidden;
+  }
+  .stat::before{content:''; position:absolute; left:0; top:0; bottom:0; width:2.5px; background:var(--accent,transparent)}
+  .stat .l{font-size:10px; text-transform:uppercase; letter-spacing:0.12em; color:var(--ink-faint); font-weight:600}
+  .stat .v{font-size:16px; font-weight:600; font-variant-numeric:tabular-nums; margin-top:2px}
+
+  .session-divider{
+    display:flex; align-items:center; gap:12px; margin:30px 0 14px;
+  }
+  .session-divider .label{
+    font-size:11px; text-transform:uppercase; letter-spacing:0.14em;
+    color:var(--ink-faint); font-weight:600; white-space:nowrap;
+  }
+  .session-divider::before,.session-divider::after{
+    content:''; height:1px; background:var(--line-soft); flex:1;
+  }
+
+  .entry{
+    display:flex; gap:11px; padding:11px 12px; border-radius:12px; margin-bottom:2px;
+  }
+  .entry .dot{
+    width:8px; height:8px; border-radius:99px; margin-top:6px; flex-shrink:0;
+    background:var(--c,var(--ink-faint));
+  }
+  .entry .body{min-width:0}
+  .entry .head{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap}
+  .entry .who{font-weight:600; font-size:13.5px; color:var(--c,var(--ink-dim))}
+  .entry .when{font-size:11px; color:var(--ink-faint)}
+  .entry .tag{
+    font-size:9.5px; font-weight:700; letter-spacing:0.1em; color:var(--ink-faint);
+    border:1px solid var(--line); border-radius:99px; padding:1.5px 7px;
+  }
+  .entry .text{font-size:14.5px; line-height:1.6; color:var(--ink); margin-top:2px; max-width:60ch}
+
+  .entry.narration{background:var(--panel); border:1px solid var(--line-soft)}
+  .entry.narration .text{color:var(--ink-dim)}
+  .entry.system{opacity:0.85}
+  .entry.system .text{color:var(--ink-faint); font-size:13px}
+  .entry.roll .result{
+    font-variant-numeric:tabular-nums; font-weight:700; color:var(--ink);
+    background:var(--panel2); border:1px solid var(--line); border-radius:8px;
+    padding:1px 8px; font-size:13px;
+  }
+
+  .composer{
+    position:fixed; bottom:0; left:0; right:0;
+    background:rgba(5,5,6,0.95); backdrop-filter:blur(8px);
+    border-top:1px solid var(--line); padding:10px 16px 16px;
+  }
+  .composer .inner{max-width:680px; margin:0 auto}
+  .kinds{display:flex; gap:6px; margin-bottom:8px}
+  .kind{
+    font-size:11.5px; font-weight:500; color:var(--ink-dim);
+    border:1px solid var(--line-soft); background:var(--panel2);
+    border-radius:99px; padding:5px 12px; cursor:pointer;
+  }
+  .kind.active{color:#fff; background:var(--purple); border-color:var(--purple)}
+  .inputrow{display:flex; gap:8px}
+  .input{
+    flex:1; background:var(--panel); border:1px solid var(--line); border-radius:11px;
+    color:var(--ink-faint); font-size:16px; padding:12px 14px;
+  }
+  .send{
+    background:var(--purple); color:#fff; border:none; border-radius:11px;
+    font-weight:600; font-size:14px; padding:0 20px; cursor:pointer; min-width:44px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">Grimoire</div>
+    <div class="campaign">
+      <div class="name">The Lost Citadel</div>
+      <div class="meta">Solo · AI GM · Session 3</div>
+    </div>
+  </header>
+
+  <div class="statbar">
+    <div class="stat" style="--accent:var(--red)"><div class="l">HP</div><div class="v">9/15</div></div>
+    <div class="stat"><div class="l">AC</div><div class="v">14</div></div>
+    <div class="stat"><div class="l">Gear</div><div class="v">7/10</div></div>
+    <div class="stat" style="--accent:var(--cyan)"><div class="l">Luck</div><div class="v">1</div></div>
+    <div class="stat" style="--accent:var(--orange)"><div class="l">Torch</div><div class="v">38m</div></div>
+  </div>
+
+  <div class="session-divider"><span class="label">Session 3 — August 4, 2026</span></div>
+
+  <div class="entry narration" style="--c:var(--ink-faint)">
+    <div class="dot"></div>
+    <div class="body">
+      <div class="head"><span class="who" style="color:var(--ink-dim)">GM</span><span class="when">9:12 pm</span></div>
+      <div class="text">The northeast hall opens before you. A bull statue of black iron dominates the chamber, its eyes two pits of darkness. The air smells of old copper. Your torchlight doesn't reach the far wall.</div>
+    </div>
+  </div>
+
+  <div class="entry" style="--c:var(--purple)">
+    <div class="dot"></div>
+    <div class="body">
+      <div class="head"><span class="who">Bjorn</span><span class="when">9:14 pm</span></div>
+      <div class="text">I approach the statue slowly, torch high, checking the floor for pressure plates before each step.</div>
+    </div>
+  </div>
+
+  <div class="entry roll" style="--c:var(--purple)">
+    <div class="dot"></div>
+    <div class="body">
+      <div class="head"><span class="who">Bjorn</span><span class="when">9:15 pm</span><span class="tag">ROLL</span></div>
+      <div class="text">WIS check to spot the trap — <span class="result">d20+1 → 16</span> vs DC 12. Success.</div>
+    </div>
+  </div>
+
+  <div class="entry narration" style="--c:var(--ink-faint)">
+    <div class="dot"></div>
+    <div class="body">
+      <div class="head"><span class="who" style="color:var(--ink-dim)">GM</span><span class="when">9:16 pm</span></div>
+      <div class="text">Three flagstones before the statue sit a hair lower than the rest, their edges worn smooth. Something below them waits for weight.</div>
+    </div>
+  </div>
+
+  <div class="entry system">
+    <div class="dot"></div>
+    <div class="body">
+      <div class="head"><span class="who" style="color:var(--ink-dim)">System</span><span class="when">9:18 pm</span></div>
+      <div class="text">Torch burns low — 38 minutes remaining. Next wandering-monster check in 2 crawling rounds.</div>
+    </div>
+  </div>
+
+  <div class="entry" style="--c:var(--purple)">
+    <div class="dot"></div>
+    <div class="body">
+      <div class="head"><span class="who">Bjorn</span><span class="when">9:19 pm</span><span class="tag">NOTE</span></div>
+      <div class="text">Statue's eyes might hold gems — come back with a pry bar if the trap can be disarmed. Marked the three flagstones with chalk.</div>
+    </div>
+  </div>
+
+  <div class="entry system">
+    <div class="dot"></div>
+    <div class="body">
+      <div class="head"><span class="who" style="color:var(--ink-dim)">System</span><span class="when">9:21 pm</span></div>
+      <div class="text">Bjorn: −3 HP — dart trap graze (12 → 9). Recorded to campaign ledger.</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="composer">
+  <div class="inner">
+    <div class="kinds">
+      <span class="kind active">Action</span>
+      <span class="kind">Narration</span>
+      <span class="kind">Roll</span>
+      <span class="kind">Note</span>
+    </div>
+    <div class="inputrow">
+      <div class="input">Add to the journal…</div>
+      <button class="send">Log</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
