@@ -170,3 +170,11 @@
 body {
   font-family: var(--font-sans);
 }
+
+/* Style guide's sticky Index scrolls its anchor links smoothly instead
+ * of jumping — matches styleguide-mockup.html's behavior (there done via
+ * a JS `scrollBehavior = 'smooth'` line; a plain CSS rule does the same
+ * thing without needing an effect). */
+html {
+  scroll-behavior: smooth;
+}

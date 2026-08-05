@@ -14,7 +14,7 @@ interface ModalProps {
   open?: boolean
   /** Style-guide-only escape hatch: skips the fixed/backdrop overlay so
    * the confirm pattern can be reviewed inline on the page instead of
-   * covering it (see ModalSection). Real call sites never set this. */
+   * covering it (see InputsModalsSection). Real call sites never set this. */
   inline?: boolean
   className?: string
 }
