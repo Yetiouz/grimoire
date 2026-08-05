@@ -7,6 +7,7 @@ const colorTokens = [
   { name: 'panel', hex: '#101013', className: 'bg-panel' },
   { name: 'panel2', hex: '#17171B', className: 'bg-panel2' },
   { name: 'line', hex: '#232329', className: 'bg-line' },
+  { name: 'line-hover', hex: '#33333C', className: 'bg-line-hover' },
   { name: 'ink', hex: '#F4F4F6', className: 'bg-ink' },
   { name: 'purple', hex: '#9B5CFF', className: 'bg-purple' },
   { name: 'green', hex: '#39FF8F', className: 'bg-green' },

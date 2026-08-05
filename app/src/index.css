@@ -50,6 +50,12 @@
   --color-panel2: #17171b;
   --color-line: #232329;
   --color-line-soft: #1c1c22;
+  /* The hover-state border color Button (ghost) and interactive Panel
+   * both use — was hardcoded as an arbitrary `hover:border-[#33333c]`
+   * value in each component individually (an audit-fix item: named
+   * tokens shouldn't have an ungoverned hex value duplicated at two
+   * call sites). */
+  --color-line-hover: #33333c;
   --color-ink: #f4f4f6;
   --color-ink-dim: #a5a5ae;
   --color-ink-faint: #66666f;

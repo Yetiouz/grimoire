@@ -39,7 +39,7 @@ export function Button({ variant = 'primary', className, disabled, ...props }: B
         variant === 'primary' &&
           'bg-purple text-white shadow-[0_0_0_1px_rgba(155,92,255,0.25),0_8px_24px_-8px_rgba(155,92,255,0.55)] hover:-translate-y-px hover:bg-purple-hover',
         variant === 'ghost' &&
-          'border border-line bg-transparent text-ink hover:border-[#33333c] hover:bg-panel2',
+          'border border-line bg-transparent text-ink hover:border-line-hover hover:bg-panel2',
         disabled && 'pointer-events-none cursor-not-allowed opacity-40',
         className,
       )}
