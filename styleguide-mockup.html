@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grimoire Design System — spec-sheet mockup</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Pirata+One&family=Instrument+Sans:wght@400;500;600&family=Chivo+Mono:wght@400;500&family=Bebas+Neue&display=swap');
+:root{
+  --bg:#050506; --panel:#101013; --panel2:#17171b; --line:#232329; --line-soft:#1c1c22; --line-hover:#33333c;
+  --ink:#f4f4f6; --ink-dim:#a5a5ae; --ink-faint:#66666f;
+  --purple:#9b5cff; --purple-hover:#ab74ff; --green:#39ff8f; --red:#ff3b52; --yellow:#ffd23f; --orange:#ff8a3d; --pink:#ff3fd6; --cyan:#35f0ff;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Instrument Sans',sans-serif;-webkit-font-smoothing:antialiased}
+.mono{font-family:'Chivo Mono',monospace}
+.bebas{font-family:'Bebas Neue',sans-serif}
+
+/* ---- Masthead ---- */
+.masthead{border-bottom:1px solid var(--line);}
+.masthead .inner{max-width:1040px;margin:0 auto;padding:24px;}
+.doc-meta{display:flex;justify-content:space-between;align-items:center;font-family:'Chivo Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:24px}
+.doc-meta .brand{font-family:'Pirata One',serif;font-size:15px;letter-spacing:0;text-transform:none;color:var(--ink-dim)}
+.masthead h1{font-family:'Bebas Neue',sans-serif;font-size:64px;line-height:1;letter-spacing:0.01em;margin:0 0 10px;text-transform:uppercase}
+.masthead .sub{font-size:16px;line-height:1.7;color:var(--ink-dim);max-width:58ch;margin:0}
+
+/* ---- Layout: sticky index + content ---- */
+.shell{max-width:1040px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:180px 1fr;gap:48px}
+@media(max-width:800px){.shell{grid-template-columns:1fr}.index{display:none}}
+.index{position:sticky;top:0;align-self:start;padding:48px 0;display:flex;flex-direction:column;gap:2px}
+.index .idx-title{font-family:'Chivo Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:12px}
+.index a{font-family:'Chivo Mono',monospace;font-size:11px;color:var(--ink-dim);text-decoration:none;padding:6px 8px;border-radius:6px;letter-spacing:0.04em}
+.index a:hover{background:var(--panel);color:var(--ink)}
+.index a.active{color:var(--purple);background:var(--panel)}
+.content{padding:48px 0 96px;display:flex;flex-direction:column;gap:64px;min-width:0}
+
+/* ---- Section ---- */
+section{display:flex;flex-direction:column;gap:16px}
+.sec-head{border-bottom:1px solid var(--line-soft);padding-bottom:12px}
+.sec-eyebrow{font-family:'Chivo Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--purple);margin-bottom:6px}
+.sec-head h2{font-family:'Bebas Neue',sans-serif;font-size:32px;line-height:1.2;letter-spacing:0.02em;margin:0 0 6px;text-transform:uppercase}
+.sec-head p{font-size:14px;line-height:1.6;color:var(--ink-dim);max-width:60ch;margin:0}
+
+/* ---- Color spec cards ---- */
+.swatch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.swatch{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.swatch .chip{height:56px}
+.swatch .meta{padding:10px 12px;display:flex;justify-content:space-between;align-items:baseline}
+.swatch .name{font-size:12px;font-weight:600}
+.swatch .hex{font-family:'Chivo Mono',monospace;font-size:10px;color:var(--ink-faint);text-transform:uppercase}
+
+/* ---- Type ladder ---- */
+.ladder{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.ladder .row{display:grid;grid-template-columns:110px 1fr auto;gap:20px;align-items:baseline;padding:18px 20px;border-bottom:1px solid var(--line-soft)}
+.ladder .row:last-child{border-bottom:none}
+.ladder .lvl{font-family:'Chivo Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-faint)}
+.ladder .spec{font-family:'Chivo Mono',monospace;font-size:10px;color:var(--ink-faint);text-align:right;white-space:nowrap}
+.t-display{font-family:'Pirata One',serif;font-size:40px;line-height:1.1}
+.t-h1{font-family:'Bebas Neue',sans-serif;font-size:48px;line-height:1.1;text-transform:uppercase;letter-spacing:0.01em}
+.t-h2{font-family:'Bebas Neue',sans-serif;font-size:32px;line-height:1.2;text-transform:uppercase;letter-spacing:0.02em}
+.t-body{font-size:16px;line-height:1.7}
+.t-label{font-family:'Chivo Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint)}
+.t-numeric{font-family:'Chivo Mono',monospace;font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+
+/* ---- Component specimen frames ---- */
+.spec-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:640px){.spec-grid{grid-template-columns:1fr}}
+.spec-cell{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+.spec-cell .cell-tag{font-family:'Chivo Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-faint);align-self:stretch;display:flex;justify-content:space-between}
+.cell-tag .state{color:var(--green)}
+
+/* sample components */
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 24px;border-radius:11px;font-family:'Chivo Mono',monospace;font-weight:500;font-size:13px;border:1px solid transparent;cursor:pointer}
+.btn-primary{background:var(--purple);color:#fff;box-shadow:0 0 0 1px rgba(155,92,255,.25),0 8px 24px -8px rgba(155,92,255,.55)}
+.btn-ghost{background:transparent;border-color:var(--line);color:var(--ink)}
+.statchip{display:inline-flex;gap:8px;font-family:'Chivo Mono',monospace;font-size:11px;letter-spacing:0.06em;background:var(--panel2);border:1px solid var(--line-soft);border-radius:8px;padding:6px 10px}
+.statchip .k{color:var(--ink-faint)}.statchip .v{color:var(--orange)}
+.stat{background:var(--panel2);border:1px solid var(--line);border-left:2.5px solid var(--red);border-radius:12px;padding:8px 14px;min-width:84px}
+.stat .l{font-family:'Chivo Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint)}
+.stat .v{font-family:'Chivo Mono',monospace;font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
+.footer-line{border-top:1px solid var(--line);margin-top:0}
+.footer-line .inner{max-width:1040px;margin:0 auto;padding:20px 24px;display:flex;justify-content:space-between;font-family:'Chivo Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-faint)}
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="inner">
+    <div class="doc-meta">
+      <span class="brand">Grimoire</span>
+      <span>DESIGN SYSTEM // V1.0 — LIVING REFERENCE</span>
+      <span>UPDATED 2026-08-04</span>
+    </div>
+    <h1>Design System</h1>
+    <p class="sub">Tokens, typography, spacing, and the UI kit — every piece shown in every state it supports. Screens compose from this page; nothing ships that isn't specified here.</p>
+  </div>
+</div>
+
+<div class="shell">
+  <nav class="index" id="specIndex">
+    <div class="idx-title">Index</div>
+    <a href="#sec-color">001 · Color</a>
+    <a href="#sec-type">002 · Typography</a>
+    <a href="#sec-spacing">003 · Spacing</a>
+    <a href="#sec-icons">004 · Iconography</a>
+    <a href="#sec-buttons">005 · Buttons</a>
+    <a href="#sec-badges">006 · Badges & Chips</a>
+    <a href="#sec-stats">007 · Stat Tiles</a>
+    <a href="#sec-log">008 · Log Entries</a>
+    <a href="#sec-inputs">009 · Inputs & Modals</a>
+    <a href="#sec-states">010 · App States</a>
+  </nav>
+
+  <div class="content">
+
+    <section id="sec-color">
+      <div class="sec-head">
+        <div class="sec-eyebrow">001 // Foundation</div>
+        <h2>Color</h2>
+        <p>Torchlight purple leads. Indicator color lives in dots and edges, never fills. Surfaces are near-black; three ink tiers carry all text.</p>
+      </div>
+      <div class="swatch-grid">
+        <div class="swatch"><div class="chip" style="background:var(--purple)"></div><div class="meta"><span class="name">purple</span><span class="hex">#9B5CFF</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--panel)"></div><div class="meta"><span class="name">panel</span><span class="hex">#101013</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--green)"></div><div class="meta"><span class="name">green</span><span class="hex">#39FF8F</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--red)"></div><div class="meta"><span class="name">red</span><span class="hex">#FF3B52</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--orange)"></div><div class="meta"><span class="name">orange</span><span class="hex">#FF8A3D</span></div></div>
+        <div class="swatch"><div class="chip" style="background:var(--cyan)"></div><div class="meta"><span class="name">cyan</span><span class="hex">#35F0FF</span></div></div>
+      </div>
+    </section>
+
+    <section id="sec-type">
+      <div class="sec-head">
+        <div class="sec-eyebrow">002 // Foundation</div>
+        <h2>Typography</h2>
+        <p>Four faces, four jobs. A closed ladder — no ad-hoc sizes anywhere.</p>
+      </div>
+      <div class="ladder">
+        <div class="row"><span class="lvl">display</span><span class="t-display">Grimoire</span><span class="spec">Pirata One / brand only</span></div>
+        <div class="row"><span class="lvl">h1</span><span class="t-h1">Session Three</span><span class="spec">Bebas · 48/1.1</span></div>
+        <div class="row"><span class="lvl">h2</span><span class="t-h2">The Bull Statue</span><span class="spec">Bebas · 32/1.2</span></div>
+        <div class="row"><span class="lvl">body</span><span class="t-body">The torch gutters as you push open the vault door.</span><span class="spec">Instrument · 16/1.7</span></div>
+        <div class="row"><span class="lvl">label</span><span class="t-label">Hit Points</span><span class="spec">Chivo · 11 · +0.12em</span></div>
+        <div class="row"><span class="lvl">numeric</span><span class="t-numeric">12 / 15</span><span class="spec">Chivo · tabular</span></div>
+      </div>
+    </section>
+
+    <section id="sec-buttons">
+      <div class="sec-head">
+        <div class="sec-eyebrow">005 // Components</div>
+        <h2>Buttons</h2>
+        <p>Two variants. Rounded-rect by design — buttons read as buttons; pills read as tags.</p>
+      </div>
+      <div class="spec-grid">
+        <div class="spec-cell"><span class="cell-tag"><span>BTN_PRIMARY</span><span class="state">DEFAULT</span></span><button class="btn btn-primary">Log Entry</button></div>
+        <div class="spec-cell"><span class="cell-tag"><span>BTN_GHOST</span><span class="state">DEFAULT</span></span><button class="btn btn-ghost">Cancel</button></div>
+        <div class="spec-cell"><span class="cell-tag"><span>BTN_PRIMARY</span><span style="color:var(--ink-faint)">DISABLED</span></span><button class="btn btn-primary" style="opacity:.4">Log Entry</button></div>
+        <div class="spec-cell"><span class="cell-tag"><span>STATUS_CHIP</span><span class="state">LIVE</span></span><span class="statchip"><span class="k">TORCH</span><span class="v">38M</span></span></div>
+      </div>
+    </section>
+
+    <section id="sec-stats">
+      <div class="sec-head">
+        <div class="sec-eyebrow">007 // Components</div>
+        <h2>Stat Tiles</h2>
+        <p>Label over tabular value; accent edge only when the stat is under pressure.</p>
+      </div>
+      <div class="spec-grid">
+        <div class="spec-cell"><span class="cell-tag"><span>STAT_TILE</span><span style="color:var(--red)">ACCENT_RED</span></span><div class="stat"><div class="l">HP</div><div class="v">9/15</div></div></div>
+        <div class="spec-cell"><span class="cell-tag"><span>STAT_TILE</span><span class="state">DEFAULT</span></span><div class="stat" style="border-left-color:transparent"><div class="l">AC</div><div class="v">14</div></div></div>
+      </div>
+    </section>
+
+
+    <section id="sec-spacing">
+      <div class="sec-head">
+        <div class="sec-eyebrow">003 // Foundation</div>
+        <h2>Spacing</h2>
+        <p>Placeholder in this mockup — the real page migrates its existing Spacing content into this shell with the same specimen-cell treatment.</p>
+      </div>
+      <div class="spec-cell" style="align-items:center;color:var(--ink-faint);font-family:'Chivo Mono',monospace;font-size:11px;letter-spacing:0.08em">SECTION CONTENT MIGRATES HERE</div>
+    </section>
+
+    <section id="sec-icons">
+      <div class="sec-head">
+        <div class="sec-eyebrow">004 // Foundation</div>
+        <h2>Iconography</h2>
+        <p>Placeholder in this mockup — the real page migrates its existing Iconography content into this shell with the same specimen-cell treatment.</p>
+      </div>
+      <div class="spec-cell" style="align-items:center;color:var(--ink-faint);font-family:'Chivo Mono',monospace;font-size:11px;letter-spacing:0.08em">SECTION CONTENT MIGRATES HERE</div>
+    </section>
+
+    <section id="sec-badges">
+      <div class="sec-head">
+        <div class="sec-eyebrow">006 // Components</div>
+        <h2>Badges & Chips</h2>
+        <p>Placeholder in this mockup — the real page migrates its existing Badges & Chips content into this shell with the same specimen-cell treatment.</p>
+      </div>
+      <div class="spec-cell" style="align-items:center;color:var(--ink-faint);font-family:'Chivo Mono',monospace;font-size:11px;letter-spacing:0.08em">SECTION CONTENT MIGRATES HERE</div>
+    </section>
+
+    <section id="sec-log">
+      <div class="sec-head">
+        <div class="sec-eyebrow">008 // Components</div>
+        <h2>Log Entries</h2>
+        <p>Placeholder in this mockup — the real page migrates its existing Log Entries content into this shell with the same specimen-cell treatment.</p>
+      </div>
+      <div class="spec-cell" style="align-items:center;color:var(--ink-faint);font-family:'Chivo Mono',monospace;font-size:11px;letter-spacing:0.08em">SECTION CONTENT MIGRATES HERE</div>
+    </section>
+
+    <section id="sec-inputs">
+      <div class="sec-head">
+        <div class="sec-eyebrow">009 // Components</div>
+        <h2>Inputs & Modals</h2>
+        <p>Placeholder in this mockup — the real page migrates its existing Inputs & Modals content into this shell with the same specimen-cell treatment.</p>
+      </div>
+      <div class="spec-cell" style="align-items:center;color:var(--ink-faint);font-family:'Chivo Mono',monospace;font-size:11px;letter-spacing:0.08em">SECTION CONTENT MIGRATES HERE</div>
+    </section>
+
+    <section id="sec-states">
+      <div class="sec-head">
+        <div class="sec-eyebrow">010 // Components</div>
+        <h2>App States</h2>
+        <p>Placeholder in this mockup — the real page migrates its existing App States content into this shell with the same specimen-cell treatment.</p>
+      </div>
+      <div class="spec-cell" style="align-items:center;color:var(--ink-faint);font-family:'Chivo Mono',monospace;font-size:11px;letter-spacing:0.08em">SECTION CONTENT MIGRATES HERE</div>
+    </section>
+  </div>
+</div>
+
+<div class="footer-line">
+  <div class="inner"><span>GRIMOIRE DESIGN SYSTEM</span><span>SPEC SHEET — RENDERED FROM LIVE TOKENS</span></div>
+</div>
+
+
+<script>
+document.documentElement.style.scrollBehavior = 'smooth';
+const links = document.querySelectorAll('#specIndex a');
+const sections = [...links].map(a => document.querySelector(a.getAttribute('href')));
+const byId = new Map(sections.map((s, i) => [s.id, links[i]]));
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      byId.get(e.target.id).classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+sections.forEach(s => obs.observe(s));
+</script>
+</body>
+</html>
