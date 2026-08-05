@@ -17,6 +17,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
  * own (see typography.ts), so the per-variant `text-white`/`text-ink`
  * below still owns color with no cascade conflict; `font-semibold` is
  * added back explicitly since caption doesn't bake in a weight either.
+ * `uppercase` is added here rather than on `caption` itself, same
+ * reasoning as `display`'s wordmark casing: `caption` is shared with
+ * contexts where forcing uppercase would be wrong (a sender's actual
+ * name in LogEntryRow, Badge's label) — Button-specific styling stays
+ * on Button.
  *
  * `min-h-11` (44px) guarantees the SPEC touch-target minimum
  * independent of text metrics — caption is smaller than the old
@@ -33,7 +38,7 @@ export function Button({ variant = 'primary', className, disabled, ...props }: B
     <button
       disabled={disabled}
       className={cx(
-        'inline-flex min-h-11 items-center justify-center rounded-button px-6 py-3 font-semibold transition-[background-color,border-color,transform,opacity] duration-150',
+        'inline-flex min-h-11 items-center justify-center rounded-button px-6 py-3 font-semibold uppercase transition-[background-color,border-color,transform,opacity] duration-150',
         text.caption,
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
         variant === 'primary' &&

@@ -57,7 +57,16 @@ export function JournalComposer({ onLog, sessionOpen, className }: JournalCompos
             onClick={() => setKind(chip.kind)}
             disabled={!sessionOpen}
             className={cx(
-              'min-h-11 rounded-full border px-4 py-2',
+              // Same "button formation" as Button/Badge/StatusChip:
+              // inline-flex + items-center + justify-center centers the
+              // label inside the min-h-11 touch-target box. Without it
+              // (the original bug here), min-h-11 still forces the
+              // 44px-tall box, but with nothing to center the content,
+              // the label sits uncentered and the pill reads as
+              // oversized/mis-proportioned — a formation problem, not a
+              // padding one; px-4 py-2 (16px/8px, both on-scale) was
+              // fine all along.
+              'inline-flex min-h-11 items-center justify-center rounded-full border px-4 py-2',
               text.caption,
               kind === chip.kind
                 ? 'border-purple bg-purple text-white'
