@@ -3,6 +3,7 @@ import { text } from '../../lib/typography'
 import { TokensSection } from './sections/TokensSection'
 import { TypographySection } from './sections/TypographySection'
 import { SpacingSection } from './sections/SpacingSection'
+import { IconographySection } from './sections/IconographySection'
 import { PanelSection } from './sections/PanelSection'
 import { ButtonSection } from './sections/ButtonSection'
 import { BadgeSection } from './sections/BadgeSection'
@@ -47,6 +48,7 @@ export function StyleGuide() {
         <TokensSection />
         <TypographySection />
         <SpacingSection />
+        <IconographySection />
         <PanelSection />
         <ButtonSection />
         <BadgeSection />

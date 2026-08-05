@@ -4,6 +4,28 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Grimoire</title>
+    <!--
+      Instrument Sans / Chivo Mono / Bebas Neue load via <link> here, not
+      a CSS `@import url(...)` in index.css. That was the original setup
+      and it silently failed in production: Vite/Tailwind v4's CSS build
+      (Lightning CSS) drops remote `@import` statements from the bundled
+      output entirely — confirmed by fetching the built CSS and finding
+      zero @import rules in it, and by `document.fonts` only ever
+      containing the self-hosted Pirata One face. The three Google-hosted
+      families silently fell back to system fonts on the deployed site
+      even though everything looked right in source and in dev. <link>
+      tags aren't touched by the CSS bundler, so this is the robust fix,
+      not a workaround — also standard practice (Google Fonts' own
+      snippet uses <link>, partly for this exact reason, partly because
+      it lets the browser start the font fetch before CSS parsing even
+      begins).
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Chivo+Mono:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap"
+    />
   </head>
   <body>
     <div id="root"></div>

@@ -1,7 +1,17 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Chivo+Mono:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap');
 
 /*
+ * Instrument Sans / Chivo Mono / Bebas Neue used to load via a CSS
+ * `@import url(...)` right here. That silently failed in production:
+ * Vite/Tailwind v4's CSS build (Lightning CSS) drops remote `@import`
+ * statements from the bundled output — confirmed by fetching the built
+ * CSS and finding zero @import rules in it. All three families were
+ * quietly falling back to system fonts on the deployed site. They now
+ * load via <link> tags in app/index.html instead, which the CSS
+ * bundler doesn't touch. Only the self-hosted Pirata One face
+ * (below, a local @font-face with a relative url()) was ever
+ * unaffected by this.
+ *
  * Tailwind v4 theme tokens.
  * Colors seeded directly from the landing page (see
  * claude/grimoire-style-guide.md in the Shadowdark project) — every
