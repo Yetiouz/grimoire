@@ -94,6 +94,29 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     setEntries((prev) => [...(prev ?? []), entry])
   }
 
+  // Header session control: one button, two states, same click handler
+  // throughout (Amendment 2 — there's no separate "end session" command,
+  // starting the next session is how one ends). "Not started" reads
+  // "Start Session"; once a session is open it relabels to "In Session"
+  // with a live dot (StatusChip's existing tone-dot vocabulary,
+  // `h-2 w-2 rounded-full bg-{tone}`) but stays clickable — clicking it
+  // while live starts the next session, same as it always has. The
+  // native `title` tooltip spells that out since the relabel alone could
+  // otherwise read as a passive status pill rather than still being an
+  // action.
+  const sessionAction = (
+    <Button
+      variant="ghost"
+      onClick={() => void handleStartSession()}
+      disabled={startingSession}
+      className="gap-2"
+      title={openSession ? 'Starting the next session ends this one' : 'Start a session to begin logging'}
+    >
+      {openSession && <span className="h-2 w-2 rounded-full bg-green" aria-hidden="true" />}
+      {openSession ? 'In Session' : 'Start Session'}
+    </Button>
+  )
+
   return (
     <div className="min-h-screen">
       <PageHeader
@@ -104,6 +127,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
         }
         right={<span className={text.label}>{sessionMeta}</span>}
         title={campaign.name}
+        titleAction={sessionAction}
       />
 
       {/* composer-clearance (index.css): the composer is pinned fixed to
@@ -111,12 +135,6 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
        * without reserved bottom space its bar would sit on top of the
        * feed's last few rows instead of below them. */}
       <div className="composer-clearance mx-auto flex max-w-2xl flex-col gap-4 px-4 py-8">
-        <div className="flex justify-end">
-          <Button variant="ghost" onClick={() => void handleStartSession()} disabled={startingSession}>
-            {openSession ? 'Start next session' : 'Start session'}
-          </Button>
-        </div>
-
         {error && <ErrorBanner onRetry={() => void load()}>{error}</ErrorBanner>}
 
         {(sessions === null || entries === null) && !error && (

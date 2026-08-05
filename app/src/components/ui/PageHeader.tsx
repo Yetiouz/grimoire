@@ -14,6 +14,10 @@ interface PageHeaderProps {
    * that may not be loaded on first render. */
   right?: ReactNode
   title: string
+  /** Rendered beside the title itself, not the meta strip above it —
+   * for a primary page-level action that belongs with the heading (e.g.
+   * Journal's start/in-session control). Omit for a plain title. */
+  titleAction?: ReactNode
   className?: string
 }
 
@@ -23,7 +27,7 @@ interface PageHeaderProps {
  * the style guide's max-w-[65rem]. Campaigns and Journal both compose
  * from this so neither screen floats a bare heading (or, previously, a
  * lone Sign out link) above its content with nothing anchoring it. */
-export function PageHeader({ left, right, title, className }: PageHeaderProps) {
+export function PageHeader({ left, right, title, titleAction, className }: PageHeaderProps) {
   return (
     <header className={cx('border-b border-line', className)}>
       <div className="mx-auto max-w-2xl px-4 py-6">
@@ -31,7 +35,10 @@ export function PageHeader({ left, right, title, className }: PageHeaderProps) {
           {left}
           {right}
         </div>
-        <h1 className={text.h1}>{title}</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className={text.h1}>{title}</h1>
+          {titleAction}
+        </div>
       </div>
     </header>
   )
