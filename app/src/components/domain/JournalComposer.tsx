@@ -57,16 +57,21 @@ export function JournalComposer({ onLog, sessionOpen, className }: JournalCompos
             onClick={() => setKind(chip.kind)}
             disabled={!sessionOpen}
             className={cx(
-              // Same "button formation" as Button/Badge/StatusChip:
-              // inline-flex + items-center + justify-center centers the
-              // label inside the min-h-11 touch-target box. Without it
-              // (the original bug here), min-h-11 still forces the
-              // 44px-tall box, but with nothing to center the content,
-              // the label sits uncentered and the pill reads as
-              // oversized/mis-proportioned — a formation problem, not a
-              // padding one; px-4 py-2 (16px/8px, both on-scale) was
-              // fine all along.
-              'inline-flex min-h-11 items-center justify-center rounded-full border px-4 py-2',
+              // Round 2: these are compact filter-style chips (journal-
+              // mockup.html's `.kind`, padding:5px 12px), not touch-target
+              // buttons — matched to Badge/StatusChip's own compact-pill
+              // padding (px-3 py-1) instead of Button's px-4 py-2, and
+              // `min-h-11` is deliberately dropped here. That's a scoped,
+              // intentional exception to CLAUDE.md's standing "every
+              // interactive control gets the 44px touch-target minimum"
+              // rule — decided directly by the user for this dense
+              // chip-row pattern, not a change to the rule itself.
+              // `uppercase` on the label is the same per-component
+              // pattern as Button.tsx (not baked into shared `caption`,
+              // which Badge/LogEntryRow/Typography still use un-cased) —
+              // also a direct user request, overriding the mockup's own
+              // title-case chip labels.
+              'inline-flex items-center justify-center rounded-full border px-3 py-1 uppercase',
               text.caption,
               kind === chip.kind
                 ? 'border-purple bg-purple text-white'
