@@ -37,10 +37,16 @@
  *
  * `display` uses a responsive size pair (text-display on mobile,
  * text-display-lg from sm: up) — a short brand mark in a compact header
- * needs a smaller size than a full-width hero headline would.
+ * needs a smaller size than a full-width hero headline would. It also
+ * bakes in `uppercase`, same reasoning as h1/h2/h3: the "Grimoire"
+ * wordmark is always all-caps regardless of size, and that has to hold
+ * structurally rather than depend on every call site typing it in caps
+ * by hand (the landing page's own hero-wordmark makes the same
+ * guarantee via `text-transform: uppercase` in index.html, for the same
+ * reason).
  */
 export const text = {
-  display: 'font-brand text-display sm:text-display-lg text-ink',
+  display: 'font-brand uppercase text-display sm:text-display-lg text-ink',
   h1: 'font-heading uppercase font-normal tracking-h1 text-h1 text-ink',
   h2: 'font-heading uppercase font-normal tracking-h2 text-h2 text-ink',
   h3: 'font-heading uppercase font-normal tracking-h3 text-h3 text-ink',
