@@ -1,4 +1,4 @@
-import { Backpack, ChevronRight, Dice5, Flame, Heart, MessageSquare, ScrollText, Settings, Shield, Sparkles, Users, X } from 'lucide-react'
+import { Backpack, ChevronRight, Dice5, Flame, Heart, MessageSquare, ScrollText, Settings, Shield, Sparkle, Sparkles, Users, X } from 'lucide-react'
 import { cx } from '../../lib/cx'
 
 /**
@@ -8,12 +8,18 @@ import { cx } from '../../lib/cx'
  * lucide's full icon library. Same governance as the typography and
  * spacing closed sets: add to this map deliberately, don't reach past
  * it for a one-off import elsewhere.
+ *
+ * `bless` added for BUILD_PLAN.md slice 3's PlayerCard (per the vision
+ * mockup's `.ic.bless` — a distinct icon from `luck`'s Sparkles, purple
+ * rather than cyan, shown only when a character has a real active
+ * blessing).
  */
 const icons = {
   hp: Heart,
   ac: Shield,
   gear: Backpack,
   luck: Sparkles,
+  bless: Sparkle,
   torch: Flame,
   journal: ScrollText,
   chat: MessageSquare,

@@ -1,0 +1,195 @@
+import { cx } from '../../lib/cx'
+import { text } from '../../lib/typography'
+import { Overlay } from '../ui/Overlay'
+import { TalentRow } from './TalentRow'
+import { SpellCard } from './SpellCard'
+import { GearSlotGrid } from './GearSlotGrid'
+import { readCharacterAbilities, readCharacterGold, readCharacterSheet } from '../../lib/characters'
+import type { AbilityScore, Character, CharacterAbilities, CharacterSheetData } from '../../lib/characters'
+
+interface CharacterSheetProps {
+  character: Character | null
+  onClose: () => void
+}
+
+const ABILITY_ORDER: Array<{ key: keyof CharacterAbilities; label: string }> = [
+  { key: 'str', label: 'STR' },
+  { key: 'dex', label: 'DEX' },
+  { key: 'con', label: 'CON' },
+  { key: 'int', label: 'INT' },
+  { key: 'wis', label: 'WIS' },
+  { key: 'cha', label: 'CHA' },
+]
+
+const DETAIL_FIELDS: Array<{ key: keyof CharacterSheetData; label: string }> = [
+  { key: 'appearance', label: 'Appearance' },
+  { key: 'personal_revelation', label: 'Personal Revelation' },
+  { key: 'covenant_duties', label: 'Covenant Duties' },
+  { key: 'familiar', label: 'Familiar' },
+]
+
+function formatMod(mod: number): string {
+  return mod >= 0 ? `+${mod}` : `−${Math.abs(mod)}`
+}
+
+function formatGold(gold: { gp?: number; sp?: number; cp?: number }): string {
+  const parts: string[] = []
+  if (gold.gp) parts.push(`${gold.gp} gp`)
+  if (gold.sp) parts.push(`${gold.sp} sp`)
+  if (gold.cp) parts.push(`${gold.cp} cp`)
+  return parts.length > 0 ? parts.join(' ') : '0 gp'
+}
+
+// The mockup's `.sec-label` (mono, uppercase, purple) — composed
+// directly rather than starting from `text.label` (which bakes in
+// `text-ink-faint`) and overriding the color: both are Tailwind text-*
+// color utilities targeting the same CSS property, so which one wins
+// would depend on undocumented stylesheet-output order. Reusing just
+// the font-size token (`text-label`, a distinct utility namespace from
+// text color) avoids that risk entirely.
+const sectionLabelClass = 'mt-6 mb-2 font-mono text-label uppercase tracking-eyebrow text-purple first:mt-0'
+
+function AbilityScoreTile({ label, score }: { label: string; score: AbilityScore }) {
+  return (
+    <div className="rounded-[10px] border border-line-soft bg-panel2 px-2.5 py-2 text-center">
+      <p className={cx(text.label, 'text-ink-faint')}>{label}</p>
+      <p className={cx(text.numeric, 'mt-1')}>{score.score}</p>
+      <p className={cx(text.caption, 'text-ink-dim')}>{formatMod(score.mod)}</p>
+    </div>
+  )
+}
+
+/**
+ * Full character-sheet overlay content — the mockup's "Sheet" (abilities
+ * grid, talents, languages, spells with ready/locked state, gear slots
+ * with capacity math) — rendered inside the new `Overlay` primitive.
+ * Composite of the smaller pieces BUILD_PLAN.md names for this slice:
+ * an inline ability grid, `TalentRow`, `SpellCard`, `GearSlotGrid`.
+ *
+ * Every section is conditional on the real data actually having
+ * something to show — no character has every field the schema allows
+ * (only Kimbo has `covenant_duties`/`active_blessing`, only Kimbo and
+ * LaLa have `spells`, only LaLa has `familiar`), and nothing here
+ * fabricates a placeholder for an absent one.
+ */
+export function CharacterSheet({ character, onClose }: CharacterSheetProps) {
+  const open = character !== null
+  const abilities = character ? readCharacterAbilities(character.abilities) : {}
+  const sheet = character ? readCharacterSheet(character.sheet) : {}
+  const gold = character ? readCharacterGold(character.gold) : {}
+
+  const talents = sheet.attacks_talents ?? []
+  const languages = sheet.languages ?? []
+  const spells = sheet.spells ?? []
+  const equipment = sheet.equipment ?? []
+  const details = DETAIL_FIELDS.map((field) => ({ ...field, value: sheet[field.key] })).filter(
+    (field) => field.value !== undefined,
+  )
+
+  return (
+    <Overlay
+      open={open}
+      onClose={onClose}
+      header={
+        character && (
+          <div className="min-w-0">
+            <h2 className={cx(text.h2, 'truncate')}>{character.name}</h2>
+            <p className={cx(text.caption, 'mt-1 text-ink-faint')}>
+              {character.class_title} {character.level}
+              {character.alignment_title && ` · ${character.alignment_title}`}
+              {' · XP '}
+              <span className="tabular-nums text-ink">
+                {character.xp_current}/{character.xp_needed}
+              </span>
+              {' · '}
+              <span className="tabular-nums text-ink">{formatGold(gold)}</span>
+            </p>
+          </div>
+        )
+      }
+    >
+      {character && (
+        <div>
+          {ABILITY_ORDER.some(({ key }) => abilities[key]) && (
+            <>
+              <p className={sectionLabelClass}>Abilities</p>
+              <div className="grid grid-cols-6 gap-2">
+                {ABILITY_ORDER.map(({ key, label }) => {
+                  const score = abilities[key]
+                  return score ? <AbilityScoreTile key={key} label={label} score={score} /> : null
+                })}
+              </div>
+            </>
+          )}
+
+          {talents.length > 0 && (
+            <>
+              <p className={sectionLabelClass}>Talents</p>
+              <div>
+                {talents.map((talent, index) => (
+                  <TalentRow key={index} label={talent} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {languages.length > 0 && (
+            <>
+              <p className={sectionLabelClass}>Languages</p>
+              <div className="flex flex-wrap gap-2">
+                {languages.map((language) => (
+                  <span
+                    key={language}
+                    className={cx('rounded-full border border-line-soft bg-panel2 px-3 py-1', text.bodySecondary)}
+                  >
+                    {language}
+                  </span>
+                ))}
+              </div>
+            </>
+          )}
+
+          {spells.length > 0 && (
+            <>
+              <p className={sectionLabelClass}>Spells</p>
+              <div>
+                {spells.map((spell, index) => (
+                  <SpellCard key={index} name={spell} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {equipment.length > 0 && (
+            <>
+              <p className={sectionLabelClass}>
+                Gear
+                {character.gear_current != null && character.gear_max != null
+                  ? ` — ${character.gear_current} of ${character.gear_max} slots`
+                  : ''}
+              </p>
+              <GearSlotGrid items={equipment} />
+            </>
+          )}
+
+          {details.map((field) => (
+            <div key={field.key}>
+              <p className={sectionLabelClass}>{field.label}</p>
+              {Array.isArray(field.value) ? (
+                <div className="flex flex-col gap-2">
+                  {field.value.map((line, index) => (
+                    <p key={index} className={text.bodySecondary}>
+                      {line}
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                <p className={text.bodySecondary}>{field.value}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </Overlay>
+  )
+}

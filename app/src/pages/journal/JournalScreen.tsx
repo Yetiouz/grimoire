@@ -6,9 +6,13 @@ import { Skeleton, SkeletonGroup } from '../../components/ui/Skeleton'
 import { text } from '../../lib/typography'
 import { JournalFeed } from '../../components/domain/JournalFeed'
 import { JournalComposer } from '../../components/domain/JournalComposer'
+import { PlayerCard } from '../../components/domain/PlayerCard'
+import { CharacterSheet } from '../../components/domain/CharacterSheet'
 import type { LogEntryKind } from '../../components/ui/LogEntryRow'
 import { listJournalEntries, listSessions, logJournalEntry, startSession } from '../../lib/campaigns'
 import type { Campaign, CampaignSession, JournalEntry } from '../../lib/campaigns'
+import { listCharacters } from '../../lib/characters'
+import type { Character } from '../../lib/characters'
 
 interface JournalScreenProps {
   campaign: Campaign
@@ -16,31 +20,36 @@ interface JournalScreenProps {
   onBack: () => void
 }
 
-/** Placeholder for the signed-in player's own entries until a real
- * character model exists — SPEC's "one PC color everywhere" rule
- * assumes a character record this slice doesn't build (out of scope:
- * "the stat strip needs the character model — next slice"). Matches
- * the app's one accent color and the mockup's own Bjorn example.
- * Flagged here, not hidden: a character-model slice should replace
- * this with the real per-character color. */
-const PLAYER_COLOR = '#9b5cff'
+/** Last-resort fallback for `actorColor` when no character record has
+ * loaded yet (e.g. the very first log while `characters` is still
+ * null) — not the everyday case anymore. Real per-character color now
+ * comes from `characters.color` (migration 0005), closing the gap this
+ * constant used to paper over entirely. */
+const FALLBACK_PLAYER_COLOR = '#9b5cff'
 
 /** Screen 2 of Journal v1 (SPEC): the journal, built around the
- * reusable JournalFeed. Page chrome (campaign header, "Start session")
- * lives here, not in the component — JournalFeed itself has no idea
- * it's on the journal screen. */
+ * reusable JournalFeed. Page chrome (campaign header, "Start session",
+ * the party row) lives here, not in the component — JournalFeed itself
+ * has no idea it's on the journal screen. */
 export function JournalScreen({ campaign, authorName, onBack }: JournalScreenProps) {
   const [sessions, setSessions] = useState<CampaignSession[] | null>(null)
   const [entries, setEntries] = useState<JournalEntry[] | null>(null)
+  const [characters, setCharacters] = useState<Character[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [startingSession, setStartingSession] = useState(false)
+  const [openCharacter, setOpenCharacter] = useState<Character | null>(null)
 
   async function load() {
     setError(null)
     try {
-      const [sessionRows, entryRows] = await Promise.all([listSessions(campaign.id), listJournalEntries(campaign.id)])
+      const [sessionRows, entryRows, characterRows] = await Promise.all([
+        listSessions(campaign.id),
+        listJournalEntries(campaign.id),
+        listCharacters(campaign.id),
+      ])
       setSessions(sessionRows)
       setEntries(entryRows)
+      setCharacters(characterRows)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong loading the journal.')
     }
@@ -49,6 +58,15 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   useEffect(() => {
     void load()
   }, [campaign.id])
+
+  // Solo v1 has exactly one in-play PC (Kimbo) — using the single
+  // `active` character's color is correct for that case without
+  // inventing a real auth-user-to-character lookup (matching
+  // `campaign_members.user_id` through to `characters.member_id`) that
+  // multi-player campaigns will eventually need. Flagged rather than
+  // built, since nothing in this slice's scope requires it yet.
+  const activeCharacter = characters?.find((character) => character.status === 'active') ?? null
+  const playerColor = activeCharacter?.color ?? FALLBACK_PLAYER_COLOR
 
   const openSession = sessions?.find((session) => session.ended_at === null) ?? null
 
@@ -87,7 +105,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
       kind,
       body,
       actorName: kind === 'narration' ? 'GM' : authorName,
-      actorColor: kind === 'narration' ? undefined : PLAYER_COLOR,
+      actorColor: kind === 'narration' ? undefined : playerColor,
     })
     // Echo own actions locally instead of refetching — the RPC already
     // returns the row exactly as stored.
@@ -137,12 +155,26 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
       <div className="composer-clearance mx-auto flex max-w-2xl flex-col gap-4 px-4 py-8">
         {error && <ErrorBanner onRetry={() => void load()}>{error}</ErrorBanner>}
 
-        {(sessions === null || entries === null) && !error && (
+        {(sessions === null || entries === null || characters === null) && !error && (
           <SkeletonGroup label="Loading journal" className="gap-3">
             <Skeleton className="h-16 w-full" />
             <Skeleton className="h-16 w-full" />
             <Skeleton className="h-16 w-full" />
           </SkeletonGroup>
+        )}
+
+        {/* Party row (BUILD_PLAN.md slice 3): a simple stacked row of
+         * PlayerCards above the feed, within this same max-w-2xl column
+         * — not the mockup's full left rail, which is later table-view
+         * work. Awaiting PCs (Constantine, LaLa) render dimmed rather
+         * than filtered out, per PlayerCard's own resolved-mockup
+         * behavior. */}
+        {characters !== null && characters.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {characters.map((character) => (
+              <PlayerCard key={character.id} character={character} onClick={() => setOpenCharacter(character)} />
+            ))}
+          </div>
         )}
 
         {sessions !== null && entries !== null && (
@@ -169,6 +201,8 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
           />
         )}
       </div>
+
+      <CharacterSheet character={openCharacter} onClose={() => setOpenCharacter(null)} />
     </div>
   )
 }
