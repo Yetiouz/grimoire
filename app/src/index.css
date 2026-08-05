@@ -173,7 +173,19 @@
   font-display: swap;
 }
 
+/* Dark theme applied once, globally, rather than per-page. Journal v1's
+ * new screens (SignIn/CampaignList/JournalScreen) set their own text
+ * colors but never wrapped themselves in `bg-bg text-ink` the way
+ * StyleGuide.tsx does on its own root — that only worked by accident for
+ * the style guide, and left every new screen sitting on the browser's
+ * default white background with near-white `text-ink` on top of it
+ * (nearly invisible). Setting it here means no future page can make the
+ * same mistake; per-page `bg-bg`/`text-ink` (like StyleGuide.tsx still
+ * has) becomes redundant but harmless. */
 body {
+  min-height: 100vh;
+  background-color: var(--color-bg);
+  color: var(--color-ink);
   font-family: var(--font-sans);
 }
 
