@@ -10,18 +10,20 @@ The user already runs a complete campaign-management system today: markdown file
 
 Ordered so each slice replaces a real file the user maintains by hand today, and each is independently useful the week it ships.
 
-1. **Campaign core + journal + event ledger** *(already planned — the current slice)*. Campaign entity, journal entries by kind (narration / action / roll / note / system), composer, session dividers. The ledger underneath from day one.
-2. **The Black Road import.** One-time migration of the active campaign into Grimoire: state snapshot, timeline entries as journal sessions, the three characters, quests/objectives. From this day the app has real data, gets used every session, and every annoyance found in play becomes the next slice's spec. Highest-leverage slice on this list.
-3. **Character sheet (read + command-driven updates) and the stat strip.** What `characters/*.md` and the roster hold today: abilities, HP/AC/XP/coin, gear, talents, blessings/covenants, hirelings' stat lines. View first; every mutation through ledger commands (HP, XP, coin, rests).
-4. **Server-authoritative dice.** Replaces `_TOOLS/dice.py` and the dice-integrity rules in the GM persona: app-rolled dice land in the journal as roll entries with visible math; "player always rolls their own checks" becomes enforced structure.
-5. **Quests, objectives, and agreements.** Replaces `quest-log.md` + `objective-list.md` + the "accepted agreements" section of campaign-state: quest cards with status, a player-facing objective checklist, agreement records (who owes what — the Mara Venn pattern).
-6. **NPC / faction / treasure trackers.** Replaces `npc-log.md` and `tracker.xlsx` (its sheets: PC roster, NPCs, factions, treasure & magic items, session index). GM-secret fields separated from player-visible data at the schema level (attempt-1 lesson).
-7. **Session lifecycle.** Replaces `SESSION_PROTOCOL.md`'s checklists: session open/close, end-session review (XP, treasure, next-pickup note), and the "current snapshot" auto-derived from the ledger instead of hand-written.
-8. **AI GM in-app.** The gm-brain files (GM persona, house rules, session protocol) become the AI GM's instruction base; it plays through the same validated commands as a human, writing narration into the journal it already lives in. Rules reference comes from the user's purchased PDFs in private storage (`rule_documents`), never from the public repo.
-9. **Character builder.** Guided creation for the family campaign's new players. Late because current characters arrive via import (slice 2), so nothing blocks on it.
-10. **Encounter mode + zone scenes.** Initiative (clockwise), Close/Near/Far zone rings over scene art, monster visibility toggles, dying/stabilizing/morale — the locked design decisions from SPEC.
-11. **Multiplayer.** Invites, roles, presence, realtime sync. This is when Constantine's and LaLa's players join The Black Road for real. The two-account playtest checklist from attempt 1 is the acceptance gate.
-12. **GM prep + handouts.** Adventure workspace, map management, handouts — the Cursed Scroll adventures and their maps are the content this serves.
+**SHIPPED (Aug 4–5, 2026):** ✅ 1. Campaign core + journal + event ledger (migrations 0001–0003, five-kind taxonomy incl. chat). ✅ 2. The Black Road import (0004 — 144 entries, 3 PCs, 17 NPCs, 7 quests, 13 treasure items, live). ✅ 3a. Characters, view side (PlayerCard + CharacterSheet overlay, real colors via 0005). ✅ 4. Server-authoritative dice (0007–0008: roll_dice, advantage/disadvantage, d100, DiceRoller overlay). ✅ 5a. Quest Log, view side (persistent card panel). Plus unplanned-but-kept: end_session (0006), the v11 card-shell layout. The app is in daily solo use.
+
+**REMAINING, in order — each slice still gets a plan gate before build:**
+
+6. **Character commands** (next; completes old slice 3): the mutation half — adjust HP/XP/coin, gear add/remove, full rest — as SECURITY DEFINER commands writing ledger events, surfaced as edit affordances in CharacterSheet and echoed to the journal as system entries. Acceptance: a full rest at the end of a real session updates Kimbo's sheet and appears in the log without touching markdown.
+7. **Session states + lifecycle** (absorbs the v11 pause stub): a real `paused` state (schema + commands), then end-session review — XP/treasure summary and a "next pickup" note derived from the ledger, replacing SESSION_PROTOCOL.md's checklist.
+8. **Maps overlay** (v11's Maps tool): Region tab first — uploaded map image, party-position pin, travel chips (pace, hexes remaining); Site and Scene tabs stub. Private storage per licensing rules.
+9. **NPC / faction / treasure trackers**: surface the already-imported tables (17 NPCs are in the database with no UI); GM-secret fields separated at the schema level.
+10. **Campaign search** (the top-bar pill goes live): full-text over journal entries first — highest value per line of code once entries number in the hundreds.
+11. **AI GM in-app**: gm-brain persona through the same commands; narration into the journal. The summit of Milestone 1.
+12. **Character builder** — for the family campaign's new players.
+13. **Encounter mode + zone scenes**: initiative order on the party rail (cards reorder, active glows, round chip — the rail was built for this), dying/stabilizing timers on PlayerCard down-states, Close/Near/Far scene tab.
+14. **Multiplayer**: invites, roles, presence, realtime. Constantine's and LaLa's players join for real; two-account playtest is the gate.
+15. **GM prep + handouts.**
 
 ## Domain component list
 

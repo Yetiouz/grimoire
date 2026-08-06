@@ -27,12 +27,17 @@ A companion web app for running and playing Shadowdark RPG — for players, for 
 - No component file past ~300 lines; split instead.
 - Every meaningful game-state mutation goes through an authoritative command and the append-only event ledger. The AI GM uses the same commands as a human GM.
 - Every schema change is a numbered migration; rebuild + authorization tests before applying.
+- **The card shell is the layout primitive** (v11, the law Bob's layout pass was missing): every column/panel on an app screen is a card — `rounded-card border-line bg-panel`, a `ColumnHeader` at 38px, an internally scrolling body (`min-h-0` + `overflow-y-auto`), optional pinned footer (the journal's composer). At `xl:` the page NEVER scrolls; cards do. Extract this as a reusable `ColumnCard` component (header/body/footer slots) so the pattern is enforced by component, not memory — first task of the next layout-touching slice.
+- **Chrome spacing law**: 16px page gutter, 12px gaps between all bars/columns/cards. Left rail: logo, campaign name, and first column align; right rail: menu, session controls, and last column align.
+- **Session controls ARE the session status**: green Start / red Stop / yellow pause (stub until slice 7), far right of the campaign bar, meta text to their left.
+- **Closed vocabularies stay closed**: quest statuses (ACTIVE/LEAD/DONE/PERSONAL/WAITING), entry kinds, tones, type levels, spacing slots. A new value in any of them is a spec decision, not an implementation detail.
 
 ## Workflow rules
 
 - Read SPEC.md before implementing anything. If a feature isn't specced, say so and ask — don't invent requirements.
 - For any change touching more than one file: present a plan first, wait for approval, then implement. Full workflow is in WORKFLOW.md.
-- Every task ends with evidence: test output, a build result, or a screenshot of the deployed page. Never claim done without showing the check.
+- Every task ends with evidence: test output, a build result, or a screenshot of the deployed page. Never claim done without showing the check. **"Done" includes a LINK to the green verify run — deployed is not verified** (learned the hard way: 8 consecutive red CI runs shipped unnoticed because Vercel deploys regardless of Actions).
+- **Vision mockups are not work orders.** `player-view-mockup.html` (v11) is the composition law for anything already being built — but building a NEW feature from it without an approved plan is a failed review, even if the code works.
 - Keep the landing page (`index.html`) and the app separate. Landing-page edits must not touch app code and vice versa.
 - Commit after every working slice with a descriptive message. Small commits — they double as deploys and rewind points.
 

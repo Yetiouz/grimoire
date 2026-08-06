@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ColumnHeader } from '../../components/ui/ColumnHeader'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
 import { Skeleton, SkeletonGroup } from '../../components/ui/Skeleton'
@@ -49,7 +49,10 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   const [openCharacter, setOpenCharacter] = useState<Character | null>(null)
   const [diceOpen, setDiceOpen] = useState(false)
 
-  async function load() {
+  // useCallback so the load-on-mount effect can honestly list `load` as
+  // its dependency (react-hooks/exhaustive-deps runs at --max-warnings=0
+  // in verify — this warning was failing CI on every push).
+  const load = useCallback(async () => {
     setError(null)
     try {
       const [sessionRows, entryRows, characterRows, questRows] = await Promise.all([
@@ -65,11 +68,11 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong loading the journal.')
     }
-  }
+  }, [campaign.id])
 
   useEffect(() => {
     void load()
-  }, [campaign.id])
+  }, [load])
 
   // Solo v1 has exactly one in-play PC (Kimbo) — using the single
   // `active` character's color is correct for that case without

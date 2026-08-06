@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Panel } from '../../components/ui/Panel'
 import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
@@ -36,7 +36,7 @@ export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
   const [name, setName] = useState('')
   const [creating, setCreating] = useState(false)
 
-  async function load() {
+  const load = useCallback(async () => {
     setError(null)
     try {
       const data = await listCampaignsWithLastEntry()
@@ -44,11 +44,11 @@ export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong loading your campaigns.')
     }
-  }
+  }, [])
 
   useEffect(() => {
     void load()
-  }, [])
+  }, [load])
 
   async function handleCreate() {
     const trimmed = name.trim()
