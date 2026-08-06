@@ -1,4 +1,22 @@
-import { Backpack, ChevronRight, Dice5, Flame, Heart, MessageSquare, ScrollText, Settings, Shield, Sparkle, Sparkles, Users, X } from 'lucide-react'
+import {
+  Backpack,
+  BookOpen,
+  ChevronRight,
+  Dice5,
+  Flame,
+  Heart,
+  Map,
+  Menu,
+  MessageSquare,
+  ScrollText,
+  Search,
+  Settings,
+  Shield,
+  Sparkle,
+  Sparkles,
+  Users,
+  X,
+} from 'lucide-react'
 import { cx } from '../../lib/cx'
 
 /**
@@ -13,6 +31,12 @@ import { cx } from '../../lib/cx'
  * mockup's `.ic.bless` — a distinct icon from `luck`'s Sparkles, purple
  * rather than cyan, shown only when a character has a real active
  * blessing).
+ *
+ * `search`/`menu`/`map`/`rules` added for the visual-reconciliation
+ * pass's two-bar header and tools dock (player-view-mockup.html v10) —
+ * `search` and `menu` are non-functional stubs for now (no search index
+ * or nav menu exists yet), `map`/`rules` label the two other disabled
+ * dock stub buttons alongside the real `dice` one.
  */
 const icons = {
   hp: Heart,
@@ -28,6 +52,10 @@ const icons = {
   settings: Settings,
   close: X,
   disclosure: ChevronRight,
+  search: Search,
+  menu: Menu,
+  map: Map,
+  rules: BookOpen,
 } as const
 
 export type IconName = keyof typeof icons

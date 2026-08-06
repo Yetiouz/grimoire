@@ -24,11 +24,10 @@ export function QuestCard({ quest, className }: QuestCardProps) {
     <div className={cx('rounded-card border border-line-soft bg-panel2 px-4 py-3', className)}>
       <div className="flex items-start justify-between gap-2">
         <h3 className={cx(text.body, 'font-semibold')}>{quest.title}</h3>
+        {/* py-1, not py-0.5 (retroactive-review fix: 2px isn't on the
+         * closed 4/8/12/16/24/32/48/64 spacing scale — 4px is). */}
         <span
-          className={cx(
-            text.caption,
-            'shrink-0 rounded-full border border-line-soft bg-panel px-2 py-0.5 text-ink-dim',
-          )}
+          className={cx(text.caption, 'shrink-0 rounded-full border border-line-soft bg-panel px-2 py-1 text-ink-dim')}
         >
           {quest.status}
         </span>

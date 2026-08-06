@@ -1,5 +1,6 @@
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
+import { ColumnHeader } from '../ui/ColumnHeader'
 import { QuestCard } from './QuestCard'
 import type { Quest } from '../../lib/quests'
 
@@ -19,17 +20,20 @@ interface QuestLogPanelProps {
  * category. `JournalScreen` decides where this renders (a right rail
  * on wide viewports, stacked content on narrow ones) — this component
  * just lays out whatever list it's given.
+ *
+ * Header now goes through the shared `ColumnHeader` (visual-
+ * reconciliation pass) instead of its own bespoke bar, so this column
+ * lines up pixel-for-pixel with Party's and the journal feed's headers
+ * rather than sitting at a slightly different height/padding.
  */
 export function QuestLogPanel({ quests, className }: QuestLogPanelProps) {
   return (
-    <div className={cx('flex flex-col gap-3', className)}>
-      <div className="flex items-baseline justify-between border-b border-line-soft pb-2">
-        <span className={text.label}>Quest Log</span>
-        <span className={text.label}>
-          {quests.length} {quests.length === 1 ? 'Quest' : 'Quests'}
-        </span>
-      </div>
-      <div className="flex flex-col gap-2">
+    <div className={cx('flex flex-col', className)}>
+      <ColumnHeader
+        left="Quest Log"
+        right={<span className={text.label}>{quests.length} {quests.length === 1 ? 'Quest' : 'Quests'}</span>}
+      />
+      <div className="flex flex-col gap-2 pt-3">
         {quests.map((quest) => (
           <QuestCard key={quest.id} quest={quest} />
         ))}

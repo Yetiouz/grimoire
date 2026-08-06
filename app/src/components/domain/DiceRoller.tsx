@@ -4,18 +4,19 @@ import { text } from '../../lib/typography'
 import { Overlay } from '../ui/Overlay'
 import { Button } from '../ui/Button'
 import { TextInput } from '../ui/TextInput'
-import { DieIcon } from '../ui/DieIcon'
+import { Stepper } from '../ui/Stepper'
+import { DieSelector } from './DieSelector'
+import { RollResult } from './RollResult'
 import { readCharacterAbilities } from '../../lib/characters'
 import type { Character, CharacterAbilities } from '../../lib/characters'
 import { formatRollText } from '../../lib/dice'
 import type { DieType, DiceRollResult, RollMode, RollModifier } from '../../lib/dice'
 
-const DIE_OPTIONS: DieType[] = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100']
 const FACES: Record<DieType, number> = { d4: 4, d6: 6, d8: 8, d10: 10, d12: 12, d20: 20, d100: 100 }
 const MAX_COUNT = 10
 /** Roll always takes at least this long, even when the RPC round-trip is
- * faster — otherwise the tumble animation below would sometimes flash
- * for a single frame instead of reading as an actual roll. */
+ * faster — otherwise RollResult's tumble animation would sometimes
+ * flash for a single frame instead of reading as an actual roll. */
 const MIN_ROLL_MS = 650
 
 function sleep(ms: number): Promise<void> {
@@ -73,11 +74,12 @@ const chipClass = (active: boolean) =>
  * JournalScreen, same component-boundary rule CharacterSheet and
  * PlayerCard already follow (SPEC's "Shared components rule").
  *
- * Not built on the style guide's `DiceResult` component: that one
- * models a single die's raw face for crit/fumble styling, which doesn't
- * fit multi-die sums or advantage/disadvantage's "kept" set (there's no
- * single "face" to crit-check when two dice are summed). Its two-tier
- * label/total/breakdown layout is reused here by hand instead.
+ * Split into three files in the retroactive-review pass (this file was
+ * 367 lines, over CLAUDE.md's ~300-line cap): `DieSelector.tsx` (the
+ * die-shape chip row) and `RollResult.tsx` (the roll preview card, also
+ * BUILD_PLAN.md's own named `RollResult` domain component) each own
+ * their rendering; this file keeps the controls (count/mode/modifier)
+ * and all the roll/log orchestration.
  */
 export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRollerProps) {
   const [die, setDie] = useState<DieType>('d20')
@@ -152,80 +154,36 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
     }
   }
 
-  const total = result ? result.total + (activeModifier?.value ?? 0) : null
-  const notation = result
-    ? result.mode === 'normal'
-      ? result.count > 1
-        ? `${result.count}${result.die}`
-        : result.die
-      : `${result.count * 2}${result.die} kept`
-    : null
-
   return (
     <Overlay open={open} onClose={handleClose} width="narrow" header={<h2 className={text.h2}>Roll</h2>}>
-      <div className="flex flex-col gap-5">
+      {/* gap-6 (retroactive-review fix: was gap-5, 20px, not on the
+       * closed 4/8/12/16/24/32/48/64 spacing scale — 24px is the
+       * scale's "separated" slot, which is exactly what this is: the
+       * distinct Die/Count/Mode/Modifier/Result/Buttons blocks on one
+       * screen). */}
+      <div className="flex flex-col gap-6">
         <div>
           <p className={cx(text.label, 'mb-2')}>Die</p>
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Die">
-            {DIE_OPTIONS.map((option) => (
-              <button
-                key={option}
-                type="button"
-                role="radio"
-                aria-checked={die === option}
-                onClick={() => {
-                  setDie(option)
-                  clearResult()
-                }}
-                className={cx(
-                  'flex flex-col items-center justify-center gap-1 rounded-button border px-3 py-2',
-                  die === option
-                    ? 'border-purple bg-purple text-white'
-                    : 'border-line-soft bg-panel2 text-ink-dim hover:border-line-hover',
-                )}
-              >
-                <DieIcon die={option} />
-                <span className={cx(text.caption, 'uppercase')}>{option}</span>
-              </button>
-            ))}
-          </div>
+          <DieSelector
+            value={die}
+            onChange={(next) => {
+              setDie(next)
+              clearResult()
+            }}
+          />
         </div>
 
         <div>
           <p className={cx(text.label, 'mb-2')}>Count</p>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                setCount((prev) => Math.max(1, prev - 1))
-                clearResult()
-              }}
-              disabled={count <= 1}
-              className={cx(
-                'inline-flex h-11 w-11 items-center justify-center rounded-button border border-line bg-panel2 text-ink hover:border-line-hover',
-                count <= 1 && 'pointer-events-none opacity-40',
-              )}
-              aria-label="Fewer dice"
-            >
-              −
-            </button>
-            <span className={cx(text.numeric, 'w-6 text-center')}>{count}</span>
-            <button
-              type="button"
-              onClick={() => {
-                setCount((prev) => Math.min(MAX_COUNT, prev + 1))
-                clearResult()
-              }}
-              disabled={count >= MAX_COUNT}
-              className={cx(
-                'inline-flex h-11 w-11 items-center justify-center rounded-button border border-line bg-panel2 text-ink hover:border-line-hover',
-                count >= MAX_COUNT && 'pointer-events-none opacity-40',
-              )}
-              aria-label="More dice"
-            >
-              +
-            </button>
-          </div>
+          <Stepper
+            value={count}
+            onChange={(next) => {
+              setCount(next)
+              clearResult()
+            }}
+            max={MAX_COUNT}
+            label="dice"
+          />
         </div>
 
         <div>
@@ -303,53 +261,7 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
 
         {error && <p className={cx(text.caption, 'text-red')}>{error}</p>}
 
-        {(rolling || (result && total !== null)) && (
-          <div className="flex flex-col items-center gap-2 rounded-card border border-line-soft bg-panel2 px-4 py-5 text-center">
-            <DieIcon die={die} rolling={rolling} className={cx('text-purple', rolling ? 'h-9 w-9' : 'h-7 w-7')} />
-            {rolling ? (
-              // Flicker only — never the real result. The actual server
-              // total (and the formatted log text below it) only ever
-              // appears once `result` comes back.
-              <span className={cx(text.dataDisplay, 'tabular-nums text-ink-dim')}>{flickerTotal ?? '···'}</span>
-            ) : (
-              <>
-                <span className={text.label}>{notation}</span>
-                <span className={text.dataDisplay}>{total}</span>
-                {/* Individual dice, not just the total — shown whenever
-                 * more than one physical die was actually rolled (any
-                 * count > 1, or advantage/disadvantage's two full sets
-                 * even at count 1). The kept set gets a purple border;
-                 * a discarded advantage/disadvantage set renders
-                 * dimmed and struck through, so it's visible which
-                 * numbers counted without hiding the ones that didn't. */}
-                {result && (result.rolls.length > 1 || result.otherRolls) && (
-                  <div className="flex flex-wrap items-center justify-center gap-1">
-                    {result.rolls.map((value, index) => (
-                      <span
-                        key={`kept-${index}`}
-                        className={cx(text.caption, 'rounded-md border border-purple bg-panel px-2 py-0.5 tabular-nums')}
-                      >
-                        {value}
-                      </span>
-                    ))}
-                    {result.otherRolls?.map((value, index) => (
-                      <span
-                        key={`other-${index}`}
-                        className={cx(
-                          text.caption,
-                          'rounded-md border border-line-soft bg-panel px-2 py-0.5 tabular-nums text-ink-faint line-through',
-                        )}
-                      >
-                        {value}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                <span className={text.bodySecondary}>{result && formatRollText(result, activeModifier)}</span>
-              </>
-            )}
-          </div>
-        )}
+        <RollResult rolling={rolling} die={die} result={result} modifier={activeModifier} flickerTotal={flickerTotal} />
 
         <div className="flex gap-2">
           <Button onClick={() => void handleRoll()} disabled={rolling} className="flex-1">

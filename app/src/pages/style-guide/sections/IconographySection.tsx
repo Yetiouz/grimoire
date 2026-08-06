@@ -10,6 +10,7 @@ const iconEntries: Array<{ name: IconName; label: string }> = [
   { name: 'ac', label: 'AC' },
   { name: 'gear', label: 'Gear' },
   { name: 'luck', label: 'Luck' },
+  { name: 'bless', label: 'Bless' },
   { name: 'torch', label: 'Torch' },
   { name: 'journal', label: 'Journal' },
   { name: 'chat', label: 'Chat' },
@@ -18,6 +19,10 @@ const iconEntries: Array<{ name: IconName; label: string }> = [
   { name: 'settings', label: 'Settings' },
   { name: 'close', label: 'Close' },
   { name: 'disclosure', label: 'Disclosure' },
+  { name: 'search', label: 'Search' },
+  { name: 'menu', label: 'Menu' },
+  { name: 'map', label: 'Map' },
+  { name: 'rules', label: 'Rules' },
 ]
 
 /** lucide-react, governed by strict rules (SPEC.md). Everything here is

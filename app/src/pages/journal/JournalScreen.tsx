@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Button } from '../../components/ui/Button'
+import { ColumnHeader } from '../../components/ui/ColumnHeader'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
-import { PageHeader } from '../../components/ui/PageHeader'
 import { Skeleton, SkeletonGroup } from '../../components/ui/Skeleton'
-import { cx } from '../../lib/cx'
-import { text } from '../../lib/typography'
 import { JournalFeed } from '../../components/domain/JournalFeed'
 import { JournalComposer } from '../../components/domain/JournalComposer'
+import { JournalHeader } from '../../components/domain/JournalHeader'
 import { PlayerCard } from '../../components/domain/PlayerCard'
 import { CharacterSheet } from '../../components/domain/CharacterSheet'
 import { DiceRoller } from '../../components/domain/DiceRoller'
 import { QuestLogPanel } from '../../components/domain/QuestLogPanel'
+import { SessionAction } from '../../components/domain/SessionAction'
+import { ToolsDock } from '../../components/domain/ToolsDock'
 import type { LogEntryKind } from '../../components/ui/LogEntryRow'
 import { endSession, listJournalEntries, listSessions, logJournalEntry, startSession } from '../../lib/campaigns'
 import type { Campaign, CampaignSession, JournalEntry } from '../../lib/campaigns'
@@ -92,6 +92,13 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   const latestSession = sessions && sessions.length > 0 ? sessions[sessions.length - 1] : null
   const headerSession = openSession ?? latestSession
   const sessionMeta = headerSession ? `Solo · Session ${headerSession.number}` : 'Solo · No sessions yet'
+  // Journal column header label: the mockup's `.col-head` shows a scene
+  // title we have no equivalent field for (no encounter/scene model
+  // exists yet) — the session's own real `title` is the closest honest
+  // substitute when set (only session 1's imported "…Prologue" has one
+  // today), falling back to the same session meta the header already
+  // shows rather than inventing scene text.
+  const journalColumnLabel = headerSession?.title ?? sessionMeta
 
   async function handleStartSession() {
     setStartingSession(true)
@@ -146,49 +153,19 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     return rollDice(campaign.id, die, count, mode)
   }
 
-  // Header session control: used to be one button doing double duty —
-  // "start the next session" was also the only way to end this one
-  // (Amendment 2's original design). Real use showed that wasn't
-  // enough: there was no way to just stop for the night without
-  // immediately opening a new, empty next session. Now two distinct
-  // actions, each wired to its own command: "Start Session" when
-  // nothing's open, or a live indicator plus a real "End Session"
-  // button (the new `end_session` command) when one is. Still no
-  // "pause" — ending closes the session for good, same as before;
-  // resuming means starting a new one.
-  const sessionAction = openSession ? (
-    <div className="flex items-center gap-3">
-      <span className={cx(text.label, 'flex items-center gap-2')}>
-        <span className="h-2 w-2 rounded-full bg-green" aria-hidden="true" />
-        In Session
-      </span>
-      <Button variant="ghost" onClick={() => void handleEndSession()} disabled={endingSession} title="End this session">
-        {endingSession ? 'Ending…' : 'End Session'}
-      </Button>
-    </div>
-  ) : (
-    <Button
-      variant="ghost"
-      onClick={() => void handleStartSession()}
-      disabled={startingSession}
-      title="Start a session to begin logging"
-    >
-      {startingSession ? 'Starting…' : 'Start Session'}
-    </Button>
+  const sessionAction = (
+    <SessionAction
+      open={Boolean(openSession)}
+      starting={startingSession}
+      ending={endingSession}
+      onStart={() => void handleStartSession()}
+      onEnd={() => void handleEndSession()}
+    />
   )
 
   return (
     <div className="min-h-screen">
-      <PageHeader
-        left={
-          <button onClick={onBack} className={text.label}>
-            ← Campaigns
-          </button>
-        }
-        right={<span className={text.label}>{sessionMeta}</span>}
-        title={campaign.name}
-        titleAction={sessionAction}
-      />
+      <JournalHeader campaignName={campaign.name} sessionMeta={sessionMeta} sessionAction={sessionAction} onBack={onBack} />
 
       {/* composer-clearance (index.css): the composer is pinned fixed to
        * the viewport below, outside this container's normal flow, so
@@ -229,47 +206,67 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
          * out, per PlayerCard's own resolved-mockup behavior. */}
         {characters !== null && characters.length > 0 && (
           <div className="flex flex-col gap-2 xl:w-64 xl:shrink-0">
+            <ColumnHeader left="Party" />
             {characters.map((character) => (
               <PlayerCard key={character.id} character={character} onClick={() => setOpenCharacter(character)} />
             ))}
+            {/* Tools dock (visual-reconciliation pass): sits right below
+             * the party cards, not next to Log inside the composer
+             * anymore. `mt-auto` is there for when this rail is taller
+             * than its content, but doesn't flush it to the bottom of
+             * the viewport the way the mockup's dock sits — that needs a
+             * fixed-height, independently-scrolling three-column shell
+             * (`overflow:hidden` body, each column `overflow-y:auto`),
+             * which is a real architecture change (scroll model, the
+             * fixed composer bar's own clearance math) well past this
+             * pass's header/columns/dock scope — flagging rather than
+             * quietly doing it. Gated on `openSession`, same rule the
+             * dice trigger always had — moving columns didn't change
+             * when rolling is actually allowed. One accepted gap: since
+             * this dock now lives inside the party-rail's own
+             * `characters.length > 0` gate, Roll disappears along with
+             * the whole rail on the (currently only theoretical, no real
+             * campaign hits it) zero-character empty state, where before
+             * it stayed reachable from the composer regardless. */}
+            <ToolsDock onOpenDice={() => setDiceOpen(true)} diceDisabled={!openSession} className="mt-auto" />
           </div>
         )}
 
-        <div className="flex flex-1 flex-col gap-4 xl:min-w-0">
-          {error && <ErrorBanner onRetry={() => void load()}>{error}</ErrorBanner>}
+        <div className="flex flex-1 flex-col xl:min-w-0">
+          <ColumnHeader left={journalColumnLabel} />
 
-          {(sessions === null || entries === null || characters === null || quests === null) && !error && (
-            <SkeletonGroup label="Loading journal" className="gap-3">
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
-            </SkeletonGroup>
-          )}
+          <div className="flex flex-1 flex-col gap-4 pt-4">
+            {error && <ErrorBanner onRetry={() => void load()}>{error}</ErrorBanner>}
 
-          {sessions !== null && entries !== null && (
-            <JournalFeed
-              entries={entries}
-              sessions={sessions}
-              composer={
-                // Fixed to the viewport bottom, per the approved
-                // journal-mockup.html (`.composer`): the feed scrolls
-                // behind it rather than pushing it down the page. Wrapped
-                // here at the call site — not inside JournalComposer
-                // itself — so the component stays a plain content block
-                // that any future host (a review screen, say) can lay out
-                // differently; only the journal screen pins it.
-                <div className="composer-safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/95 pt-4 backdrop-blur-sm">
-                  <div className="mx-auto max-w-2xl px-4">
-                    <JournalComposer
-                      onLog={(kind, body) => handleLog(kind, body)}
-                      onOpenDice={() => setDiceOpen(true)}
-                      sessionOpen={Boolean(openSession)}
-                    />
+            {(sessions === null || entries === null || characters === null || quests === null) && !error && (
+              <SkeletonGroup label="Loading journal" className="gap-3">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </SkeletonGroup>
+            )}
+
+            {sessions !== null && entries !== null && (
+              <JournalFeed
+                entries={entries}
+                sessions={sessions}
+                composer={
+                  // Fixed to the viewport bottom, per the approved
+                  // journal-mockup.html (`.composer`): the feed scrolls
+                  // behind it rather than pushing it down the page. Wrapped
+                  // here at the call site — not inside JournalComposer
+                  // itself — so the component stays a plain content block
+                  // that any future host (a review screen, say) can lay out
+                  // differently; only the journal screen pins it.
+                  <div className="composer-safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/95 pt-4 backdrop-blur-sm">
+                    <div className="mx-auto max-w-2xl px-4">
+                      <JournalComposer onLog={(kind, body) => handleLog(kind, body)} sessionOpen={Boolean(openSession)} />
+                    </div>
                   </div>
-                </div>
-              }
-            />
-          )}
+                }
+              />
+            )}
+          </div>
         </div>
 
         {/* Quest Log rail: sticky alongside the feed at xl: (it scrolls
