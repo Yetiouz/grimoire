@@ -3,13 +3,14 @@ import { Button } from '../../components/ui/Button'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Skeleton, SkeletonGroup } from '../../components/ui/Skeleton'
+import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { JournalFeed } from '../../components/domain/JournalFeed'
 import { JournalComposer } from '../../components/domain/JournalComposer'
 import { PlayerCard } from '../../components/domain/PlayerCard'
 import { CharacterSheet } from '../../components/domain/CharacterSheet'
 import type { LogEntryKind } from '../../components/ui/LogEntryRow'
-import { listJournalEntries, listSessions, logJournalEntry, startSession } from '../../lib/campaigns'
+import { endSession, listJournalEntries, listSessions, logJournalEntry, startSession } from '../../lib/campaigns'
 import type { Campaign, CampaignSession, JournalEntry } from '../../lib/campaigns'
 import { listCharacters } from '../../lib/characters'
 import type { Character } from '../../lib/characters'
@@ -37,6 +38,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   const [characters, setCharacters] = useState<Character[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [startingSession, setStartingSession] = useState(false)
+  const [endingSession, setEndingSession] = useState(false)
   const [openCharacter, setOpenCharacter] = useState<Character | null>(null)
 
   async function load() {
@@ -97,6 +99,21 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     }
   }
 
+  async function handleEndSession() {
+    if (!openSession) return
+    setEndingSession(true)
+    try {
+      const session = await endSession(campaign.id)
+      // Echo the row `end_session` actually returned rather than
+      // refetch — same reasoning as handleStartSession's echo.
+      setSessions((prev) => (prev ?? []).map((existing) => (existing.id === session.id ? session : existing)))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not end the session.')
+    } finally {
+      setEndingSession(false)
+    }
+  }
+
   async function handleLog(kind: LogEntryKind, body: string) {
     if (!openSession) return
     const entry = await logJournalEntry({
@@ -112,26 +129,34 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     setEntries((prev) => [...(prev ?? []), entry])
   }
 
-  // Header session control: one button, two states, same click handler
-  // throughout (Amendment 2 — there's no separate "end session" command,
-  // starting the next session is how one ends). "Not started" reads
-  // "Start Session"; once a session is open it relabels to "In Session"
-  // with a live dot (StatusChip's existing tone-dot vocabulary,
-  // `h-2 w-2 rounded-full bg-{tone}`) but stays clickable — clicking it
-  // while live starts the next session, same as it always has. The
-  // native `title` tooltip spells that out since the relabel alone could
-  // otherwise read as a passive status pill rather than still being an
-  // action.
-  const sessionAction = (
+  // Header session control: used to be one button doing double duty —
+  // "start the next session" was also the only way to end this one
+  // (Amendment 2's original design). Real use showed that wasn't
+  // enough: there was no way to just stop for the night without
+  // immediately opening a new, empty next session. Now two distinct
+  // actions, each wired to its own command: "Start Session" when
+  // nothing's open, or a live indicator plus a real "End Session"
+  // button (the new `end_session` command) when one is. Still no
+  // "pause" — ending closes the session for good, same as before;
+  // resuming means starting a new one.
+  const sessionAction = openSession ? (
+    <div className="flex items-center gap-3">
+      <span className={cx(text.label, 'flex items-center gap-2')}>
+        <span className="h-2 w-2 rounded-full bg-green" aria-hidden="true" />
+        In Session
+      </span>
+      <Button variant="ghost" onClick={() => void handleEndSession()} disabled={endingSession} title="End this session">
+        {endingSession ? 'Ending…' : 'End Session'}
+      </Button>
+    </div>
+  ) : (
     <Button
       variant="ghost"
       onClick={() => void handleStartSession()}
       disabled={startingSession}
-      className="gap-2"
-      title={openSession ? 'Starting the next session ends this one' : 'Start a session to begin logging'}
+      title="Start a session to begin logging"
     >
-      {openSession && <span className="h-2 w-2 rounded-full bg-green" aria-hidden="true" />}
-      {openSession ? 'In Session' : 'Start Session'}
+      {startingSession ? 'Starting…' : 'Start Session'}
     </Button>
   )
 

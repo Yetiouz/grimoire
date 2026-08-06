@@ -91,6 +91,20 @@ export async function startSession(campaignId: string, title?: string): Promise<
   return data
 }
 
+/** Wraps `end_session` — closes the currently open session without
+ * starting a new one (unlike `startSession`, which auto-closes any
+ * open session as a side effect of opening the next one). Added after
+ * `startSession`-as-the-only-way-to-end turned out to be a real gap in
+ * practice, not just a theoretical one: there was no way to just stop
+ * for the night without immediately opening a new, empty next session.
+ * Throws if there's no open session — callers should only offer this
+ * when one exists. */
+export async function endSession(campaignId: string): Promise<CampaignSession> {
+  const { data, error } = await supabase.rpc('end_session', { p_campaign_id: campaignId })
+  if (error) throw error
+  return data
+}
+
 export async function logJournalEntry(params: {
   campaignId: string
   sessionId: string
