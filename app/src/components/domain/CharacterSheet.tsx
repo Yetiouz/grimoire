@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { Overlay } from '../ui/Overlay'
@@ -56,10 +57,16 @@ function formatGold(gold: { gp?: number; sp?: number; cp?: number }): string {
 // what a sub-head should do. Sized to `text-base` (16px, matching
 // body) instead, with `font-semibold` added since Chivo Mono at that
 // size otherwise reads thinner than the Instrument Sans body text next
-// to it. Spacing bumped too (24px/8px felt tight above/below each
-// title): 32px above, 12px below, still both on the closed
+// to it.
+//
+// Spacing above each label is `mt-12` (48px) — bumped twice now: 24px
+// originally, then 32px, and still reading as barely-there once the
+// `first:mt-0` bug above was fixed (that bug was zeroing the margin on
+// every Details-block label, not just the sheet's true first section —
+// the real cause of labels sitting almost flush against the content
+// above them). 48px is the next step up on the closed
 // 4/8/12/16/24/32/48/64 scale.
-const sectionLabelClass = 'mt-8 mb-3 font-mono text-base font-semibold uppercase tracking-eyebrow text-purple first:mt-0'
+const sectionLabelClass = 'mt-12 mb-3 font-mono text-base font-semibold uppercase tracking-eyebrow text-purple first:mt-0'
 
 function AbilityScoreTile({ label, score }: { label: string; score: AbilityScore }) {
   return (
@@ -185,7 +192,15 @@ export function CharacterSheet({ character, onClose }: CharacterSheetProps) {
           )}
 
           {details.map((field) => (
-            <div key={field.key}>
+            // Fragment, not a wrapping <div> (the bug this replaced): a
+            // per-field <div> made each field's own label its parent's
+            // *only* child, so `first:mt-0` matched every one of them —
+            // Appearance, Personal Revelation, Covenant Duties all lost
+            // their top margin, not just the sheet's true first section.
+            // A Fragment keeps every label a flat sibling of the other
+            // section labels, so `first:` only ever matches the one
+            // that's actually first in the whole sheet.
+            <Fragment key={field.key}>
               <p className={sectionLabelClass}>{field.label}</p>
               {Array.isArray(field.value) ? (
                 <div className="flex flex-col gap-2">
@@ -198,7 +213,7 @@ export function CharacterSheet({ character, onClose }: CharacterSheetProps) {
               ) : (
                 <p className={text.bodySecondary}>{field.value}</p>
               )}
-            </div>
+            </Fragment>
           ))}
         </div>
       )}

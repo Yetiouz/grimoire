@@ -4,7 +4,6 @@ import { StyleGuide } from './pages/style-guide/StyleGuide'
 import { SignIn } from './pages/auth/SignIn'
 import { CampaignList } from './pages/campaigns/CampaignList'
 import { JournalScreen } from './pages/journal/JournalScreen'
-import { PageHeader } from './components/ui/PageHeader'
 import { cx } from './lib/cx'
 import { text } from './lib/typography'
 import type { Campaign } from './lib/campaigns'
@@ -41,20 +40,12 @@ function AuthGate() {
     return <JournalScreen campaign={campaign} authorName={authorName(user)} onBack={() => setCampaign(null)} />
   }
 
-  return (
-    <div>
-      <PageHeader
-        left={<span className={text.label}>Grimoire</span>}
-        right={
-          <button onClick={() => void signOut()} className={text.label}>
-            Sign out
-          </button>
-        }
-        title="Campaigns"
-      />
-      <CampaignList onOpenCampaign={setCampaign} />
-    </div>
-  )
+  // CampaignList owns its own PageHeader (same self-contained pattern
+  // JournalScreen already uses) rather than App rendering a generic one
+  // from outside — the "New Campaign" button lives in the header's
+  // titleAction slot now, right next to the h1, and that button's
+  // click handler/modal state live inside CampaignList itself.
+  return <CampaignList onOpenCampaign={setCampaign} onSignOut={() => void signOut()} />
 }
 
 /** Display name for a signed-in user (SPEC: "minimal profile: display
