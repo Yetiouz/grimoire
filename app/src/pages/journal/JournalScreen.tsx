@@ -9,11 +9,14 @@ import { JournalFeed } from '../../components/domain/JournalFeed'
 import { JournalComposer } from '../../components/domain/JournalComposer'
 import { PlayerCard } from '../../components/domain/PlayerCard'
 import { CharacterSheet } from '../../components/domain/CharacterSheet'
+import { DiceRoller } from '../../components/domain/DiceRoller'
 import type { LogEntryKind } from '../../components/ui/LogEntryRow'
 import { endSession, listJournalEntries, listSessions, logJournalEntry, startSession } from '../../lib/campaigns'
 import type { Campaign, CampaignSession, JournalEntry } from '../../lib/campaigns'
 import { listCharacters } from '../../lib/characters'
 import type { Character } from '../../lib/characters'
+import { rollDice } from '../../lib/dice'
+import type { DieType, RollMode } from '../../lib/dice'
 
 interface JournalScreenProps {
   campaign: Campaign
@@ -40,6 +43,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   const [startingSession, setStartingSession] = useState(false)
   const [endingSession, setEndingSession] = useState(false)
   const [openCharacter, setOpenCharacter] = useState<Character | null>(null)
+  const [diceOpen, setDiceOpen] = useState(false)
 
   async function load() {
     setError(null)
@@ -127,6 +131,13 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     // Echo own actions locally instead of refetching — the RPC already
     // returns the row exactly as stored.
     setEntries((prev) => [...(prev ?? []), entry])
+  }
+
+  // Thin wrapper so DiceRoller never touches Supabase directly (same
+  // component-boundary rule PlayerCard/CharacterSheet already follow) —
+  // it just calls this prop and gets a typed result back.
+  async function handleRollDice(die: DieType, count: number, mode: RollMode) {
+    return rollDice(campaign.id, die, count, mode)
   }
 
   // Header session control: used to be one button doing double duty —
@@ -218,6 +229,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
                 <div className="mx-auto max-w-2xl px-4">
                   <JournalComposer
                     onLog={(kind, body) => handleLog(kind, body)}
+                    onOpenDice={() => setDiceOpen(true)}
                     sessionOpen={Boolean(openSession)}
                   />
                 </div>
@@ -228,6 +240,14 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
       </div>
 
       <CharacterSheet character={openCharacter} onClose={() => setOpenCharacter(null)} />
+
+      <DiceRoller
+        open={diceOpen}
+        onClose={() => setDiceOpen(false)}
+        character={activeCharacter}
+        onRoll={handleRollDice}
+        onLog={(body) => handleLog('roll', body)}
+      />
     </div>
   )
 }

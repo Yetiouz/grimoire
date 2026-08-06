@@ -3,6 +3,7 @@ import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { TextInput } from '../ui/TextInput'
 import { Button } from '../ui/Button'
+import { Icon } from '../ui/Icon'
 import type { LogEntryKind } from '../ui/LogEntryRow'
 
 const KIND_CHIPS: { kind: LogEntryKind; label: string }[] = [
@@ -14,6 +15,11 @@ const KIND_CHIPS: { kind: LogEntryKind; label: string }[] = [
 
 interface JournalComposerProps {
   onLog: (kind: LogEntryKind, body: string) => Promise<void>
+  /** Opens the DiceRoller overlay (BUILD_PLAN.md slice 4). Optional so
+   * existing/other composer hosts don't have to wire it — when omitted
+   * the dice trigger just doesn't render, same pattern other optional
+   * affordances in this kit use. */
+  onOpenDice?: () => void
   /** Gates the whole composer per the approved plan: no entry can be
    * logged before a session is explicitly started, and there's no
    * separate "end session" control — starting the next session is how
@@ -26,7 +32,7 @@ interface JournalComposerProps {
  * `.composer`). System isn't offered here — v1's system entries are
  * either auto-generated from ledger events (later slices) or
  * hand-created for imports, not something a player logs mid-session. */
-export function JournalComposer({ onLog, sessionOpen, className }: JournalComposerProps) {
+export function JournalComposer({ onLog, onOpenDice, sessionOpen, className }: JournalComposerProps) {
   const [kind, setKind] = useState<LogEntryKind>('action')
   const [body, setBody] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -97,6 +103,23 @@ export function JournalComposer({ onLog, sessionOpen, className }: JournalCompos
             aria-label="Journal entry"
           />
         </div>
+        {onOpenDice && (
+          // The mockup's `.dicebtn` (player-view-mockup.html) lives in the
+          // party rail's tooldock, not the composer — Grimoire has no rail
+          // here (the party row is a simple stacked list), so the trigger
+          // sits next to Log instead. Gated the same way as Log: no
+          // rolling before a session is open.
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onOpenDice}
+            disabled={!sessionOpen}
+            title="Roll dice"
+            aria-label="Roll dice"
+          >
+            <Icon name="dice" label="Roll dice" />
+          </Button>
+        )}
         <Button onClick={() => void handleSubmit()} disabled={disabled || !body.trim()}>
           Log
         </Button>
