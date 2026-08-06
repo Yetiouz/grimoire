@@ -47,7 +47,19 @@ function formatGold(gold: { gp?: number; sp?: number; cp?: number }): string {
 // would depend on undocumented stylesheet-output order. Reusing just
 // the font-size token (`text-label`, a distinct utility namespace from
 // text color) avoids that risk entirely.
-const sectionLabelClass = 'mt-6 mb-2 font-mono text-label uppercase tracking-eyebrow text-purple first:mt-0'
+//
+// Bug fix: the mockup's own `.sec-label` is 10px, which reads fine
+// there because everything around it (rowline text, pills, spell rows)
+// is also small (12.5-13.5px). Grimoire's real body copy is 16px
+// (SPEC's mobile floor), so `text-label` (11px) rendered these section
+// titles smaller than the content they're heading — the opposite of
+// what a sub-head should do. Sized to `text-base` (16px, matching
+// body) instead, with `font-semibold` added since Chivo Mono at that
+// size otherwise reads thinner than the Instrument Sans body text next
+// to it. Spacing bumped too (24px/8px felt tight above/below each
+// title): 32px above, 12px below, still both on the closed
+// 4/8/12/16/24/32/48/64 scale.
+const sectionLabelClass = 'mt-8 mb-3 font-mono text-base font-semibold uppercase tracking-eyebrow text-purple first:mt-0'
 
 function AbilityScoreTile({ label, score }: { label: string; score: AbilityScore }) {
   return (
