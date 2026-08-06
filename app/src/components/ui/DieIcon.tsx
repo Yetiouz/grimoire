@@ -14,12 +14,17 @@ interface DieIconProps {
 // tabletop dice trays use (a triangle for d4, a square for d6, a
 // diamond for d8, and so on), not a literal 3D net. Not built on lucide:
 // lucide has no polyhedral-dice icons (only Dice1-Dice6 pip faces, which
-// don't map to d4/d8/d10/d12/d20 at all), so this is a small, separate
-// primitive rather than being forced into Icon.tsx's closed lucide
-// `name` set — deliberately scoped to dice shapes only. Same stroke
-// language as Icon.tsx (24x24 viewBox, strokeWidth 2, currentColor) so
-// it still reads as part of the same icon system.
-const SHAPES: Record<DieType, string> = {
+// don't map to d4/d8/d10/d12/d20/d100 at all), so this is a small,
+// separate primitive rather than being forced into Icon.tsx's closed
+// lucide `name` set — deliberately scoped to dice shapes only. Same
+// stroke language as Icon.tsx (24x24 viewBox, strokeWidth 2,
+// currentColor) so it still reads as part of the same icon system.
+//
+// d100 has no polygon entry — the percentile "Zocchihedron" doesn't
+// reduce to a clean flat-sided glyph the way the true polyhedra do, so
+// it renders as a circle below instead (the closest simple stand-in for
+// a many/near-infinite-sided die).
+const SHAPES: Partial<Record<DieType, string>> = {
   d4: '12,3 21,20 3,20',
   d6: '4,4 20,4 20,20 4,20',
   d8: '12,2 22,12 12,22 2,12',
@@ -29,6 +34,7 @@ const SHAPES: Record<DieType, string> = {
 }
 
 export function DieIcon({ die, className, rolling }: DieIconProps) {
+  const points = SHAPES[die]
   return (
     <svg
       viewBox="0 0 24 24"
@@ -40,7 +46,7 @@ export function DieIcon({ die, className, rolling }: DieIconProps) {
       aria-hidden="true"
       className={cx('h-6 w-6', rolling && 'animate-dice-roll', className)}
     >
-      <polygon points={SHAPES[die]} />
+      {points ? <polygon points={points} /> : <circle cx={12} cy={12} r={10} />}
     </svg>
   )
 }

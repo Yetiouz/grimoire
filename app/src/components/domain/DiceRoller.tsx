@@ -10,8 +10,8 @@ import type { Character, CharacterAbilities } from '../../lib/characters'
 import { formatRollText } from '../../lib/dice'
 import type { DieType, DiceRollResult, RollMode, RollModifier } from '../../lib/dice'
 
-const DIE_OPTIONS: DieType[] = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20']
-const FACES: Record<DieType, number> = { d4: 4, d6: 6, d8: 8, d10: 10, d12: 12, d20: 20 }
+const DIE_OPTIONS: DieType[] = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100']
+const FACES: Record<DieType, number> = { d4: 4, d6: 6, d8: 8, d10: 10, d12: 12, d20: 20, d100: 100 }
 const MAX_COUNT = 10
 /** Roll always takes at least this long, even when the RPC round-trip is
  * faster — otherwise the tumble animation below would sometimes flash
@@ -315,6 +315,36 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
               <>
                 <span className={text.label}>{notation}</span>
                 <span className={text.dataDisplay}>{total}</span>
+                {/* Individual dice, not just the total — shown whenever
+                 * more than one physical die was actually rolled (any
+                 * count > 1, or advantage/disadvantage's two full sets
+                 * even at count 1). The kept set gets a purple border;
+                 * a discarded advantage/disadvantage set renders
+                 * dimmed and struck through, so it's visible which
+                 * numbers counted without hiding the ones that didn't. */}
+                {result && (result.rolls.length > 1 || result.otherRolls) && (
+                  <div className="flex flex-wrap items-center justify-center gap-1">
+                    {result.rolls.map((value, index) => (
+                      <span
+                        key={`kept-${index}`}
+                        className={cx(text.caption, 'rounded-md border border-purple bg-panel px-2 py-0.5 tabular-nums')}
+                      >
+                        {value}
+                      </span>
+                    ))}
+                    {result.otherRolls?.map((value, index) => (
+                      <span
+                        key={`other-${index}`}
+                        className={cx(
+                          text.caption,
+                          'rounded-md border border-line-soft bg-panel px-2 py-0.5 tabular-nums text-ink-faint line-through',
+                        )}
+                      >
+                        {value}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <span className={text.bodySecondary}>{result && formatRollText(result, activeModifier)}</span>
               </>
             )}
