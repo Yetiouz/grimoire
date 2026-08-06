@@ -222,3 +222,22 @@ html {
 .composer-safe-bottom {
   padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
 }
+
+/* Dice-roll tumble (DiceRoller.tsx, via DieIcon.tsx's `rolling` prop) —
+ * a genuine CSS animation, not a Tailwind utility: Tailwind v4's @theme
+ * block only covers static design tokens (colors/type/spacing/radii),
+ * not keyframes, so this is hand-written the same way
+ * .composer-clearance/.composer-safe-bottom above are. Applied only
+ * while a roll is actually in flight; removed the instant a result
+ * lands, same rule as those two. */
+@keyframes dice-roll {
+  0% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(100deg) scale(1.1); }
+  50% { transform: rotate(200deg) scale(0.92); }
+  75% { transform: rotate(300deg) scale(1.1); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+.animate-dice-roll {
+  animation: dice-roll 0.6s linear infinite;
+}

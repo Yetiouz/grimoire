@@ -4,13 +4,23 @@ import { text } from '../../lib/typography'
 import { Overlay } from '../ui/Overlay'
 import { Button } from '../ui/Button'
 import { TextInput } from '../ui/TextInput'
+import { DieIcon } from '../ui/DieIcon'
 import { readCharacterAbilities } from '../../lib/characters'
 import type { Character, CharacterAbilities } from '../../lib/characters'
 import { formatRollText } from '../../lib/dice'
 import type { DieType, DiceRollResult, RollMode, RollModifier } from '../../lib/dice'
 
 const DIE_OPTIONS: DieType[] = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20']
+const FACES: Record<DieType, number> = { d4: 4, d6: 6, d8: 8, d10: 10, d12: 12, d20: 20 }
 const MAX_COUNT = 10
+/** Roll always takes at least this long, even when the RPC round-trip is
+ * faster — otherwise the tumble animation below would sometimes flash
+ * for a single frame instead of reading as an actual roll. */
+const MIN_ROLL_MS = 650
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 const MODE_OPTIONS: Array<{ mode: RollMode; label: string }> = [
   { mode: 'normal', label: 'Normal' },
@@ -79,6 +89,11 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
   const [rolling, setRolling] = useState(false)
   const [logging, setLogging] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Rapid-cycling stand-in total shown only while `rolling` is true —
+   * pure visual flourish (a "slot reel" flicker), never the value that
+   * gets logged; the real total always comes from `result`, which is
+   * server-authoritative. */
+  const [flickerTotal, setFlickerTotal] = useState<number | null>(null)
 
   const abilities = character ? readCharacterAbilities(character.abilities) : {}
 
@@ -104,11 +119,21 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
   async function handleRoll() {
     setRolling(true)
     setError(null)
+    setResult(null)
+    const faces = FACES[die]
+    // Flicker a random plausible total every 80ms while the real roll is
+    // in flight — same idea as a slot machine's reel, purely cosmetic.
+    const flickerId = setInterval(() => {
+      setFlickerTotal(Math.floor(Math.random() * (faces * count - count + 1)) + count)
+    }, 80)
     try {
-      setResult(await onRoll(die, count, mode))
+      const [rolled] = await Promise.all([onRoll(die, count, mode), sleep(MIN_ROLL_MS)])
+      setResult(rolled)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not roll.')
     } finally {
+      clearInterval(flickerId)
+      setFlickerTotal(null)
       setRolling(false)
     }
   }
@@ -152,9 +177,15 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
                   setDie(option)
                   clearResult()
                 }}
-                className={chipClass(die === option)}
+                className={cx(
+                  'flex flex-col items-center justify-center gap-1 rounded-button border px-3 py-2',
+                  die === option
+                    ? 'border-purple bg-purple text-white'
+                    : 'border-line-soft bg-panel2 text-ink-dim hover:border-line-hover',
+                )}
               >
-                {option}
+                <DieIcon die={option} />
+                <span className={cx(text.caption, 'uppercase')}>{option}</span>
               </button>
             ))}
           </div>
@@ -272,11 +303,21 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
 
         {error && <p className={cx(text.caption, 'text-red')}>{error}</p>}
 
-        {result && total !== null && (
-          <div className="flex flex-col items-center gap-1 rounded-card border border-line-soft bg-panel2 px-4 py-4 text-center">
-            <span className={text.label}>{notation}</span>
-            <span className={text.dataDisplay}>{total}</span>
-            <span className={text.bodySecondary}>{formatRollText(result, activeModifier)}</span>
+        {(rolling || (result && total !== null)) && (
+          <div className="flex flex-col items-center gap-2 rounded-card border border-line-soft bg-panel2 px-4 py-5 text-center">
+            <DieIcon die={die} rolling={rolling} className={cx('text-purple', rolling ? 'h-9 w-9' : 'h-7 w-7')} />
+            {rolling ? (
+              // Flicker only — never the real result. The actual server
+              // total (and the formatted log text below it) only ever
+              // appears once `result` comes back.
+              <span className={cx(text.dataDisplay, 'tabular-nums text-ink-dim')}>{flickerTotal ?? '···'}</span>
+            ) : (
+              <>
+                <span className={text.label}>{notation}</span>
+                <span className={text.dataDisplay}>{total}</span>
+                <span className={text.bodySecondary}>{result && formatRollText(result, activeModifier)}</span>
+              </>
+            )}
           </div>
         )}
 
