@@ -54,7 +54,7 @@ function DockButton({
  */
 export function ToolsDock({ onOpenDice, diceDisabled, className }: ToolsDockProps) {
   return (
-    <div className={cx('flex gap-2 border-t border-line-soft pt-3', className)}>
+    <div className={cx('flex gap-2', className)}>
       <DockButton icon="map" label="Maps" title="Maps (coming soon)" disabled />
       <DockButton icon="rules" label="Rules" title="Rules (coming soon)" disabled />
       <DockButton icon="dice" label="Roll" title="Roll dice" onClick={onOpenDice} disabled={diceDisabled} />

@@ -27,13 +27,17 @@ interface QuestLogPanelProps {
  * rather than sitting at a slightly different height/padding.
  */
 export function QuestLogPanel({ quests, className }: QuestLogPanelProps) {
+  // v11: this panel now lives inside a card shell the screen provides;
+  // the header stays fixed at the card top and the quest list scrolls
+  // independently inside it (min-h-0 + overflow-y-auto), matching the
+  // mockup's independently-scrolling right card.
   return (
-    <div className={cx('flex flex-col', className)}>
+    <div className={cx('flex min-h-0 flex-col', className)}>
       <ColumnHeader
         left="Quest Log"
         right={<span className={text.label}>{quests.length} {quests.length === 1 ? 'Quest' : 'Quests'}</span>}
       />
-      <div className="flex flex-col gap-2 pt-3">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
         {quests.map((quest) => (
           <QuestCard key={quest.id} quest={quest} />
         ))}

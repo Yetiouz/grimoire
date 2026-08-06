@@ -72,12 +72,16 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, onBack
           </button>
         </div>
       </div>
+      {/* v11: campaign name holds the left rail; the session control
+        * group holds the right — meta text sits immediately LEFT of the
+        * colored session buttons (SessionAction), which are the
+        * far-right element per the owner's design note. */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2">
+        <h1 className={text.h3}>{campaignName}</h1>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className={text.h3}>{campaignName}</h1>
+          <span className={text.label}>{sessionMeta}</span>
           {sessionAction}
         </div>
-        <span className={text.label}>{sessionMeta}</span>
       </div>
     </header>
   )

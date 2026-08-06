@@ -164,78 +164,40 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   )
 
   return (
-    <div className="min-h-screen">
+    // v11 shell (SPEC decision log, Aug 4): fixed-height app frame at
+    // xl: — the PAGE never scrolls on desktop; each column card scrolls
+    // itself. Below xl: the cards stack and the page scrolls naturally
+    // (phones keep one column). Chrome spacing law: 16px page gutter
+    // (p-4), 12px gaps (gap-3) between all regions.
+    <div className="flex min-h-svh flex-col xl:h-svh xl:overflow-hidden">
       <JournalHeader campaignName={campaign.name} sessionMeta={sessionMeta} sessionAction={sessionAction} onBack={onBack} />
 
-      {/* composer-clearance (index.css): the composer is pinned fixed to
-       * the viewport below, outside this container's normal flow, so
-       * without reserved bottom space its bar would sit on top of the
-       * feed's last few rows instead of below them.
-       *
-       * Three-column at xl: and up, matching the vision-handoff
-       * mockup's actual layout (party rail / journal / quest rail):
-       * PlayerCards moved out of the main column into their own left
-       * rail, journal feed stays the middle column, Quest Log stays
-       * the right rail. Bumped the breakpoint from the Quest Log
-       * pass's lg: (1024px) to xl: (1280px) now that there are three
-       * real columns to fit, not two — at lg:'s own 1024px minimum
-       * viewport width, party(256) + gap + feed + quest(320) would
-       * squeeze the middle reading column uncomfortably narrow or
-       * force horizontal scroll; xl: leaves the feed a reasonable
-       * ~650px even with both rails present. Below xl: everything
-       * still stacks in one column — party, then feed, then quests —
-       * there's no room for real columns on a phone or a narrower
-       * laptop window, and both rails stay unconditionally rendered
-       * there too, just lower on the page rather than gated behind a
-       * click.
-       *
-       * One known seam left as-is rather than solved here: the fixed
-       * composer bar below is independently `max-w-2xl`/centered on
-       * the full viewport, so at xl: widths it won't line up exactly
-       * under the middle column — a real fix would need the composer
-       * to track that column's actual position, not just its own
-       * centered max-width. */}
-      <div className="composer-clearance mx-auto flex max-w-2xl flex-col gap-6 px-4 py-8 xl:max-w-7xl xl:flex-row xl:items-start">
-        {/* Party rail (BUILD_PLAN.md slice 3, moved to its own column
-         * here): PlayerCards, left of the feed at xl: and up — closer
-         * to the mockup's full left rail than the old stacked-above-
-         * the-feed placement, though still simple vertical cards
-         * rather than the mockup's initiative-order/turn-glow
-         * behavior, which is encounter-mode work (slice 10). Awaiting
-         * PCs (Constantine, LaLa) render dimmed rather than filtered
-         * out, per PlayerCard's own resolved-mockup behavior. */}
+      <div className="grid flex-1 grid-cols-1 gap-3 p-4 xl:min-h-0 xl:grid-cols-[16rem_minmax(0,1fr)_20rem]">
+        {/* LEFT: Party card + Tools card (v11: members grouped in one
+          * card, tools in their own card below it). */}
         {characters !== null && characters.length > 0 && (
-          <div className="flex flex-col gap-2 xl:w-64 xl:shrink-0">
-            <ColumnHeader left="Party" />
-            {characters.map((character) => (
-              <PlayerCard key={character.id} character={character} onClick={() => setOpenCharacter(character)} />
-            ))}
-            {/* Tools dock (visual-reconciliation pass): sits right below
-             * the party cards, not next to Log inside the composer
-             * anymore. `mt-auto` is there for when this rail is taller
-             * than its content, but doesn't flush it to the bottom of
-             * the viewport the way the mockup's dock sits — that needs a
-             * fixed-height, independently-scrolling three-column shell
-             * (`overflow:hidden` body, each column `overflow-y:auto`),
-             * which is a real architecture change (scroll model, the
-             * fixed composer bar's own clearance math) well past this
-             * pass's header/columns/dock scope — flagging rather than
-             * quietly doing it. Gated on `openSession`, same rule the
-             * dice trigger always had — moving columns didn't change
-             * when rolling is actually allowed. One accepted gap: since
-             * this dock now lives inside the party-rail's own
-             * `characters.length > 0` gate, Roll disappears along with
-             * the whole rail on the (currently only theoretical, no real
-             * campaign hits it) zero-character empty state, where before
-             * it stayed reachable from the composer regardless. */}
-            <ToolsDock onOpenDice={() => setDiceOpen(true)} diceDisabled={!openSession} className="mt-auto" />
+          <div className="flex min-h-0 flex-col gap-3">
+            <div className="flex min-h-0 flex-col overflow-hidden rounded-card border border-line bg-panel xl:flex-1">
+              <ColumnHeader left="Party" />
+              <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
+                {characters.map((character) => (
+                  <PlayerCard key={character.id} character={character} onClick={() => setOpenCharacter(character)} />
+                ))}
+              </div>
+            </div>
+            <div className="overflow-hidden rounded-card border border-line bg-panel">
+              <ColumnHeader left="Tools" />
+              <ToolsDock onOpenDice={() => setDiceOpen(true)} diceDisabled={!openSession} className="p-3" />
+            </div>
           </div>
         )}
 
-        <div className="flex flex-1 flex-col xl:min-w-0">
+        {/* CENTER: the journal card — sticky header, internally
+          * scrolling feed, composer pinned to the card's foot (no more
+          * fixed-to-viewport bar or clearance rules). */}
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-card border border-line bg-panel">
           <ColumnHeader left={journalColumnLabel} />
-
-          <div className="flex flex-1 flex-col gap-4 pt-4">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
             {error && <ErrorBanner onRetry={() => void load()}>{error}</ErrorBanner>}
 
             {(sessions === null || entries === null || characters === null || quests === null) && !error && (
@@ -246,38 +208,17 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
               </SkeletonGroup>
             )}
 
-            {sessions !== null && entries !== null && (
-              <JournalFeed
-                entries={entries}
-                sessions={sessions}
-                composer={
-                  // Fixed to the viewport bottom, per the approved
-                  // journal-mockup.html (`.composer`): the feed scrolls
-                  // behind it rather than pushing it down the page. Wrapped
-                  // here at the call site — not inside JournalComposer
-                  // itself — so the component stays a plain content block
-                  // that any future host (a review screen, say) can lay out
-                  // differently; only the journal screen pins it.
-                  <div className="composer-safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/95 pt-4 backdrop-blur-sm">
-                    <div className="mx-auto max-w-2xl px-4">
-                      <JournalComposer onLog={(kind, body) => handleLog(kind, body)} sessionOpen={Boolean(openSession)} />
-                    </div>
-                  </div>
-                }
-              />
-            )}
+            {sessions !== null && entries !== null && <JournalFeed entries={entries} sessions={sessions} />}
+          </div>
+          <div className="shrink-0 border-t border-line-soft bg-panel p-3">
+            <JournalComposer onLog={(kind, body) => handleLog(kind, body)} sessionOpen={Boolean(openSession)} />
           </div>
         </div>
 
-        {/* Quest Log rail: sticky alongside the feed at xl: (it scrolls
-         * into view and then stays put, matching the mockup's always-
-         * visible panel); a plain stacked block below the feed on
-         * narrower viewports. Rendered only once quests have actually
-         * loaded and there's at least one — same "don't show an empty
-         * section" discipline the party rail uses. */}
+        {/* RIGHT: quest card — same shell, independent scroll. */}
         {quests !== null && quests.length > 0 && (
-          <div className="xl:sticky xl:top-6 xl:w-80 xl:shrink-0">
-            <QuestLogPanel quests={quests} />
+          <div className="flex min-h-0 flex-col overflow-hidden rounded-card border border-line bg-panel">
+            <QuestLogPanel quests={quests} className="flex-1" />
           </div>
         )}
       </div>
