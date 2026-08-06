@@ -55,36 +55,44 @@ export function LogEntryRow({
   return (
     <div
       className={cx(
-        'flex items-start gap-3 rounded-lg px-3 py-2',
+        'rounded-lg px-3 py-2',
         kind === 'narration' && 'border border-line-soft bg-panel',
         kind === 'system' && 'opacity-[0.85]',
         className,
       )}
     >
-      {/* mt-1 (4px, "micro") keeps the dot's optical center aligned with
-       * the first line of the sender name next to it. */}
-      <span
-        className="mt-1 h-2 w-2 shrink-0 rounded-full"
-        style={{ backgroundColor: dotColor }}
-        aria-hidden="true"
-      />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2">
+      {/* Bug fix: the dot used to sit outside this row, offset by a
+       * fixed `mt-1` guessed to optically center it against a plain
+       * name line — which broke whenever a `tag` (the ROLL/NOTE pill,
+       * a bordered box with its own padding) was present, since that
+       * makes the first line taller only in that case, and a fixed
+       * offset can't track a height that changes per-entry. Fixed by
+       * putting the dot in its own `items-center` row with the name
+       * line, so it centers against whatever that line actually
+       * contains — pill or not — instead of guessing its height. */}
+      <div className="flex items-center gap-4">
+        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: dotColor }} aria-hidden="true" />
+        <div className="flex min-w-0 flex-1 items-baseline gap-2">
           <span className={cx(text.caption, 'font-semibold')} style={{ color: nameColor }}>
             {senderName}
           </span>
           {timestamp && <span className={cx(text.caption, 'text-ink-faint')}>{timestamp}</span>}
           {tag && <span className={cx(text.label, 'rounded-full border border-line px-2 py-1')}>{tag}</span>}
         </div>
-        <p
-          className={cx(
-            kind === 'system' ? cx(text.caption, 'text-ink-faint') : text.bodySecondary,
-            'max-w-[35ch] sm:max-w-[65ch]',
-          )}
-        >
-          {message}
-        </p>
       </div>
+      {/* `pl-6` (24px) re-creates the indent the old flex layout gave
+       * the message for free (it used to share a column with the name
+       * row) — 24px is the dot's 8px width plus the row's 16px gap
+       * above, so the message text lines up under the name rather than
+       * the dot. */}
+      <p
+        className={cx(
+          kind === 'system' ? cx(text.caption, 'text-ink-faint') : text.bodySecondary,
+          'max-w-[35ch] pl-6 sm:max-w-[65ch]',
+        )}
+      >
+        {message}
+      </p>
     </div>
   )
 }
