@@ -195,22 +195,47 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
        * without reserved bottom space its bar would sit on top of the
        * feed's last few rows instead of below them.
        *
-       * Two-column at lg: and up (BUILD_PLAN.md slice 5's Quest Log,
-       * built as a persistent rail per the vision-handoff mockup):
-       * main content stays the same max-w-2xl column it always was,
-       * the quest rail sits beside it, and the whole row widens to
-       * max-w-5xl to fit both. Below lg: there's no room for a real
-       * third column on a phone, so the quest panel just stacks below
-       * the feed instead — still rendered unconditionally (no button
-       * needed to see it, per "persistent"), just lower on the page.
+       * Three-column at xl: and up, matching the vision-handoff
+       * mockup's actual layout (party rail / journal / quest rail):
+       * PlayerCards moved out of the main column into their own left
+       * rail, journal feed stays the middle column, Quest Log stays
+       * the right rail. Bumped the breakpoint from the Quest Log
+       * pass's lg: (1024px) to xl: (1280px) now that there are three
+       * real columns to fit, not two — at lg:'s own 1024px minimum
+       * viewport width, party(256) + gap + feed + quest(320) would
+       * squeeze the middle reading column uncomfortably narrow or
+       * force horizontal scroll; xl: leaves the feed a reasonable
+       * ~650px even with both rails present. Below xl: everything
+       * still stacks in one column — party, then feed, then quests —
+       * there's no room for real columns on a phone or a narrower
+       * laptop window, and both rails stay unconditionally rendered
+       * there too, just lower on the page rather than gated behind a
+       * click.
+       *
        * One known seam left as-is rather than solved here: the fixed
        * composer bar below is independently `max-w-2xl`/centered on
-       * the full viewport, so at lg: widths it won't line up exactly
-       * under the left column — a real fix would need the composer to
-       * track the left column's actual width, not just its own
+       * the full viewport, so at xl: widths it won't line up exactly
+       * under the middle column — a real fix would need the composer
+       * to track that column's actual position, not just its own
        * centered max-width. */}
-      <div className="composer-clearance mx-auto flex max-w-2xl flex-col gap-6 px-4 py-8 lg:max-w-5xl lg:flex-row lg:items-start">
-        <div className="flex flex-1 flex-col gap-4 lg:min-w-0">
+      <div className="composer-clearance mx-auto flex max-w-2xl flex-col gap-6 px-4 py-8 xl:max-w-7xl xl:flex-row xl:items-start">
+        {/* Party rail (BUILD_PLAN.md slice 3, moved to its own column
+         * here): PlayerCards, left of the feed at xl: and up — closer
+         * to the mockup's full left rail than the old stacked-above-
+         * the-feed placement, though still simple vertical cards
+         * rather than the mockup's initiative-order/turn-glow
+         * behavior, which is encounter-mode work (slice 10). Awaiting
+         * PCs (Constantine, LaLa) render dimmed rather than filtered
+         * out, per PlayerCard's own resolved-mockup behavior. */}
+        {characters !== null && characters.length > 0 && (
+          <div className="flex flex-col gap-2 xl:w-64 xl:shrink-0">
+            {characters.map((character) => (
+              <PlayerCard key={character.id} character={character} onClick={() => setOpenCharacter(character)} />
+            ))}
+          </div>
+        )}
+
+        <div className="flex flex-1 flex-col gap-4 xl:min-w-0">
           {error && <ErrorBanner onRetry={() => void load()}>{error}</ErrorBanner>}
 
           {(sessions === null || entries === null || characters === null || quests === null) && !error && (
@@ -219,19 +244,6 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
               <Skeleton className="h-16 w-full" />
               <Skeleton className="h-16 w-full" />
             </SkeletonGroup>
-          )}
-
-          {/* Party row (BUILD_PLAN.md slice 3): a simple stacked row of
-           * PlayerCards above the feed — not the mockup's full left
-           * rail, which is later table-view work. Awaiting PCs
-           * (Constantine, LaLa) render dimmed rather than filtered
-           * out, per PlayerCard's own resolved-mockup behavior. */}
-          {characters !== null && characters.length > 0 && (
-            <div className="flex flex-col gap-2">
-              {characters.map((character) => (
-                <PlayerCard key={character.id} character={character} onClick={() => setOpenCharacter(character)} />
-              ))}
-            </div>
           )}
 
           {sessions !== null && entries !== null && (
@@ -260,14 +272,14 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
           )}
         </div>
 
-        {/* Quest Log rail: sticky alongside the main column at lg: (it
-         * scrolls into view and then stays put, matching the mockup's
-         * always-visible panel); a plain stacked block below the feed
-         * on narrower viewports. Rendered only once quests have
-         * actually loaded and there's at least one — same "don't show
-         * an empty section" discipline the party row above uses. */}
+        {/* Quest Log rail: sticky alongside the feed at xl: (it scrolls
+         * into view and then stays put, matching the mockup's always-
+         * visible panel); a plain stacked block below the feed on
+         * narrower viewports. Rendered only once quests have actually
+         * loaded and there's at least one — same "don't show an empty
+         * section" discipline the party rail uses. */}
         {quests !== null && quests.length > 0 && (
-          <div className="lg:sticky lg:top-6 lg:w-80 lg:shrink-0">
+          <div className="xl:sticky xl:top-6 xl:w-80 xl:shrink-0">
             <QuestLogPanel quests={quests} />
           </div>
         )}
