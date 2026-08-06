@@ -4,13 +4,20 @@ import { text } from '../../lib/typography'
 import { Overlay } from '../ui/Overlay'
 import { TalentRow } from './TalentRow'
 import { SpellCard } from './SpellCard'
-import { GearSlotGrid } from './GearSlotGrid'
+import { CharacterCommands } from './CharacterCommands'
 import { readCharacterAbilities, readCharacterGold, readCharacterSheet } from '../../lib/characters'
 import type { AbilityScore, Character, CharacterAbilities, CharacterSheetData } from '../../lib/characters'
 
 interface CharacterSheetProps {
   character: Character | null
+  /** The campaign's currently open session, if any — passed straight
+   * through to `CharacterCommands` (BUILD_PLAN.md slice 6). */
+  sessionId: string | null
   onClose: () => void
+  /** Called with the row a `CharacterCommands` action's RPC returned —
+   * the host screen (`JournalScreen`) echoes it into the party rail and
+   * back into this open sheet. */
+  onUpdate: (updated: Character) => void
 }
 
 const ABILITY_ORDER: Array<{ key: keyof CharacterAbilities; label: string }> = [
@@ -91,7 +98,7 @@ function AbilityScoreTile({ label, score }: { label: string; score: AbilityScore
  * LaLa have `spells`, only LaLa has `familiar`), and nothing here
  * fabricates a placeholder for an absent one.
  */
-export function CharacterSheet({ character, onClose }: CharacterSheetProps) {
+export function CharacterSheet({ character, sessionId, onClose, onUpdate }: CharacterSheetProps) {
   const open = character !== null
   const abilities = character ? readCharacterAbilities(character.abilities) : {}
   const sheet = character ? readCharacterSheet(character.sheet) : {}
@@ -100,7 +107,6 @@ export function CharacterSheet({ character, onClose }: CharacterSheetProps) {
   const talents = sheet.attacks_talents ?? []
   const languages = sheet.languages ?? []
   const spells = sheet.spells ?? []
-  const equipment = sheet.equipment ?? []
   const details = DETAIL_FIELDS.map((field) => ({ ...field, value: sheet[field.key] })).filter(
     (field) => field.value !== undefined,
   )
@@ -179,18 +185,6 @@ export function CharacterSheet({ character, onClose }: CharacterSheetProps) {
             </>
           )}
 
-          {equipment.length > 0 && (
-            <>
-              <p className={sectionLabelClass}>
-                Gear
-                {character.gear_current != null && character.gear_max != null
-                  ? ` — ${character.gear_current} of ${character.gear_max} slots`
-                  : ''}
-              </p>
-              <GearSlotGrid items={equipment} />
-            </>
-          )}
-
           {details.map((field) => (
             // Fragment, not a wrapping <div> (the bug this replaced): a
             // per-field <div> made each field's own label its parent's
@@ -215,6 +209,8 @@ export function CharacterSheet({ character, onClose }: CharacterSheetProps) {
               )}
             </Fragment>
           ))}
+
+          <CharacterCommands character={character} sessionId={sessionId} onUpdate={onUpdate} />
         </div>
       )}
     </Overlay>

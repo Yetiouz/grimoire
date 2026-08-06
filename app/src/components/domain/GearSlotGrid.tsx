@@ -12,21 +12,44 @@ interface GearSlotGridProps {
    * this renders the same chip grid unnumbered rather than fabricating
    * slot assignments the source sheets never specified. */
   items: string[]
+  /** Slice 6 (character commands): when supplied, each chip grows a
+   * small "Drop" affordance calling this with the item's real array
+   * index — `remove_character_gear`'s own addressing scheme (see its
+   * migration comment on why index rather than name-match). Omit to
+   * keep the grid read-only, e.g. anywhere this list is shown without
+   * the edit commands wired up. */
+  onRemove?: (index: number) => void
+  removeDisabled?: boolean
   className?: string
 }
 
 /** The mockup's `.slots` chip grid, minus the numbering it can't
  * honestly claim. Caller (`CharacterSheet`) renders the real
  * `gear_current`/`gear_max` count as its own section label above this. */
-export function GearSlotGrid({ items, className }: GearSlotGridProps) {
+export function GearSlotGrid({ items, onRemove, removeDisabled, className }: GearSlotGridProps) {
   return (
     <div className={cx('grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2', className)}>
       {items.map((item, index) => (
         <div
           key={index}
-          className={cx('rounded-[9px] border border-line-soft bg-panel2 px-3 py-2', text.bodySecondary)}
+          className={cx(
+            'flex items-center justify-between gap-2 rounded-[9px] border border-line-soft bg-panel2 px-3 py-2',
+            text.bodySecondary,
+          )}
         >
-          {item}
+          <span className="min-w-0 truncate">{item}</span>
+          {onRemove && (
+            <button
+              type="button"
+              disabled={removeDisabled}
+              onClick={() => onRemove(index)}
+              aria-label={`Drop ${item}`}
+              title="Drop this item"
+              className={cx(text.label, 'shrink-0 text-ink-faint hover:text-red disabled:pointer-events-none disabled:opacity-40')}
+            >
+              Drop
+            </button>
+          )}
         </div>
       ))}
     </div>

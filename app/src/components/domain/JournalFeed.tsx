@@ -68,15 +68,21 @@ export function JournalFeed({ entries, sessions, filter, composer, className }: 
   }
 
   const sessionById = new Map(sessions.map((session) => [session.id, session] as const))
-  let lastSessionId: string | null = null
 
   return (
     <div className={className}>
       <div className="flex flex-col gap-2">
-        {visible.map((entry) => {
+        {visible.map((entry, index) => {
           const session = sessionById.get(entry.session_id)
-          const showDivider = Boolean(session) && entry.session_id !== lastSessionId
-          lastSessionId = entry.session_id
+          // Divider shows whenever this entry starts a new session run —
+          // derived from the previous array entry rather than an outer
+          // `let` mutated during the map (the prior shape), which
+          // react-hooks/immutability now flags as a render-time mutation
+          // even though it was harmless here (recomputed fresh every
+          // render). Reading `visible[index - 1]` instead keeps the same
+          // result with no mutable state at all.
+          const previousSessionId = index > 0 ? visible[index - 1].session_id : null
+          const showDivider = Boolean(session) && entry.session_id !== previousSessionId
           return (
             <Fragment key={entry.id}>
               {showDivider && session && <SceneDivider className="my-3">{sessionLabel(session)}</SceneDivider>}

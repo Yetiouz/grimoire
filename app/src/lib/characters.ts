@@ -76,3 +76,105 @@ export function readCharacterAbilities(abilities: Character['abilities']): Chara
 export function readCharacterSheet(sheet: Character['sheet']): CharacterSheetData {
   return isPlainObject(sheet) ? (sheet as CharacterSheetData) : {}
 }
+
+// ── Character commands (BUILD_PLAN.md slice 6) ──────────────────────
+// Every wrapper here takes an optional `sessionId` — passed straight
+// through as `p_session_id` — so the command can echo a `system`-kind
+// journal entry when the caller is inside an open session. The command
+// itself still runs with no session open (GM bookkeeping between
+// sessions is a real case), it just skips the log line in that case;
+// see 0009_character_commands.sql's header comment for the full
+// reasoning. Every wrapper returns the updated `characters` row, same
+// "echo what the RPC returned" shape as `startSession`/`endSession`.
+
+export async function adjustCharacterHp(
+  characterId: string,
+  delta: number,
+  sessionId?: string | null,
+): Promise<Character> {
+  const { data, error } = await supabase.rpc('adjust_character_hp', {
+    p_character_id: characterId,
+    p_delta: delta,
+    p_session_id: sessionId ?? undefined,
+  })
+  if (error) throw error
+  return data
+}
+
+export async function adjustCharacterXp(
+  characterId: string,
+  delta: number,
+  sessionId?: string | null,
+): Promise<Character> {
+  const { data, error } = await supabase.rpc('adjust_character_xp', {
+    p_character_id: characterId,
+    p_delta: delta,
+    p_session_id: sessionId ?? undefined,
+  })
+  if (error) throw error
+  return data
+}
+
+export async function adjustCharacterGold(
+  characterId: string,
+  delta: { gp?: number; sp?: number; cp?: number },
+  sessionId?: string | null,
+): Promise<Character> {
+  const { data, error } = await supabase.rpc('adjust_character_gold', {
+    p_character_id: characterId,
+    p_gp: delta.gp ?? 0,
+    p_sp: delta.sp ?? 0,
+    p_cp: delta.cp ?? 0,
+    p_session_id: sessionId ?? undefined,
+  })
+  if (error) throw error
+  return data
+}
+
+/** Adds one item to `sheet.equipment`, incrementing `gear_current` by
+ * one slot in the same call (linked, per the confirmed gear-model
+ * decision — one item costs one slot). Throws server-side if
+ * `gear_max` is set and already full. */
+export async function addCharacterGear(
+  characterId: string,
+  itemName: string,
+  sessionId?: string | null,
+): Promise<Character> {
+  const { data, error } = await supabase.rpc('add_character_gear', {
+    p_character_id: characterId,
+    p_item_name: itemName,
+    p_session_id: sessionId ?? undefined,
+  })
+  if (error) throw error
+  return data
+}
+
+/** Removes the equipment-array entry at `itemIndex` (the array's real,
+ * zero-based index — not a name match, since duplicate item names like
+ * two "Torch" entries are plausible in the imported data), freeing one
+ * gear slot in the same call. */
+export async function removeCharacterGear(
+  characterId: string,
+  itemIndex: number,
+  sessionId?: string | null,
+): Promise<Character> {
+  const { data, error } = await supabase.rpc('remove_character_gear', {
+    p_character_id: characterId,
+    p_item_index: itemIndex,
+    p_session_id: sessionId ?? undefined,
+  })
+  if (error) throw error
+  return data
+}
+
+/** Restores `hp_current` to `hp_max`. Nothing else in the schema today
+ * (spell slots, per-day talent uses) is a tracked resource a rest could
+ * clear, so this only touches HP rather than inventing fields to reset. */
+export async function restCharacter(characterId: string, sessionId?: string | null): Promise<Character> {
+  const { data, error } = await supabase.rpc('rest_character', {
+    p_character_id: characterId,
+    p_session_id: sessionId ?? undefined,
+  })
+  if (error) throw error
+  return data
+}

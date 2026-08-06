@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ColumnHeader } from '../../components/ui/ColumnHeader'
+import { ColumnCard } from '../../components/ui/ColumnCard'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
 import { Skeleton, SkeletonGroup } from '../../components/ui/Skeleton'
+import { text } from '../../lib/typography'
 import { JournalFeed } from '../../components/domain/JournalFeed'
 import { JournalComposer } from '../../components/domain/JournalComposer'
 import { JournalHeader } from '../../components/domain/JournalHeader'
@@ -156,6 +157,16 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     return rollDice(campaign.id, die, count, mode)
   }
 
+  // Character commands (BUILD_PLAN.md slice 6) echo through this same
+  // "echo the row the RPC returned" pattern as start/end session —
+  // updates both the party-rail list and the open sheet (the only
+  // place these commands are triggered from) so neither goes stale
+  // without a refetch.
+  function handleCharacterUpdate(updated: Character) {
+    setCharacters((prev) => (prev ?? []).map((character) => (character.id === updated.id ? updated : character)))
+    setOpenCharacter(updated)
+  }
+
   const sessionAction = (
     <SessionAction
       open={Boolean(openSession)}
@@ -177,56 +188,63 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
 
       <div className="grid flex-1 grid-cols-1 gap-3 p-4 xl:min-h-0 xl:grid-cols-[16rem_minmax(0,1fr)_20rem]">
         {/* LEFT: Party card + Tools card (v11: members grouped in one
-          * card, tools in their own card below it). */}
+          * card, tools in their own card below it) — each a ColumnCard,
+          * the card-shell layout primitive (CLAUDE.md). */}
         {characters !== null && characters.length > 0 && (
           <div className="flex min-h-0 flex-col gap-3">
-            <div className="flex min-h-0 flex-col overflow-hidden rounded-card border border-line bg-panel xl:flex-1">
-              <ColumnHeader left="Party" />
-              <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
-                {characters.map((character) => (
-                  <PlayerCard key={character.id} character={character} onClick={() => setOpenCharacter(character)} />
-                ))}
-              </div>
-            </div>
-            <div className="overflow-hidden rounded-card border border-line bg-panel">
-              <ColumnHeader left="Tools" />
-              <ToolsDock onOpenDice={() => setDiceOpen(true)} diceDisabled={!openSession} className="p-3" />
-            </div>
+            <ColumnCard headerLeft="Party" bodyClassName="gap-2" className="xl:flex-1">
+              {characters.map((character) => (
+                <PlayerCard key={character.id} character={character} onClick={() => setOpenCharacter(character)} />
+              ))}
+            </ColumnCard>
+            <ColumnCard headerLeft="Tools">
+              <ToolsDock onOpenDice={() => setDiceOpen(true)} diceDisabled={!openSession} />
+            </ColumnCard>
           </div>
         )}
 
         {/* CENTER: the journal card — sticky header, internally
-          * scrolling feed, composer pinned to the card's foot (no more
-          * fixed-to-viewport bar or clearance rules). */}
-        <div className="flex min-h-0 flex-col overflow-hidden rounded-card border border-line bg-panel">
-          <ColumnHeader left={journalColumnLabel} />
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
-            {error && <ErrorBanner onRetry={() => void load()}>{error}</ErrorBanner>}
+          * scrolling feed, composer pinned to the card's foot. */}
+        <ColumnCard
+          headerLeft={journalColumnLabel}
+          bodyClassName="gap-4"
+          footer={<JournalComposer onLog={(kind, body) => handleLog(kind, body)} sessionOpen={Boolean(openSession)} />}
+        >
+          {error && <ErrorBanner onRetry={() => void load()}>{error}</ErrorBanner>}
 
-            {(sessions === null || entries === null || characters === null || quests === null) && !error && (
-              <SkeletonGroup label="Loading journal" className="gap-3">
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-full" />
-              </SkeletonGroup>
-            )}
+          {(sessions === null || entries === null || characters === null || quests === null) && !error && (
+            <SkeletonGroup label="Loading journal" className="gap-3">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+            </SkeletonGroup>
+          )}
 
-            {sessions !== null && entries !== null && <JournalFeed entries={entries} sessions={sessions} />}
-          </div>
-          <div className="shrink-0 border-t border-line-soft bg-panel p-3">
-            <JournalComposer onLog={(kind, body) => handleLog(kind, body)} sessionOpen={Boolean(openSession)} />
-          </div>
-        </div>
+          {sessions !== null && entries !== null && <JournalFeed entries={entries} sessions={sessions} />}
+        </ColumnCard>
 
         {/* RIGHT: quest card — same shell, independent scroll. */}
         {quests !== null && quests.length > 0 && (
-          <div className="flex min-h-0 flex-col overflow-hidden rounded-card border border-line bg-panel">
-            <QuestLogPanel quests={quests} className="flex-1" />
-          </div>
+          <ColumnCard
+            headerLeft="Quest Log"
+            headerRight={
+              <span className={text.label}>
+                {quests.length} {quests.length === 1 ? 'Quest' : 'Quests'}
+              </span>
+            }
+            bodyClassName="gap-2"
+          >
+            <QuestLogPanel quests={quests} />
+          </ColumnCard>
         )}
       </div>
 
-      <CharacterSheet character={openCharacter} onClose={() => setOpenCharacter(null)} />
+      <CharacterSheet
+        character={openCharacter}
+        sessionId={openSession?.id ?? null}
+        onClose={() => setOpenCharacter(null)}
+        onUpdate={handleCharacterUpdate}
+      />
 
       <DiceRoller
         open={diceOpen}
