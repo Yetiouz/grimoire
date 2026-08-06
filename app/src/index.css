@@ -21,7 +21,10 @@
  * Radii are two deliberately separate, named decisions, not one shared
  * value: --radius-card is for panels/containers; --radius-button is for
  * buttons specifically — buttons read as buttons (rounded-rect), while
- * pills/tags (Badge) use Tailwind's built-in rounded-full. See the
+ * pills/tags (Badge) use Tailwind's built-in rounded-full. Button radius
+ * was 11px (inherited from the landing page CTA) but at the app's real
+ * 44px button height 11px reads as a near-pill — dropped to 8px on the
+ * owner's call (Aug 4) so buttons are unmistakably rounded-RECT. See the
  * style-guide page's Button section for both shapes side by side.
  *
  * Four font families, four jobs (revised after typography-inspiration
@@ -74,7 +77,7 @@
   --font-brand: 'Pirata One', 'Cinzel', serif;
 
   --radius-card: 16px;
-  --radius-button: 11px;
+  --radius-button: 8px;
 
   /* Tuned for Bebas Neue (condensed, single-weight caps), not the
    * Instrument Sans values these replaced. Positive, and growing as size
