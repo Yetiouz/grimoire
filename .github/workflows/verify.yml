@@ -29,3 +29,10 @@ jobs:
 
       - name: Verify (audit, typecheck, lint, test, build)
         run: pnpm verify
+        env:
+          # Dummy values so app/src/lib/supabase.ts's import-time guard
+          # doesn't throw under vitest. Tests never open a network
+          # connection to Supabase; they only need the client module to
+          # load. Real values live in Vercel, never in this repo.
+          VITE_SUPABASE_URL: http://ci-dummy.invalid
+          VITE_SUPABASE_ANON_KEY: ci-dummy-anon-key
