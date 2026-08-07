@@ -12,6 +12,7 @@ import { DiceRoller } from '../../components/domain/DiceRoller'
 import { QuestLogPanel } from '../../components/domain/QuestLogPanel'
 import { SessionAction } from '../../components/domain/SessionAction'
 import { ToolsDock } from '../../components/domain/ToolsDock'
+import { MobileJournalView } from '../../components/domain/MobileJournalView'
 import type { LogEntryKind } from '../../components/ui/LogEntryRow'
 import { endSession, listJournalEntries, listSessions, logJournalEntry, startSession } from '../../lib/campaigns'
 import type { Campaign, CampaignSession, JournalEntry } from '../../lib/campaigns'
@@ -187,15 +188,23 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   )
 
   return (
-    // v11 shell (SPEC decision log, Aug 4): fixed-height app frame at
-    // xl: — the PAGE never scrolls on desktop; each column card scrolls
-    // itself. Below xl: the cards stack and the page scrolls naturally
-    // (phones keep one column). Chrome spacing law: 16px page gutter
-    // (p-4), 12px gaps (gap-3) between all regions.
-    <div className="flex min-h-svh flex-col xl:h-svh xl:overflow-hidden">
+    // v11 shell (SPEC decision log, Aug 4): fixed-height app frame — the
+    // PAGE never scrolls; each column card scrolls itself. Mobile layout
+    // slice: this used to be `min-h-svh` (page scrolls) below `xl:` and
+    // only fixed-height at `xl:` and up, matching the old "everything
+    // stacks in one column" fallback. That no longer fits: a tab-bar
+    // shell needs its top bar and tab bar pinned to the viewport, not
+    // scrolling away with the content, matching
+    // `mobile-view-mockup.html`'s own real-phone CSS
+    // (`height:100svh;overflow:hidden` under its `max-width:480px`
+    // block) — so `h-svh overflow-hidden` now applies at every
+    // breakpoint, and `MobileJournalView` owns its own internal scroll
+    // the same way each desktop `ColumnCard` already does.
+    <div className="flex h-svh flex-col overflow-hidden">
       <JournalHeader campaignName={campaign.name} sessionMeta={sessionMeta} sessionAction={sessionAction} onBack={onBack} />
 
-      <div className="grid flex-1 grid-cols-1 gap-3 p-4 xl:min-h-0 xl:grid-cols-[16rem_minmax(0,1fr)_20rem]">
+      {/* DESKTOP: unchanged three-column grid, xl: and up only. */}
+      <div className="hidden flex-1 grid-cols-1 gap-3 p-4 xl:grid xl:min-h-0 xl:grid-cols-[16rem_minmax(0,1fr)_20rem]">
         {/* LEFT: Party card + Tools card (v11: members grouped in one
           * card, tools in their own card below it) — each a ColumnCard,
           * the card-shell layout primitive (CLAUDE.md). */}
@@ -219,16 +228,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
           bodyClassName="gap-4"
           footer={<JournalComposer onLog={(kind, body) => handleLog(kind, body)} sessionOpen={Boolean(openSession)} />}
         >
-          {error && (
-            <ErrorBanner
-              onRetry={() => {
-                setError(null)
-                void load()
-              }}
-            >
-              {error}
-            </ErrorBanner>
-          )}
+          {error && <ErrorBanner onRetry={() => { setError(null); void load() }}>{error}</ErrorBanner>}
 
           {(sessions === null || entries === null || characters === null || quests === null) && !error && (
             <SkeletonGroup label="Loading journal" className="gap-3">
@@ -255,6 +255,32 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
             <QuestLogPanel quests={quests} />
           </ColumnCard>
         )}
+      </div>
+
+      {/* MOBILE: tab-bar shell, below xl: only. Renders even while data
+        * is still loading (MobileJournalView handles its own loading/
+        * error states for the home/journal view, matching the desktop
+        * column's own inline handling above) so the tab bar and top bar
+        * are present immediately rather than popping in after the
+        * first fetch resolves. */}
+      <div className="flex min-h-0 flex-1 flex-col xl:hidden">
+        {error && (
+          <div className="px-4 pt-3">
+            <ErrorBanner onRetry={() => { setError(null); void load() }}>{error}</ErrorBanner>
+          </div>
+        )}
+        <MobileJournalView
+          loading={sessions === null || entries === null || characters === null || quests === null}
+          activeCharacter={activeCharacter}
+          characters={characters ?? []}
+          quests={quests ?? []}
+          sessions={sessions ?? []}
+          entries={entries ?? []}
+          sessionOpen={Boolean(openSession)}
+          onLog={(kind, body) => handleLog(kind, body)}
+          onOpenCharacter={setOpenCharacter}
+          onOpenDice={() => setDiceOpen(true)}
+        />
       </div>
 
       <CharacterSheet

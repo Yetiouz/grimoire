@@ -40,11 +40,22 @@ interface JournalHeaderProps {
  * trigger somewhere, and grouping it with the name it belongs to reads
  * better than inventing a third bar for one button); session meta
  * right-aligned, matching the mockup exactly.
+ *
+ * Mobile layout slice: the top bar (logo/search/menu) hides below `xl:`
+ * — `mobile-view-mockup.html`'s own top bar is "campaign name + meta
+ * left, pause + stop right — one bar instead of two," and search/menu
+ * are non-functional stubs regardless of viewport, so hiding them below
+ * `xl:` loses no real capability. Losing the logo does lose the only
+ * back-to-campaigns control, though, so the campaign name itself
+ * becomes that control below `xl:` — a real `back` chevron plus the
+ * name, wrapped in one button; `pointer-events-none` at `xl:` and up
+ * makes it visually inert there (the logo is still the desktop control,
+ * unchanged) while leaving it keyboard-reachable regardless of size.
  */
 export function JournalHeader({ campaignName, sessionMeta, sessionAction, onBack }: JournalHeaderProps) {
   return (
     <header className="border-b border-line">
-      <div className="flex items-center justify-between gap-4 border-b border-line-soft px-4 py-2">
+      <div className="hidden items-center justify-between gap-4 border-b border-line-soft px-4 py-2 xl:flex">
         <button type="button" onClick={onBack} aria-label="Back to campaigns" className="block">
           <img src="/logo.webp" alt="Grimoire" className="h-6 w-auto" />
         </button>
@@ -77,7 +88,15 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, onBack
         * colored session buttons (SessionAction), which are the
         * far-right element per the owner's design note. */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2">
-        <h1 className={text.h3}>{campaignName}</h1>
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Back to campaigns"
+          className="flex items-center gap-1 xl:pointer-events-none"
+        >
+          <Icon name="back" className="xl:hidden" />
+          <h1 className={text.h3}>{campaignName}</h1>
+        </button>
         <div className="flex flex-wrap items-center gap-3">
           <span className={text.label}>{sessionMeta}</span>
           {sessionAction}

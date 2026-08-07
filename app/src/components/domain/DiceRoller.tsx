@@ -155,7 +155,7 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
   }
 
   return (
-    <Overlay open={open} onClose={handleClose} width="narrow" header={<h2 className={text.h2}>Roll</h2>}>
+    <Overlay open={open} onClose={handleClose} width="narrow" variant="sheet" header={<h2 className={text.h2}>Roll</h2>}>
       {/* gap-6 (retroactive-review fix: was gap-5, 20px, not on the
        * closed 4/8/12/16/24/32/48/64 spacing scale — 24px is the
        * scale's "separated" slot, which is exactly what this is: the

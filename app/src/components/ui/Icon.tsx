@@ -1,9 +1,12 @@
 import {
   Backpack,
   BookOpen,
+  ChevronLeft,
   ChevronRight,
   Dice5,
+  Flag,
   Flame,
+  Globe,
   Heart,
   Map,
   Menu,
@@ -37,6 +40,19 @@ import { cx } from '../../lib/cx'
  * `search` and `menu` are non-functional stubs for now (no search index
  * or nav menu exists yet), `map`/`rules` label the two other disabled
  * dock stub buttons alongside the real `dice` one.
+ *
+ * `back`/`quest`/`world` added for the mobile layout slice
+ * (`mobile-view-mockup.html`): `back` labels the collapsed mobile
+ * header's tap-to-return-to-campaigns control (the desktop header uses
+ * the logo for this; the mobile header's single bar has no logo, so it
+ * needs a real affordance instead of an implicit tap target); `quest`
+ * labels the bottom tab bar's Quests tab (no existing icon fit — not
+ * reusing `journal`, which already means the scene log specifically);
+ * `world` labels one of the four Tools-grid stub tiles (Rules/Search/
+ * Campaign/World), alongside the already-existing `rules`/`search` and
+ * `settings` (reused for the Campaign tile — a settings glyph already
+ * fits "campaign management" without adding a fifth one-off icon for a
+ * destination that, like the other three, doesn't exist yet).
  */
 const icons = {
   hp: Heart,
@@ -56,6 +72,9 @@ const icons = {
   menu: Menu,
   map: Map,
   rules: BookOpen,
+  back: ChevronLeft,
+  quest: Flag,
+  world: Globe,
 } as const
 
 export type IconName = keyof typeof icons

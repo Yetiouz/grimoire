@@ -115,6 +115,7 @@ export function CharacterSheet({ character, sessionId, onClose, onUpdate }: Char
     <Overlay
       open={open}
       onClose={onClose}
+      variant="slideUp"
       header={
         character && (
           <div className="min-w-0">

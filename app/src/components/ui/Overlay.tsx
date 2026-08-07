@@ -16,6 +16,34 @@ interface OverlayProps {
    * (used there for the Dice overlay) is 460px. Sheet/Maps content use
    * the default; a future narrow overlay (e.g. Dice) would pass this. */
   width?: 'default' | 'narrow'
+  /**
+   * Panel shape/position (mobile layout slice). `'dialog'` (default) is
+   * the original centered-modal treatment, unchanged, and is what every
+   * caller still gets at `xl:` and up regardless of which variant is
+   * picked — `'sheet'` and `'slideUp'` only change how the SAME overlay
+   * presents *below* `xl:`, per `mobile-view-mockup.html`. No JS
+   * breakpoint detection: the switch is pure Tailwind `xl:` classes,
+   * the same mechanism every other responsive decision in this app
+   * already uses.
+   *
+   * `'sheet'`: mobile bottom sheet, anchored to the viewport's bottom
+   * edge — DiceRoller's mobile presentation (the FAB opens this instead
+   * of a centered dialog).
+   *
+   * `'slideUp'`: mobile full-screen page, no rounding/border/max-width
+   * cap — CharacterSheet's mobile presentation, per the mobile-vision
+   * entry's "a sheet is studied, not glanced" call.
+   *
+   * Whichever variant is picked, the header is now always pinned and
+   * only the body scrolls beneath it (previously the whole panel,
+   * header included, scrolled as one block). This is a byproduct of
+   * building `'slideUp'` — a full-screen sheet needs its close control
+   * reachable without scrolling back to the top — but it's a strict
+   * improvement for `'dialog'` too (a header no longer disappears
+   * upstream of long content), so it applies to all three rather than
+   * forking the internal structure per variant.
+   */
+  variant?: 'dialog' | 'sheet' | 'slideUp'
   className?: string
 }
 
@@ -27,13 +55,17 @@ interface OverlayProps {
  * slice's open question): `Modal` is the small title/body/confirm-or-
  * cancel dialog pattern, and forcing the Sheet's much larger scrollable
  * content through it would mean fighting that shape rather than reusing
- * it. Maps and Dice (both listed on the vision-handoff mockup, not yet
- * built) share this same primitive when their slices land.
+ * it. Maps (still unbuilt) would share this same primitive when its
+ * slice lands.
  *
  * Closes on Escape or a backdrop click, matching the mockup's own
- * `keydown`/`onclick` handlers exactly.
+ * `keydown`/`onclick` handlers exactly. No entrance/exit transition
+ * (mount/unmount is a plain conditional render, same as every other
+ * overlay in this app) — the mobile mockup's slide-up/slide-in motion
+ * is deliberately not built this pass; see the mobile-layout slice's
+ * "what this will not build" list.
  */
-export function Overlay({ open, onClose, header, children, width = 'default', className }: OverlayProps) {
+export function Overlay({ open, onClose, header, children, width = 'default', variant = 'dialog', className }: OverlayProps) {
   useEffect(() => {
     if (!open) return
     function handleKeyDown(event: KeyboardEvent) {
@@ -45,26 +77,34 @@ export function Overlay({ open, onClose, header, children, width = 'default', cl
 
   if (!open) return null
 
+  const widthClass = width === 'narrow' ? 'xl:max-w-[460px]' : 'xl:max-w-[880px]'
+
+  const backdropAlignClass =
+    variant === 'dialog' ? 'items-center justify-center p-6' : 'items-end justify-center p-0 xl:items-center xl:justify-center xl:p-6'
+
+  const panelShapeClass =
+    variant === 'slideUp'
+      ? cx('h-[100dvh] max-h-[100dvh] rounded-none border-0 xl:h-auto xl:max-h-[88vh] xl:rounded-card xl:border xl:border-line', widthClass)
+      : variant === 'sheet'
+        ? cx('max-h-[85vh] rounded-card border border-line xl:max-h-[88vh]', widthClass)
+        : cx('max-h-[88vh] rounded-card border border-line', widthClass)
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-bg/75 p-6 backdrop-blur-sm"
+      className={cx('fixed inset-0 z-50 flex bg-bg/75 backdrop-blur-sm', backdropAlignClass)}
       role="presentation"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
-        className={cx(
-          'max-h-[88vh] w-full overflow-y-auto rounded-card border border-line bg-panel p-6',
-          width === 'narrow' ? 'max-w-[460px]' : 'max-w-[880px]',
-          className,
-        )}
+        className={cx('flex w-full flex-col overflow-hidden bg-panel', panelShapeClass, className)}
         // Structural param type instead of React.MouseEvent, same
         // pattern Modal already uses — keeps this file free of a React
         // type import purely for one stopPropagation call.
         onClick={(event: { stopPropagation: () => void }) => event.stopPropagation()}
       >
-        <div className="mb-4 flex items-baseline justify-between gap-4 border-b border-line-soft pb-3">
+        <div className="flex shrink-0 items-baseline justify-between gap-4 border-b border-line-soft px-6 pb-3 pt-6">
           {header}
           <button
             onClick={onClose}
@@ -76,7 +116,7 @@ export function Overlay({ open, onClose, header, children, width = 'default', cl
             Close · Esc
           </button>
         </div>
-        {children}
+        <div className="flex-1 overflow-y-auto px-6 pb-6 pt-4">{children}</div>
       </div>
     </div>
   )

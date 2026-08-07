@@ -8,6 +8,25 @@ import type { Character } from '../../lib/characters'
 interface PlayerCardProps {
   character: Character
   onClick?: () => void
+  /**
+   * `'full'` (default) is the original party-rail card, unchanged.
+   * `'compact'` (mobile layout slice) is the horizontal self-card
+   * pinned above the mobile journal feed, per `mobile-view-mockup.html`
+   * — same character fields, laid out as one row instead of a stacked
+   * card. A `variant` prop rather than a second component: the compact
+   * card needs the exact same data reads (gold/sheet/isDown/isAwaiting/
+   * hpPct) as the full card, and keeping both in one file means a
+   * future field (when torch/luck data eventually lands) only needs
+   * wiring once instead of being kept in sync across two files.
+   *
+   * The mockup's compact card also shows a torch bar with a live mm:ss
+   * countdown and a luck chip — neither is built here. Both need schema
+   * this app doesn't have yet (no light-tracking or luck-token column
+   * on `characters`), same reasoning the full card's own header comment
+   * already gives for omitting torch/luck icons there. See the mobile
+   * layout slice's "what this will not build" list.
+   */
+  variant?: 'full' | 'compact'
   className?: string
 }
 
@@ -37,13 +56,79 @@ interface PlayerCardProps {
  * the schema. Only the bless icon, and only when `sheet.active_blessing`
  * is a real, present string.
  */
-export function PlayerCard({ character, onClick, className }: PlayerCardProps) {
+export function PlayerCard({ character, onClick, variant = 'full', className }: PlayerCardProps) {
   const gold = readCharacterGold(character.gold)
   const sheet = readCharacterSheet(character.sheet)
   const isAwaiting = character.status !== 'active'
   const isDown = character.hp_current <= 0
   const hpPct = character.hp_max > 0 ? Math.max(0, Math.min(100, (character.hp_current / character.hp_max) * 100)) : 0
   const activatable = Boolean(onClick)
+
+  const statSpans = (
+    <>
+      <span>
+        <span className="text-ink-faint">HP</span>{' '}
+        <b className={cx('font-semibold tabular-nums', isDown ? 'text-red' : 'text-ink')}>
+          {character.hp_current}/{character.hp_max}
+        </b>
+      </span>
+      <span>
+        <span className="text-ink-faint">AC</span> <b className="font-semibold tabular-nums text-ink">{character.ac}</b>
+      </span>
+      {character.gear_current != null && character.gear_max != null && (
+        <span>
+          <span className="text-ink-faint">BAG</span>{' '}
+          <b className="font-semibold tabular-nums text-ink">
+            {character.gear_current}/{character.gear_max}
+          </b>
+        </span>
+      )}
+      {gold.gp != null && (
+        <span>
+          <span className="text-ink-faint">GP</span> <b className="font-semibold tabular-nums text-ink">{gold.gp}</b>
+        </span>
+      )}
+    </>
+  )
+
+  const sharedInteractionProps = {
+    role: activatable ? ('button' as const) : undefined,
+    tabIndex: activatable ? 0 : undefined,
+    onClick,
+    onKeyDown: activatable
+      ? (event: { key: string; preventDefault: () => void }) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            onClick?.()
+          }
+        }
+      : undefined,
+  }
+
+  if (variant === 'compact') {
+    return (
+      <div
+        className={cx(
+          'flex items-center gap-3 rounded-card border border-line bg-panel px-3 py-2.5 transition-[border-color] duration-150',
+          activatable && 'cursor-pointer hover:border-line-hover',
+          activatable &&
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
+          isDown && 'border-red/55 bg-red/5',
+          className,
+        )}
+        {...sharedInteractionProps}
+      >
+        <PortraitAvatar name={character.name} color={character.color ?? '#9b5cff'} size="md" />
+        <div className="min-w-0 flex-1">
+          <p className={cx(text.body, 'truncate font-semibold leading-tight')}>{character.name}</p>
+          <div className={cx('mt-1 flex flex-wrap gap-3', text.caption, 'text-ink-dim')}>{statSpans}</div>
+          <div className="mt-2 h-[6px] overflow-hidden rounded-full bg-line">
+            <div className={cx('h-full rounded-full', isDown ? 'bg-red' : 'bg-green')} style={{ width: `${hpPct}%` }} />
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
@@ -56,19 +141,7 @@ export function PlayerCard({ character, onClick, className }: PlayerCardProps) {
         isAwaiting && 'opacity-45',
         className,
       )}
-      role={activatable ? 'button' : undefined}
-      tabIndex={activatable ? 0 : undefined}
-      onClick={onClick}
-      onKeyDown={
-        activatable
-          ? (event: { key: string; preventDefault: () => void }) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault()
-                onClick?.()
-              }
-            }
-          : undefined
-      }
+      {...sharedInteractionProps}
     >
       <div className="mb-2 flex items-center gap-2">
         <PortraitAvatar name={character.name} color={character.color ?? '#9b5cff'} size="sm" />
@@ -91,30 +164,7 @@ export function PlayerCard({ character, onClick, className }: PlayerCardProps) {
       <div className="mb-2 h-[5px] overflow-hidden rounded-full bg-line">
         <div className={cx('h-full rounded-full', isDown ? 'bg-red' : 'bg-green')} style={{ width: `${hpPct}%` }} />
       </div>
-      <div className={cx('flex flex-wrap gap-3', text.caption, 'text-ink-dim')}>
-        <span>
-          <span className="text-ink-faint">HP</span>{' '}
-          <b className={cx('font-semibold tabular-nums', isDown ? 'text-red' : 'text-ink')}>
-            {character.hp_current}/{character.hp_max}
-          </b>
-        </span>
-        <span>
-          <span className="text-ink-faint">AC</span> <b className="font-semibold tabular-nums text-ink">{character.ac}</b>
-        </span>
-        {character.gear_current != null && character.gear_max != null && (
-          <span>
-            <span className="text-ink-faint">BAG</span>{' '}
-            <b className="font-semibold tabular-nums text-ink">
-              {character.gear_current}/{character.gear_max}
-            </b>
-          </span>
-        )}
-        {gold.gp != null && (
-          <span>
-            <span className="text-ink-faint">GP</span> <b className="font-semibold tabular-nums text-ink">{gold.gp}</b>
-          </span>
-        )}
-      </div>
+      <div className={cx('flex flex-wrap gap-3', text.caption, 'text-ink-dim')}>{statSpans}</div>
     </div>
   )
 }

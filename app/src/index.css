@@ -244,3 +244,14 @@ html {
 .animate-dice-roll {
   animation: dice-roll 0.6s linear infinite;
 }
+
+/* Mobile layout slice's bottom tab bar (MobileTabBar.tsx) sits outside
+ * normal spacing-scale territory for the same reason the composer bar's
+ * two rules above do: a device safe-area inset isn't a design-system
+ * spacing decision, it's device-inset math. Separately named rather
+ * than reusing .composer-safe-bottom — that rule's name is specific to
+ * the composer, and the tab bar is a different element with the same
+ * underlying need. */
+.tabbar-safe-bottom {
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+}
