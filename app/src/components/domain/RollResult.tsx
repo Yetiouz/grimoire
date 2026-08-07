@@ -29,10 +29,20 @@ interface RollResultProps {
  * Renders nothing before the first roll (no result, not rolling) —
  * `DiceRoller` no longer needs its own visibility gate around this.
  *
- * Fixed 24px icon in every state (retroactive-review fix: the inlined
- * version varied 28px/36px between settled/rolling, breaking Icon.tsx's
- * "every icon renders at the same 24px grid" rule — not a deliberate,
- * documented exception, just a miss).
+ * The die glyph is fixed-size in every state (rolling and settled share
+ * one size — the retroactive-review pass that first set this up was
+ * fixing a real bug, the inlined version varying 28px/36px between
+ * states) but the size itself has grown twice since: 24px originally
+ * (matching `Icon.tsx`'s 24px grid), then to a real hero size at the
+ * owner's request — the roll animation is this card's whole point and
+ * read as an afterthought squeezed above the numbers at icon scale.
+ * `DieIcon` is its own primitive outside `Icon.tsx`'s closed lucide set
+ * already (see its own header comment), so sizing it well past 24px
+ * here doesn't touch that governance — it was never grid-bound to begin
+ * with, just drawn at grid size by habit. The icon and the numbers
+ * below it are now two visually separated blocks (its own `gap-5`, top
+ * padding scaled up to match) rather than one uniform stack, so the
+ * glyph reads as a distinct top section, not just the first line item.
  */
 export function RollResult({ rolling, die, result, modifier, flickerTotal, className }: RollResultProps) {
   if (!rolling && !result) return null
@@ -49,18 +59,18 @@ export function RollResult({ rolling, die, result, modifier, flickerTotal, class
   return (
     <div
       className={cx(
-        'flex flex-col items-center gap-2 rounded-card border border-line-soft bg-panel2 px-4 py-4 text-center',
+        'flex flex-col items-center gap-5 rounded-card border border-line-soft bg-panel2 px-4 pb-4 pt-6 text-center',
         className,
       )}
     >
-      <DieIcon die={die} rolling={rolling} className="h-6 w-6 text-purple" />
+      <DieIcon die={die} rolling={rolling} className="h-20 w-20 text-purple" />
       {rolling ? (
         // Flicker only — never the real result. The actual server total
         // (and the formatted log text below it) only ever appears once
         // `result` comes back.
         <span className={cx(text.dataDisplay, 'tabular-nums text-ink-dim')}>{flickerTotal ?? '···'}</span>
       ) : (
-        <>
+        <div className="flex w-full flex-col items-center gap-2">
           <span className={text.label}>{notation}</span>
           <span className={text.dataDisplay}>{total}</span>
           {/* Individual dice, not just the total — shown whenever more
@@ -94,7 +104,7 @@ export function RollResult({ rolling, die, result, modifier, flickerTotal, class
             </div>
           )}
           <span className={text.bodySecondary}>{result && formatRollText(result, modifier)}</span>
-        </>
+        </div>
       )}
     </div>
   )
