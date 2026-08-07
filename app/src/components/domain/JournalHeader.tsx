@@ -113,8 +113,16 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, onBack
           * it's a derived optical offset: the back chevron's fixed 24px
           * icon box plus the `gap-1` (4px) beside it, i.e. exactly where
           * the title's first letter starts. Same category of cited
-          * exception as ColumnHeader's `h-[38px]`. */}
-        <span className={cx(text.label, 'mt-1 ml-7 block xl:hidden')}>{sessionMeta}</span>
+          * exception as ColumnHeader's `h-[38px]`.
+          *
+          * The negative top margin closes the gap the title's own line
+          * box opens up: `h3` carries a 1.3 line-height, and Bebas Neue
+          * caps have no descenders to fill the space beneath them, so
+          * ~9px of empty leading sits under the title before any margin
+          * is added at all. `-mt-1` pulls the meta back through that
+          * dead space instead of stacking a positive margin on top of
+          * it. */}
+        <span className={cx(text.label, '-mt-1 ml-7 block xl:hidden')}>{sessionMeta}</span>
       </div>
     </header>
   )
