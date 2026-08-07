@@ -39,10 +39,18 @@ interface RollResultProps {
  * `DieIcon` is its own primitive outside `Icon.tsx`'s closed lucide set
  * already (see its own header comment), so sizing it well past 24px
  * here doesn't touch that governance — it was never grid-bound to begin
- * with, just drawn at grid size by habit. The icon and the numbers
- * below it are now two visually separated blocks (its own `gap-5`, top
- * padding scaled up to match) rather than one uniform stack, so the
- * glyph reads as a distinct top section, not just the first line item.
+ * with, just drawn at grid size by habit.
+ *
+ * Layout (owner's second round of feedback on this same card): a title
+ * comes first — the die notation once a result exists ("2d6", "2d20
+ * kept"), falling back to just the selected die ("d20") while rolling
+ * or before a first roll, so the title slot never goes empty — with the
+ * animated glyph directly under it, then the total, then the individual
+ * dice, then the formatted log text, each its own centered, stacked
+ * block. Everything here already inherits `items-center text-center`
+ * from the outer flex column; the individual-dice row additionally caps
+ * its width so a full 10-die roll wraps into two centered rows instead
+ * of one long line, rather than relying on the card's width alone.
  */
 export function RollResult({ rolling, die, result, modifier, flickerTotal, className }: RollResultProps) {
   if (!rolling && !result) return null
@@ -54,15 +62,16 @@ export function RollResult({ rolling, die, result, modifier, flickerTotal, class
         ? `${result.count}${result.die}`
         : result.die
       : `${result.count * 2}${result.die} kept`
-    : null
+    : die
 
   return (
     <div
       className={cx(
-        'flex flex-col items-center gap-5 rounded-card border border-line-soft bg-panel2 px-4 pb-4 pt-6 text-center',
+        'flex flex-col items-center gap-4 rounded-card border border-line-soft bg-panel2 px-4 py-4 text-center',
         className,
       )}
     >
+      <span className={text.label}>{notation}</span>
       <DieIcon die={die} rolling={rolling} className="h-20 w-20 text-purple" />
       {rolling ? (
         // Flicker only — never the real result. The actual server total
@@ -71,7 +80,6 @@ export function RollResult({ rolling, die, result, modifier, flickerTotal, class
         <span className={cx(text.dataDisplay, 'tabular-nums text-ink-dim')}>{flickerTotal ?? '···'}</span>
       ) : (
         <div className="flex w-full flex-col items-center gap-2">
-          <span className={text.label}>{notation}</span>
           <span className={text.dataDisplay}>{total}</span>
           {/* Individual dice, not just the total — shown whenever more
            * than one physical die was actually rolled (any count > 1,
@@ -79,9 +87,10 @@ export function RollResult({ rolling, die, result, modifier, flickerTotal, class
            * The kept set gets a purple border; a discarded advantage/
            * disadvantage set renders dimmed and struck through, so it's
            * visible which numbers counted without hiding the ones that
-           * didn't. */}
+           * didn't. Width-capped so it centers as two rows at the max
+           * 10-die count instead of one long strip. */}
           {result && (result.rolls.length > 1 || result.otherRolls) && (
-            <div className="flex flex-wrap items-center justify-center gap-1">
+            <div className="flex max-w-[240px] flex-wrap items-center justify-center gap-1">
               {result.rolls.map((value, index) => (
                 <span
                   key={`kept-${index}`}
