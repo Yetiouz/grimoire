@@ -28,7 +28,7 @@ interface GearSlotGridProps {
  * `gear_current`/`gear_max` count as its own section label above this. */
 export function GearSlotGrid({ items, onRemove, removeDisabled, className }: GearSlotGridProps) {
   return (
-    <div className={cx('grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2', className)}>
+    <div className={cx('grid grid-cols-1 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(240px,1fr))]', className)}>
       {items.map((item, index) => (
         <div
           key={index}
@@ -37,7 +37,7 @@ export function GearSlotGrid({ items, onRemove, removeDisabled, className }: Gea
             text.bodySecondary,
           )}
         >
-          <span className="min-w-0 truncate">{item}</span>
+          <span className="min-w-0 break-words">{item}</span>
           {onRemove && (
             <button
               type="button"

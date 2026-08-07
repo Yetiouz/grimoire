@@ -100,7 +100,7 @@ export function MobileJournalView({
           character={activeCharacter}
           variant="compact"
           onClick={() => onOpenCharacter(activeCharacter)}
-          className="mx-3 mt-3 shrink-0"
+          className="mx-4 mt-3 shrink-0"
         />
       )}
 
@@ -151,7 +151,7 @@ export function MobileJournalView({
       </div>
 
       {activeView === null && (
-        <div className="shrink-0 border-t border-line-soft bg-panel">
+        <div className="shrink-0 border-t border-line-soft bg-panel px-4 py-3">
           <JournalComposer onLog={onLog} sessionOpen={sessionOpen} />
         </div>
       )}

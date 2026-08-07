@@ -92,7 +92,7 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, onBack
           type="button"
           onClick={onBack}
           aria-label="Back to campaigns"
-          className="flex items-center gap-1 xl:pointer-events-none"
+          className="flex min-h-11 items-center gap-1 xl:min-h-0 xl:pointer-events-none"
         >
           <Icon name="back" className="xl:hidden" />
           <h1 className={text.h3}>{campaignName}</h1>

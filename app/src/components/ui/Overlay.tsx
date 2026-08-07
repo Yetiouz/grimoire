@@ -104,19 +104,19 @@ export function Overlay({ open, onClose, header, children, width = 'default', va
         // type import purely for one stopPropagation call.
         onClick={(event: { stopPropagation: () => void }) => event.stopPropagation()}
       >
-        <div className="flex shrink-0 items-baseline justify-between gap-4 border-b border-line-soft px-6 pb-3 pt-6">
+        <div className="flex shrink-0 items-baseline justify-between gap-4 border-b border-line-soft px-4 pb-3 pt-5 sm:px-6 sm:pt-6">
           {header}
           <button
             onClick={onClose}
             className={cx(
               text.caption,
-              'shrink-0 rounded-lg border border-line px-3 py-2 uppercase tracking-eyebrow text-ink-faint hover:border-line-hover hover:text-ink',
+              'inline-flex min-h-11 shrink-0 items-center rounded-lg border border-line px-3 uppercase tracking-eyebrow text-ink-faint hover:border-line-hover hover:text-ink',
             )}
           >
-            Close · Esc
+            Close<span className="hidden sm:inline"> · Esc</span>
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 pb-6 pt-4">{children}</div>
+        <div className="flex-1 overflow-y-auto px-4 pb-6 pt-4 sm:px-6">{children}</div>
       </div>
     </div>
   )
