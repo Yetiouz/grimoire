@@ -253,5 +253,14 @@ html {
  * the composer, and the tab bar is a different element with the same
  * underlying need. */
 .tabbar-safe-bottom {
-  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  /* The base was 8px, which read as cramped against the home indicator
+   * on a real phone. Note the `env()` term contributes NOTHING today:
+   * iOS only reports non-zero safe-area insets when the viewport meta
+   * opts in with `viewport-fit=cover`, and app/index.html deliberately
+   * does not (without it the layout viewport is already inset past the
+   * notch and home indicator, which is what keeps the header clear of
+   * the status bar). The term stays so this rule is already correct if
+   * we ever go edge-to-edge — but the real breathing room has to come
+   * from the literal value, so it does. */
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
 }

@@ -109,7 +109,12 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, onBack
             {sessionAction}
           </div>
         </div>
-        <span className={cx(text.label, 'mt-1 block xl:hidden')}>{sessionMeta}</span>
+        {/* `ml-7` (28px) is not a spacing choice off the closed scale —
+          * it's a derived optical offset: the back chevron's fixed 24px
+          * icon box plus the `gap-1` (4px) beside it, i.e. exactly where
+          * the title's first letter starts. Same category of cited
+          * exception as ColumnHeader's `h-[38px]`. */}
+        <span className={cx(text.label, 'mt-1 ml-7 block xl:hidden')}>{sessionMeta}</span>
       </div>
     </header>
   )

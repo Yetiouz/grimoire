@@ -35,7 +35,7 @@ function TabButton({ view, icon, label, active, onSelect }: { view: MobileView; 
       onClick={() => onSelect(view)}
       aria-current={active ? 'true' : undefined}
       className={cx(
-        'flex min-h-12 min-w-14 flex-col items-center justify-end gap-1.5 py-1',
+        'flex min-h-12 min-w-14 flex-col items-center justify-end gap-2 py-1',
         text.label,
         active ? 'text-purple' : 'text-ink-faint',
       )}
@@ -65,7 +65,7 @@ export function MobileTabBar({ active, onSelect, onOpenDice, diceDisabled, class
   return (
     <div
       className={cx(
-        'tabbar-safe-bottom flex shrink-0 items-end justify-around border-t border-line bg-panel/95 px-2 pt-2.5',
+        'tabbar-safe-bottom flex shrink-0 items-end justify-around border-t border-line bg-panel/95 px-2 pt-3',
         className,
       )}
     >
