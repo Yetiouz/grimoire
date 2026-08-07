@@ -54,11 +54,10 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   // its dependency (react-hooks/exhaustive-deps runs at --max-warnings=0
   // in verify — this warning was failing CI on every push).
   const load = useCallback(async () => {
-    // No synchronous setState here (react-hooks/set-state-in-effect):
-    // every setState in this function happens after the first await,
-    // i.e. in an async callback, which the rule permits. Error-clearing
-    // on retry moved to the ErrorBanner's own onRetry handler (an event
-    // handler, where synchronous setState is fine).
+    // Deliberately no synchronous setState in here — error-clearing on
+    // retry lives in the ErrorBanner's onRetry event handler instead.
+    // (react-hooks/set-state-in-effect flags the effect call site
+    // regardless; see the eslint-disable there.)
     try {
       const [sessionRows, entryRows, characterRows, questRows] = await Promise.all([
         listSessions(campaign.id),
@@ -76,6 +75,12 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   }, [campaign.id])
 
   useEffect(() => {
+    // Mount/param-change data fetch — the one canonical effect use.
+    // react-hooks/set-state-in-effect statically flags ANY setState
+    // reachable from a function called in the effect body, even calls
+    // that only run after an await (the rule doesn't model async
+    // boundaries), so fetch-on-mount needs a targeted opt-out here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load()
   }, [load])
 
