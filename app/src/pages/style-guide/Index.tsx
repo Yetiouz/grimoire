@@ -23,6 +23,12 @@ export function Index({ entries }: IndexProps) {
   const [activeId, setActiveId] = useState(entries[0]?.id)
 
   useEffect(() => {
+    // Scroll-spy is a progressive enhancement: in environments without
+    // IntersectionObserver (jsdom under vitest, ancient browsers) the
+    // index still renders and anchors still work — only the highlight
+    // tracking is skipped.
+    if (typeof IntersectionObserver === 'undefined') return
+
     const targets = entries
       .map((entry) => document.getElementById(entry.id))
       .filter((el): el is HTMLElement => el !== null)
