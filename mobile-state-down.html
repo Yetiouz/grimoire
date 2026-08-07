@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GRIMOIRE — Mobile View (interactive mockup)</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Pirata+One&family=Instrument+Sans:wght@400;500;600&family=Chivo+Mono:wght@400;500&family=Bebas+Neue&display=swap');
+:root{
+  --bg:#050506; --panel:#101013; --panel2:#17171b; --line:#232329; --line-soft:#1c1c22; --line-hover:#33333c;
+  --ink:#f4f4f6; --ink-dim:#a5a5ae; --ink-faint:#66666f;
+  --purple:#9b5cff; --green:#39ff8f; --red:#ff3b52; --yellow:#ffd23f; --orange:#ff8a3d; --pink:#ff3fd6; --cyan:#35f0ff;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#0b0b0e;color:var(--ink);font-family:'Instrument Sans',sans-serif;-webkit-font-smoothing:antialiased;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;gap:24px;flex-wrap:wrap}
+.label{font-family:'Chivo Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint)}
+.num{font-family:'Chivo Mono',monospace;font-variant-numeric:tabular-nums;font-weight:600}
+
+/* ===== Phone frame ===== */
+.phone{width:390px;height:800px;background:var(--bg);border:1px solid #26262c;border-radius:38px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 30px 80px -30px rgba(0,0,0,0.9);position:relative}
+.hint{position:fixed;top:14px;left:0;right:0;text-align:center;font-family:'Chivo Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#55555e}
+
+/* ===== Top bar: campaign + session control (one bar on phone) ===== */
+.mtop{padding:14px 16px 10px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0}
+.mcamp .name{font-family:'Bebas Neue',sans-serif;font-size:20px;text-transform:uppercase;line-height:1}
+.mcamp .meta{font-family:'Chivo Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-faint);margin-top:3px}
+.mtop-right{display:flex;gap:8px;align-items:center}
+.stopbtn{height:40px;border-radius:8px;padding:0 12px;background:rgba(255,59,82,0.12);border:1px solid rgba(255,59,82,0.45);color:var(--red);font-family:'Chivo Mono',monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer}
+.pausebtn{width:40px;height:40px;border-radius:8px;background:rgba(255,210,63,0.12);border:1px solid rgba(255,210,63,0.45);color:var(--yellow);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center}
+
+/* ===== Views ===== */
+.view{flex:1;min-height:0;display:none;flex-direction:column}
+.view.on{display:flex}
+.scroll{flex:1;overflow-y:auto;min-height:0;padding:12px 16px}
+
+/* Journal feed */
+.entry{display:flex;gap:9px;padding:8px 9px;border-radius:10px}
+.entry .dot{width:7px;height:7px;border-radius:99px;margin-top:7px;flex-shrink:0;background:var(--c,var(--ink-faint))}
+.entry .who{font-weight:600;font-size:13px;color:var(--c,var(--ink-dim))}
+.entry .when{font-size:10px;color:var(--ink-faint);font-family:'Chivo Mono',monospace}
+.entry .tag{font-size:8.5px;font-weight:700;letter-spacing:0.1em;color:var(--ink-faint);border:1px solid var(--line);border-radius:99px;padding:1px 6px;font-family:'Chivo Mono',monospace}
+.entry .text{font-size:16px;line-height:1.6}
+.entry.narration{background:var(--panel);border:1px solid var(--line-soft)}
+.entry.narration .text{color:var(--ink-dim)}
+.entry.system{opacity:0.8}.entry.system .text{color:var(--ink-faint);font-size:13px}
+.entry.chat{opacity:0.75}.entry.chat .text{color:var(--ink-dim);font-size:14px;font-style:italic}
+.roll-val{font-family:'Chivo Mono',monospace;font-weight:700;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:0 7px}
+.sdiv{display:flex;align-items:center;gap:10px;margin:14px 0 8px}
+.sdiv::before,.sdiv::after{content:'';height:1px;background:var(--line-soft);flex:1}
+.sdiv span{font-family:'Chivo Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap}
+
+/* Composer above tab bar */
+.mcomposer{border-top:1px solid var(--line-soft);padding:10px 16px;flex-shrink:0;background:var(--panel)}
+.kinds{display:flex;gap:6px;margin-bottom:8px}
+.kind{font-family:'Chivo Mono',monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-dim);border:1px solid var(--line-soft);background:var(--panel2);border-radius:99px;padding:5px 12px}
+.kind.active{color:#fff;background:var(--purple);border-color:var(--purple)}
+.inrow{display:flex;gap:8px}
+.input{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--ink-faint);font-size:16px;padding:11px 13px}
+.send{background:var(--purple);color:#fff;border:none;border-radius:8px;font-family:'Chivo Mono',monospace;font-size:11px;text-transform:uppercase;padding:0 16px;min-height:44px}
+
+/* Your compact card — pinned above the journal feed */
+.mycard{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line-soft);background:var(--panel);flex-shrink:0;cursor:pointer}
+.my-mid{flex:1;min-width:0}
+.my-row{display:flex;align-items:center;gap:10px}
+.my-name{font-weight:600;font-size:16px;white-space:nowrap;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.my-stats{display:flex;gap:12px;font-family:'Chivo Mono',monospace;font-size:11px;color:var(--ink-dim);flex-shrink:0}
+.my-stats b{color:var(--ink);font-variant-numeric:tabular-nums}
+.my-stats .k{color:var(--ink-faint)}
+
+/* Party view */
+.pcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px;position:relative}
+.pcard.active-turn{border-color:var(--purple);box-shadow:0 0 0 1px rgba(155,92,255,0.3)}
+.pcard.down{border-color:rgba(255,59,82,0.55);background:rgba(255,59,82,0.06)}
+.pcard.offline{opacity:0.45}
+.turn-badge{position:absolute;top:-8px;left:12px;font-family:'Chivo Mono',monospace;font-size:9px;letter-spacing:0.08em;background:var(--purple);color:#fff;border-radius:99px;padding:2px 8px}
+.pc-top{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.pc-ava{width:38px;height:38px;border-radius:99px;border:2.5px solid var(--c);background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.pc-name{font-weight:600;font-size:15px}
+.pc-sub{font-family:'Chivo Mono',monospace;font-size:9px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-faint)}
+.pc-icons{margin-left:auto;display:flex;gap:5px}
+.ic{width:22px;height:22px;border-radius:6px;background:var(--panel2);border:1px solid var(--line-soft);display:flex;align-items:center;justify-content:center;font-size:11px}
+.ic.torch{color:var(--orange);border-color:rgba(255,138,61,0.4)}
+.ic.luck{color:var(--cyan);border-color:rgba(53,240,255,0.4)}
+.ic.clock{color:var(--yellow);border-color:rgba(255,210,63,0.4)}
+.ic.bless{color:var(--purple);border-color:rgba(155,92,255,0.4)}
+.hpbar{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin-bottom:8px}
+.hpbar i{display:block;height:100%;border-radius:99px;background:var(--green)}
+.torchbar{height:4px;margin-bottom:0;flex:1}
+.torchbar i{background:var(--orange)}
+.torchrow{display:flex;align-items:center;gap:8px}
+.torchtime{font-family:'Chivo Mono',monospace;font-size:9px;letter-spacing:0.04em;color:var(--orange);flex-shrink:0}
+.ic-wrap{display:flex;flex-direction:column;align-items:center;gap:2px}
+.mycard .pc-icons{align-self:flex-start;margin-top:1px}
+.ic-count{font-family:'Chivo Mono',monospace;font-size:8px;letter-spacing:0.06em;color:var(--ink-faint)}
+
+/* Compact card — bad states */
+@keyframes dpulse{50%{opacity:0.3}}
+.mycard.dark .torchbar i{width:0!important}
+.mycard.dark .torchtime{color:var(--red);animation:dpulse 1.6s ease-in-out infinite}
+.mycard.down{background:rgba(255,59,82,0.05)}
+.mycard.down .pc-ava{border-color:var(--red)}
+.mycard.down .hpbar:not(.torchbar) i{width:0!important}
+.my-down{display:none}
+.mycard.down .my-down{display:block;animation:dpulse 1.6s ease-in-out infinite}
+
+/* Demo state switcher (mockup chrome, not product) */
+.demo{position:fixed;bottom:14px;left:0;right:0;display:flex;justify-content:center;gap:8px;z-index:50}
+.demo button{font-family:'Chivo Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-dim);background:#141419;border:1px solid var(--line);border-radius:99px;padding:7px 14px;cursor:pointer}
+.demo button.on{background:var(--purple);border-color:var(--purple);color:#fff}
+
+/* On an actual phone: drop the decorative frame, fill the screen */
+@media(max-width:480px){
+  body{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;padding:0;gap:0;height:100svh;overflow:hidden}
+  .hint{display:none}
+  .demo{position:static;order:-1;flex-shrink:0;padding:10px 0 8px;background:#0b0b0e;border-bottom:1px solid var(--line-soft)}
+  .phone{width:100%;height:auto;flex:1;min-height:0;border:none;border-radius:0;box-shadow:none}
+}
+.pc-stats{display:flex;gap:12px;font-family:'Chivo Mono',monospace;font-size:11px;color:var(--ink-dim)}
+.pc-stats b{color:var(--ink);font-variant-numeric:tabular-nums}
+.pc-stats .k{color:var(--ink-faint)}
+.down-timer{font-family:'Chivo Mono',monospace;font-size:11px;color:var(--red);letter-spacing:0.06em;margin-top:8px;text-transform:uppercase}
+
+/* Quests */
+.q{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.q.dim{opacity:0.5}
+.q-top{display:flex;gap:8px;align-items:baseline;font-size:15px}
+.q-dot{width:8px;height:8px;border-radius:99px;flex-shrink:0;align-self:center}
+.q-st{margin-left:auto;font-family:'Chivo Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;white-space:nowrap}
+.q-obj{font-size:14px;color:var(--ink-dim);margin-top:5px;line-height:1.55}
+.q-clock{font-family:'Chivo Mono',monospace;font-size:10px;color:var(--ink-faint);margin-top:8px;display:flex;gap:8px;align-items:center}
+.clockpips{display:flex;gap:3px}
+.clockpips i{width:9px;height:9px;border-radius:2px;background:var(--line)}
+.clockpips i.f{background:var(--yellow)}
+
+/* Tools view */
+.toolgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px}
+.tool{aspect-ratio:1.4;border-radius:16px;background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-family:'Chivo Mono',monospace;color:var(--ink-dim);cursor:pointer}
+.tool .ti{font-size:26px}
+.tool .tl{font-size:10px;letter-spacing:0.1em;text-transform:uppercase}
+.tool:active{border-color:var(--purple)}
+
+/* Maps view */
+.mtabs{display:flex;gap:6px;margin-bottom:12px}
+.mmt{flex:1;text-align:center;font-family:'Chivo Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-dim);background:var(--panel2);border:1px solid var(--line-soft);border-radius:99px;padding:9px 0}
+.mmt.on{background:var(--purple);color:#fff;border-color:var(--purple)}
+.mapbox{position:relative;height:300px;border-radius:14px;border:1px solid var(--line);overflow:hidden;background:radial-gradient(ellipse at 60% 30%, rgba(53,240,255,0.05), transparent 50%),linear-gradient(160deg,#0b0b11,#07070b)}
+.hex{position:absolute;width:60px;height:52px;border:1px solid rgba(102,102,111,0.25);clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%)}
+.hex span{position:absolute;bottom:5px;left:0;right:0;text-align:center;font-family:'Chivo Mono',monospace;font-size:7px;color:var(--ink-faint);text-transform:uppercase}
+.hex.known{background:rgba(155,92,255,0.05)}
+.hex.fog{background:rgba(5,5,6,0.8)}
+.pin{position:absolute;width:20px;height:20px;border-radius:99px;border:2.5px solid var(--purple);background:var(--panel);display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;box-shadow:0 0 14px -2px var(--purple);z-index:2}
+.mapchips{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.chip{display:inline-flex;gap:6px;font-family:'Chivo Mono',monospace;font-size:9.5px;background:var(--panel2);border:1px solid var(--line-soft);border-radius:8px;padding:5px 9px;white-space:nowrap}
+.chip .k{color:var(--ink-faint)}
+
+/* ===== Bottom tab bar ===== */
+.tabbar{flex-shrink:0;display:flex;align-items:flex-end;justify-content:space-around;border-top:1px solid var(--line);background:rgba(10,10,13,0.97);padding:8px 8px 18px;position:relative}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--ink-faint);font-family:'Chivo Mono',monospace;font-size:8.5px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;min-width:56px;min-height:44px;justify-content:flex-end}
+.tab .ti{font-size:18px;line-height:1}
+.tab.on{color:var(--purple)}
+.rolltab{width:54px;height:54px;border-radius:99px;background:var(--purple);border:none;color:#fff;font-size:22px;cursor:pointer;box-shadow:0 0 0 1px rgba(155,92,255,0.3),0 8px 24px -6px rgba(155,92,255,0.6);margin-top:-22px;flex-shrink:0}
+
+/* ===== Bottom sheet (dice) ===== */
+.bsheet{position:absolute;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);border-radius:22px 22px 0 0;padding:10px 16px 26px;transform:translateY(105%);transition:transform .25s ease;z-index:30}
+.bsheet.open{transform:translateY(0)}
+.grab{width:38px;height:4px;border-radius:99px;background:var(--line);margin:0 auto 14px}
+.bs-title{font-family:'Bebas Neue',sans-serif;font-size:22px;text-transform:uppercase;margin-bottom:12px}
+.dgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.dbig{font-family:'Chivo Mono',monospace;font-size:13px;color:var(--ink);background:var(--panel2);border:1px solid var(--line-soft);border-radius:8px;padding:12px 0;text-align:center;min-height:44px}
+.dbig.sel{border-color:var(--purple);color:var(--purple)}
+.mode{display:flex;gap:6px;margin-bottom:12px}
+.mtab{flex:1;text-align:center;font-family:'Chivo Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-dim);background:var(--panel2);border:1px solid var(--line-soft);border-radius:99px;padding:10px 0;min-height:44px}
+.mtab.on{background:var(--purple);color:#fff;border-color:var(--purple)}
+.rollgo{width:100%;background:var(--purple);color:#fff;border:none;border-radius:8px;font-family:'Chivo Mono',monospace;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;padding:14px 0;min-height:48px}
+.scrim{position:absolute;inset:0;background:rgba(5,5,6,0.6);opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:20}
+.scrim.on{opacity:1;pointer-events:auto}
+
+/* ===== Character sheet (full-screen slide-up) ===== */
+.cspage{position:absolute;inset:0;background:var(--bg);z-index:25;display:flex;flex-direction:column;transform:translateY(103%);transition:transform .28s ease}
+.cspage.open{transform:translateY(0)}
+.cs-top{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);flex-shrink:0}
+.cs-name{font-family:'Bebas Neue',sans-serif;font-size:24px;text-transform:uppercase;line-height:1}
+.cs-sub{font-family:'Chivo Mono',monospace;font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-faint);margin-top:4px}
+.cs-close{margin-left:auto;width:38px;height:38px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);color:var(--ink-dim);font-size:15px;cursor:pointer;flex-shrink:0}
+.cs-scroll{flex:1;overflow-y:auto;min-height:0;padding:16px 16px 28px}
+.cs-h{font-family:'Chivo Mono',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);display:flex;align-items:center;gap:10px;margin:18px 0 8px}
+.cs-h::after{content:'';height:1px;background:var(--line-soft);flex:1}
+.cs-h:first-child{margin-top:0}
+.tilerow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 6px;text-align:center}
+.tile .tv{font-family:'Chivo Mono',monospace;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
+.tile .tk{font-family:'Chivo Mono',monospace;font-size:8.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-faint);margin-top:3px}
+.abgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ab{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 6px;text-align:center}
+.ab .am{font-family:'Chivo Mono',monospace;font-size:15px;font-weight:600;color:var(--purple)}
+.ab .as{font-family:'Chivo Mono',monospace;font-size:10px;color:var(--ink-dim);margin-top:2px}
+.ab .ak{font-family:'Chivo Mono',monospace;font-size:8.5px;letter-spacing:0.1em;color:var(--ink-faint);margin-top:3px}
+.linelist{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:2px 14px}
+.li{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line-soft);font-size:14px;align-items:baseline}
+.li:last-child{border-bottom:none}
+.li .r{font-family:'Chivo Mono',monospace;font-size:11px;color:var(--ink-dim);flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="hint">Interactive — tap the tabs, the 🎲, and Kimbo's card · state: down</div>
+
+
+
+<div class="phone">
+  <div class="mtop">
+    <div class="mcamp">
+      <div class="name">The Black Road</div>
+      <div class="meta">Solo · Session 2 · Day 4</div>
+    </div>
+    <div class="mtop-right">
+      <button class="pausebtn">⏸</button>
+      <button class="stopbtn">Stop</button>
+    </div>
+  </div>
+
+  <!-- JOURNAL (home — no tab; tabs visit, journal remains) -->
+  <div class="view on" id="v-journal">
+    <div class="mycard down" id="myCard">
+      <div class="pc-ava" style="--c:var(--purple);width:42px;height:42px;font-size:12px">KS</div>
+      <div class="my-mid">
+        <div class="my-name">Kimbo Slice</div>
+        <div class="my-stats" style="margin-top:3px"><span><span class="k">HP</span> <b id="myHpVal" style="color:var(--red)">0/5</b></span><span><span class="k">AC</span> <b>13</b></span><span><span class="k">BAG</span> <b>9/12</b></span><span><span class="k">GP</span> <b>26</b></span></div>
+        <div class="hpbar" style="margin:8px 0 0"><i style="width:100%"></i></div>
+        <div class="torchrow" style="margin:5px 0 0"><div class="hpbar torchbar"><i style="width:58%"></i></div><span class="torchtime" id="myTorchTime">34:48</span></div>
+        <div class="down-timer my-down">▼ DOWN — 2 ROUNDS TO STABILIZE</div>
+      </div>
+      <div class="pc-icons"><div class="ic-wrap"><span class="ic luck">☘</span><span class="ic-count">1/1</span></div></div>
+    </div>
+    <div class="scroll">
+      <div class="sdiv"><span>Session 2 — The Weir at Moonrise</span></div>
+      <div class="entry narration"><div class="dot"></div><div><div><span class="who" style="color:var(--ink-dim)">GM</span> <span class="when">11:41 PM</span></div><div class="text">The skiff knocks against the pilings. Maela stands beside the hooded ferryman, a leather packet under her arm.</div></div></div>
+      <div class="entry" style="--c:var(--purple)"><div class="dot"></div><div><div><span class="who">Kimbo Slice</span> <span class="when">11:43 PM</span></div><div class="text">I step from the reeds, sword low. "Maela Rusk. The road ends at the water."</div></div></div>
+      <div class="entry" style="--c:var(--purple)"><div class="dot"></div><div><div><span class="who">Kimbo Slice</span> <span class="when">11:44 PM</span> <span class="tag">ROLL</span></div><div class="text">CHA to demand surrender — <span class="roll-val">d20+2 → 22</span> vs DC 15. Success.</div></div></div>
+      <div class="entry chat" style="--c:var(--orange)"><div class="dot"></div><div><div><span class="who">Hester's player</span> <span class="when">11:53</span> <span class="tag">OOC</span></div><div class="text">SOMEONE STABILIZE ME</div></div></div>
+      <div class="entry narration"><div class="dot"></div><div><div><span class="who" style="color:var(--ink-dim)">GM</span> <span class="when">11:54 PM</span></div><div class="text">Your blade opens him collar to rib. Black ichor, not blood.</div></div></div>
+      <div class="entry system"><div class="dot"></div><div><div><span class="who" style="color:var(--ink-dim)">System</span> <span class="when">11:55 PM</span></div><div class="text">Hester: death timer 2 rounds remaining.</div></div></div>
+    </div>
+    <div class="mcomposer">
+      <div class="kinds"><span class="kind active">Action</span><span class="kind">Narration</span><span class="kind">Roll</span><span class="kind">Note</span></div>
+      <div class="inrow"><div class="input">What does Kimbo do?</div><button class="send">Act</button></div>
+    </div>
+  </div>
+
+  <!-- PARTY -->
+  <div class="view" id="v-party">
+    <div class="scroll" style="padding-top:16px">
+      <div class="pcard active-turn" style="--c:var(--purple)">
+        <span class="turn-badge">YOUR TURN · 1st</span>
+        <div class="pc-top"><div class="pc-ava">KS</div><div><div class="pc-name">Kimbo Slice</div><div class="pc-sub">Knight of St. Ydris 2</div></div>
+          <div class="pc-icons"><span class="ic torch">🔥</span><span class="ic luck">☘</span><span class="ic bless">✦</span></div></div>
+        <div class="hpbar"><i style="width:100%"></i></div>
+        <div class="pc-stats"><span><span class="k">HP</span> <b>5/5</b></span><span><span class="k">AC</span> <b>13</b></span><span><span class="k">BAG</span> <b>9/12</b></span><span><span class="k">GP</span> <b>26</b></span></div>
+      </div>
+      <div class="pcard" style="--c:var(--cyan)">
+        <div class="pc-top"><div class="pc-ava">RP</div><div><div class="pc-name">Rowan Pike</div><div class="pc-sub">Scout · Hireling</div></div></div>
+        <div class="hpbar"><i style="width:75%"></i></div>
+        <div class="pc-stats"><span><span class="k">HP</span> <b>3/4</b></span><span><span class="k">AC</span> <b>12</b></span><span><span class="k">BAG</span> <b>5/10</b></span></div>
+      </div>
+      <div class="pcard down" style="--c:var(--orange)">
+        <div class="pc-top"><div class="pc-ava">HC</div><div><div class="pc-name">Hester Crowe</div><div class="pc-sub">Veteran Guard</div></div>
+          <div class="pc-icons"><span class="ic clock">⏱</span></div></div>
+        <div class="hpbar"><i style="width:0%"></i></div>
+        <div class="pc-stats"><span><span class="k">HP</span> <b style="color:var(--red)">0/6</b></span><span><span class="k">AC</span> <b>14</b></span></div>
+        <div class="down-timer">▼ DOWN — 2 ROUNDS TO STABILIZE</div>
+      </div>
+      <div class="pcard offline" style="--c:var(--green)">
+        <div class="pc-top"><div class="pc-ava">MS</div><div><div class="pc-name">Miri Sedge</div><div class="pc-sub">Healer · In town</div></div></div>
+        <div class="hpbar"><i style="width:100%"></i></div>
+        <div class="pc-stats"><span><span class="k">HP</span> <b>4/4</b></span><span><span class="k">AC</span> <b>11</b></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUESTS -->
+  <div class="view" id="v-quests">
+    <div class="scroll" style="padding-top:16px">
+      <div class="q"><div class="q-top"><span class="q-dot" style="background:var(--purple)"></span><b>The Black Road</b><span class="q-st" style="color:var(--yellow)">ACTIVE</span></div>
+        <div class="q-obj">→ Deliver Maela &amp; the Ferryman to Reeve's Hall</div>
+        <div class="q-clock">MOONRISE <span class="clockpips"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i></i></span></div></div>
+      <div class="q"><div class="q-top"><span class="q-dot" style="background:var(--cyan)"></span><b>The Iron-Bound Coffer</b><span class="q-st" style="color:var(--yellow)">ACTIVE</span></div>
+        <div class="q-obj">→ Return coffer to Mara · 10 gp on delivery</div></div>
+      <div class="q"><div class="q-top"><span class="q-dot" style="background:var(--orange)"></span><b>The Black Hart Sword</b><span class="q-st" style="color:var(--cyan)">LEAD</span></div>
+        <div class="q-obj">→ Gorget may lie in the Bell-Keeper's Ossuary</div></div>
+      <div class="q"><div class="q-top"><span class="q-dot" style="background:var(--green)"></span><b>The Sealed Message</b><span class="q-st" style="color:var(--green)">✓ DONE</span></div>
+        <div class="q-obj">12 gp collected from Halric</div></div>
+      <div class="q dim"><div class="q-top"><span class="q-dot" style="background:var(--pink)"></span><b>A Harder Man to Kill</b><span class="q-st">PERSONAL</span></div>
+        <div class="q-obj">Mara's contacts — armor &amp; charms</div></div>
+    </div>
+  </div>
+
+  <!-- MAPS -->
+  <div class="view" id="v-maps">
+    <div class="scroll" style="padding-top:16px">
+      <div class="mtabs"><span class="mmt on">Region</span><span class="mmt">Site</span><span class="mmt">Scene</span></div>
+      <div class="mapbox">
+        <div class="hex known" style="left:40px;top:50px"><span>Dreg's Ford</span></div>
+        <div class="hex known" style="left:94px;top:104px"><span>Bramble</span></div>
+        <div class="hex known" style="left:148px;top:50px"><span>The Weir</span></div>
+        <div class="hex fog" style="left:202px;top:104px"><span>?</span></div>
+        <div class="hex fog" style="left:256px;top:50px"><span>Myre?</span></div>
+        <div class="hex known" style="left:94px;top:212px"><span>Spider Pit</span></div>
+        <div class="hex fog" style="left:40px;top:158px"><span>?</span></div>
+        <div class="pin" style="left:172px;top:70px">KS</div>
+      </div>
+      <div class="mapchips">
+        <span class="chip"><span class="k">POSITION</span><span>THE WEIR</span></span>
+        <span class="chip"><span class="k">PACE</span><span>2 HEX/DAY</span></span>
+        <span class="chip"><span class="k">TODAY</span><span style="color:var(--yellow)">1 HEX LEFT</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOOLS -->
+  <div class="view" id="v-tools">
+    <div class="toolgrid">
+      <div class="tool"><span class="ti">📖</span><span class="tl">Rules</span></div>
+      <div class="tool"><span class="ti">🔍</span><span class="tl">Search</span></div>
+      <div class="tool"><span class="ti">⚙</span><span class="tl">Campaign</span></div>
+      <div class="tool"><span class="ti">🌐</span><span class="tl">World</span></div>
+    </div>
+  </div>
+
+  <!-- Bottom tab bar with center Roll action -->
+  <div class="tabbar">
+    <button class="tab" data-v="party"><span class="ti">🛡</span>Party</button>
+    <button class="tab" data-v="maps"><span class="ti">🗺</span>Maps</button>
+    <button class="rolltab" id="rollFab">🎲</button>
+    <button class="tab" data-v="quests"><span class="ti">❖</span>Quests</button>
+    <button class="tab" data-v="tools"><span class="ti">⚒</span>Tools</button>
+  </div>
+
+  <!-- Dice bottom sheet -->
+  <div class="scrim" id="scrim"></div>
+  <div class="bsheet" id="diceSheet">
+    <div class="grab"></div>
+    <div class="bs-title">Roll</div>
+    <div class="dgrid">
+      <div class="dbig sel">d20</div><div class="dbig">d12</div><div class="dbig">d10</div><div class="dbig">d8</div>
+      <div class="dbig">d6</div><div class="dbig">d4</div><div class="dbig">d100</div><div class="dbig">×2</div>
+    </div>
+    <div class="mode"><div class="mtab">Normal</div><div class="mtab on">Advantage</div><div class="mtab">Disadv.</div></div>
+    <button class="rollgo">Roll 2d20 · keep highest · +3</button>
+  </div>
+
+  <!-- Character sheet page -->
+  <div class="cspage" id="csPage">
+    <div class="cs-top">
+      <div class="pc-ava" style="--c:var(--purple);width:46px;height:46px;font-size:13px">KS</div>
+      <div>
+        <div class="cs-name">Kimbo Slice</div>
+        <div class="cs-sub">Knight of St. Ydris 2 · Human · XP 3/6</div>
+      </div>
+      <button class="cs-close" id="csClose">✕</button>
+    </div>
+    <div class="cs-scroll">
+      <div class="tilerow">
+        <div class="tile"><div class="tv" style="color:var(--green)">5/5</div><div class="tk">HP</div></div>
+        <div class="tile"><div class="tv">13</div><div class="tk">AC</div></div>
+        <div class="tile"><div class="tv" style="color:var(--cyan)">1/1</div><div class="tk">Luck</div></div>
+      </div>
+
+      <div class="cs-h">Abilities</div>
+      <div class="abgrid">
+        <div class="ab"><div class="am">+3</div><div class="as">16</div><div class="ak">STR</div></div>
+        <div class="ab"><div class="am">+1</div><div class="as">12</div><div class="ak">DEX</div></div>
+        <div class="ab"><div class="am">+2</div><div class="as">14</div><div class="ak">CON</div></div>
+        <div class="ab"><div class="am" style="color:var(--red)">−1</div><div class="as">8</div><div class="ak">INT</div></div>
+        <div class="ab"><div class="am" style="color:var(--ink-dim)">+0</div><div class="as">10</div><div class="ak">WIS</div></div>
+        <div class="ab"><div class="am">+2</div><div class="as">14</div><div class="ak">CHA</div></div>
+      </div>
+
+      <div class="cs-h">Attacks</div>
+      <div class="linelist">
+        <div class="li"><span>Bastard sword</span><span class="r">+3 · 1d8+1 (2H 1d10+1)</span></div>
+        <div class="li"><span>Dagger</span><span class="r">+3 · 1d4+1</span></div>
+      </div>
+
+      <div class="cs-h">Talents</div>
+      <div class="linelist">
+        <div class="li"><span>Demonic possession</span><span class="r">+1 melee dmg · 3/day</span></div>
+        <div class="li"><span>Weapon mastery</span><span class="r">Bastard sword</span></div>
+      </div>
+
+      <div class="cs-h">Gear · 9/12 slots · 26 GP</div>
+      <div class="linelist">
+        <div class="li"><span>Bastard sword</span><span class="r">2 slots</span></div>
+        <div class="li"><span>Leather armor</span><span class="r">worn</span></div>
+        <div class="li"><span>Shield</span><span class="r">1 slot</span></div>
+        <div class="li"><span>Torches ×2</span><span class="r">2 slots</span></div>
+        <div class="li"><span>Rations ×2</span><span class="r">2 slots</span></div>
+        <div class="li"><span>Rope, 60'</span><span class="r">1 slot</span></div>
+        <div class="li"><span>Oil flask</span><span class="r">1 slot</span></div>
+      </div>
+
+      <div class="cs-h">Languages</div>
+      <div class="linelist">
+        <div class="li"><span>Common, Diabolic</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  const wasOn = t.classList.contains('on');
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  if (wasOn) {                      // tap the open tab again → home (journal)
+    document.getElementById('v-journal').classList.add('on');
+  } else {
+    t.classList.add('on');
+    document.getElementById('v-'+t.dataset.v).classList.add('on');
+  }
+}));
+document.querySelectorAll('.demo button').forEach(btn=>btn.addEventListener('click',()=>{
+  const s=btn.dataset.state;
+  const c=document.getElementById('myCard'),tt=document.getElementById('myTorchTime'),hp=document.getElementById('myHpVal');
+  c.classList.remove('dark','down');
+  tt.textContent='34:48';hp.textContent='5/5';hp.style.color='';
+  if(s==='dark'){c.classList.add('dark');tt.textContent='DARK';}
+  if(s==='down'){c.classList.add('down');hp.textContent='0/5';hp.style.color='var(--red)';}
+  document.querySelectorAll('.demo button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+}));
+const csPage=document.getElementById('csPage');
+document.getElementById('myCard').addEventListener('click',()=>csPage.classList.add('open'));
+document.getElementById('csClose').addEventListener('click',()=>csPage.classList.remove('open'));
+const sheet=document.getElementById('diceSheet'),scrim=document.getElementById('scrim');
+document.getElementById('rollFab').addEventListener('click',()=>{sheet.classList.add('open');scrim.classList.add('on')});
+scrim.addEventListener('click',()=>{sheet.classList.remove('open');scrim.classList.remove('on')});
+</script>
+</body>
+</html>

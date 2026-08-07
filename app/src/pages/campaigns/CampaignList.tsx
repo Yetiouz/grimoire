@@ -37,7 +37,11 @@ export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
   const [creating, setCreating] = useState(false)
 
   const load = useCallback(async () => {
-    setError(null)
+    // No synchronous setState here (react-hooks/set-state-in-effect):
+    // every setState in this function happens after the first await,
+    // i.e. in an async callback, which the rule permits. Error-clearing
+    // on retry moved to the ErrorBanner's own onRetry handler (an event
+    // handler, where synchronous setState is fine).
     try {
       const data = await listCampaignsWithLastEntry()
       setCampaigns(data)
@@ -85,7 +89,16 @@ export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
       />
 
       <div className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-8">
-        {error && <ErrorBanner onRetry={() => void load()}>{error}</ErrorBanner>}
+        {error && (
+          <ErrorBanner
+            onRetry={() => {
+              setError(null)
+              void load()
+            }}
+          >
+            {error}
+          </ErrorBanner>
+        )}
 
         {campaigns === null && !error && (
           <SkeletonGroup label="Loading campaigns" className="gap-3">

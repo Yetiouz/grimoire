@@ -54,7 +54,11 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   // its dependency (react-hooks/exhaustive-deps runs at --max-warnings=0
   // in verify — this warning was failing CI on every push).
   const load = useCallback(async () => {
-    setError(null)
+    // No synchronous setState here (react-hooks/set-state-in-effect):
+    // every setState in this function happens after the first await,
+    // i.e. in an async callback, which the rule permits. Error-clearing
+    // on retry moved to the ErrorBanner's own onRetry handler (an event
+    // handler, where synchronous setState is fine).
     try {
       const [sessionRows, entryRows, characterRows, questRows] = await Promise.all([
         listSessions(campaign.id),
@@ -210,7 +214,16 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
           bodyClassName="gap-4"
           footer={<JournalComposer onLog={(kind, body) => handleLog(kind, body)} sessionOpen={Boolean(openSession)} />}
         >
-          {error && <ErrorBanner onRetry={() => void load()}>{error}</ErrorBanner>}
+          {error && (
+            <ErrorBanner
+              onRetry={() => {
+                setError(null)
+                void load()
+              }}
+            >
+              {error}
+            </ErrorBanner>
+          )}
 
           {(sessions === null || entries === null || characters === null || quests === null) && !error && (
             <SkeletonGroup label="Loading journal" className="gap-3">
