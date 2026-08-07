@@ -195,12 +195,24 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     // stacks in one column" fallback. That no longer fits: a tab-bar
     // shell needs its top bar and tab bar pinned to the viewport, not
     // scrolling away with the content, matching
-    // `mobile-view-mockup.html`'s own real-phone CSS
-    // (`height:100svh;overflow:hidden` under its `max-width:480px`
-    // block) — so `h-svh overflow-hidden` now applies at every
-    // breakpoint, and `MobileJournalView` owns its own internal scroll
-    // the same way each desktop `ColumnCard` already does.
-    <div className="flex h-svh flex-col overflow-hidden">
+    // `mobile-view-mockup.html`'s own real-phone CSS — so fixed-height
+    // + `overflow-hidden` now applies at every breakpoint, and
+    // `MobileJournalView` owns its own internal scroll the same way
+    // each desktop `ColumnCard` already does.
+    //
+    // The unit is `dvh`, NOT `svh` (which the mockup and this shell's
+    // first version both used). `svh` is the SMALL viewport height —
+    // the height with every mobile browser toolbar expanded — so it
+    // permanently reserves that space even while the toolbars are
+    // hidden, which on a real iPhone left a ~138px dead band of page
+    // background below the tab bar. `dvh` tracks the viewport's actual
+    // current height. The usual argument against `dvh` (layout jump as
+    // toolbars show/hide mid-scroll) doesn't apply here: this page
+    // never scrolls, so the toolbars never toggle from scrolling it.
+    // `Overlay`'s slide-up variant already used `100dvh` — that
+    // mismatch is exactly why a full-screen sheet filled the phone
+    // correctly while the shell behind it did not.
+    <div className="flex h-dvh flex-col overflow-hidden">
       <JournalHeader campaignName={campaign.name} sessionMeta={sessionMeta} sessionAction={sessionAction} onBack={onBack} />
 
       {/* DESKTOP: unchanged three-column grid, xl: and up only. */}
