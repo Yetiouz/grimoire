@@ -29,6 +29,17 @@ interface MobileJournalViewProps {
   onOpenDice: () => void
 }
 
+/** Titles for the view header below. Tapping the lit tab again also
+ * returns home, but that gesture is invisible — every non-journal view
+ * gets a labelled header with a real close control so there is always
+ * a visible way back to the journal (owner's call). */
+const VIEW_TITLES: Record<MobileView, string> = {
+  party: 'Party',
+  maps: 'Maps',
+  quests: 'Quest Log',
+  tools: 'Tools',
+}
+
 const TOOL_TILES: Array<{ icon: IconName; label: string }> = [
   { icon: 'rules', label: 'Rules' },
   { icon: 'search', label: 'Search' },
@@ -102,6 +113,24 @@ export function MobileJournalView({
           onClick={() => onOpenCharacter(activeCharacter)}
           className="mx-4 mt-3 shrink-0"
         />
+      )}
+
+      {activeView !== null && (
+        // 48px, not ColumnHeader's 38px: this row carries a real 44px
+        // touch target, which a 38px row can't hold without breaking
+        // CLAUDE.md's touch-target minimum.
+        <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-line-soft px-4">
+          <span className={text.label}>{VIEW_TITLES[activeView]}</span>
+          <button
+            type="button"
+            onClick={() => setActiveView(null)}
+            aria-label="Back to the journal"
+            title="Back to the journal"
+            className="-mr-2 inline-flex h-11 w-11 items-center justify-center rounded-button text-ink-faint hover:text-ink"
+          >
+            <Icon name="close" />
+          </button>
+        </div>
       )}
 
       <div className="min-h-0 flex-1 overflow-y-auto">

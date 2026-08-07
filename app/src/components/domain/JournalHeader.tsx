@@ -87,20 +87,29 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, onBack
         * group holds the right — meta text sits immediately LEFT of the
         * colored session buttons (SessionAction), which are the
         * far-right element per the owner's design note. */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2">
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label="Back to campaigns"
-          className="flex min-h-11 items-center gap-1 xl:min-h-0 xl:pointer-events-none"
-        >
-          <Icon name="back" className="xl:hidden" />
-          <h1 className={text.h3}>{campaignName}</h1>
-        </button>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className={text.label}>{sessionMeta}</span>
-          {sessionAction}
+      <div className="px-4 py-2">
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back to campaigns"
+            className="flex min-h-11 min-w-0 items-center gap-1 xl:min-h-0 xl:pointer-events-none"
+          >
+            <Icon name="back" className="shrink-0 xl:hidden" />
+            <h1 className={cx(text.h3, 'truncate')}>{campaignName}</h1>
+          </button>
+          <div className="flex shrink-0 items-center gap-3">
+            {/* Below `xl:` the meta moves to its own line under the
+              * title (owner's call) so the session controls can sit on
+              * the title's baseline row instead of being pushed to a
+              * second line by `flex-wrap`. At `xl:` the v11 law still
+              * holds: meta sits immediately left of the buttons, one
+              * row, far right. */}
+            <span className={cx(text.label, 'hidden xl:inline')}>{sessionMeta}</span>
+            {sessionAction}
+          </div>
         </div>
+        <span className={cx(text.label, 'mt-1 block xl:hidden')}>{sessionMeta}</span>
       </div>
     </header>
   )

@@ -26,9 +26,11 @@ interface OverlayProps {
    * the same mechanism every other responsive decision in this app
    * already uses.
    *
-   * `'sheet'`: mobile bottom sheet, anchored to the viewport's bottom
-   * edge — DiceRoller's mobile presentation (the FAB opens this instead
-   * of a centered dialog).
+   * `'sheet'`: a compact panel that stays vertically centered and
+   * near-full-width on mobile — DiceRoller's presentation. It was
+   * originally bottom-anchored (a literal bottom sheet); the owner
+   * asked for centered instead, so the name now means "compact panel"
+   * rather than "bottom sheet".
    *
    * `'slideUp'`: mobile full-screen page, no rounding/border/max-width
    * cap — CharacterSheet's mobile presentation, per the mobile-vision
@@ -79,8 +81,16 @@ export function Overlay({ open, onClose, header, children, width = 'default', va
 
   const widthClass = width === 'narrow' ? 'xl:max-w-[460px]' : 'xl:max-w-[880px]'
 
+  // `'sheet'` centers vertically on mobile rather than sitting on the
+  // viewport's bottom edge (owner's call — a bottom-anchored roller
+  // read as "smashed to the bottom"). Only `'slideUp'`, which is
+  // full-height anyway, still anchors to the bottom edge.
   const backdropAlignClass =
-    variant === 'dialog' ? 'items-center justify-center p-6' : 'items-end justify-center p-0 xl:items-center xl:justify-center xl:p-6'
+    variant === 'slideUp'
+      ? 'items-end justify-center p-0 xl:items-center xl:justify-center xl:p-6'
+      : variant === 'sheet'
+        ? 'items-center justify-center p-4 xl:p-6'
+        : 'items-center justify-center p-6'
 
   const panelShapeClass =
     variant === 'slideUp'
