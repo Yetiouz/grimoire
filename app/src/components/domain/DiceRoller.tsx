@@ -160,8 +160,26 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
        * closed 4/8/12/16/24/32/48/64 spacing scale — 24px is the
        * scale's "separated" slot, which is exactly what this is: the
        * distinct Die/Count/Mode/Modifier/Result/Buttons blocks on one
-       * screen). */}
-      <div className="flex flex-col gap-6">
+       * screen).
+       *
+       * `items-center text-center` (owner's centering pass, round two —
+       * the first round only centered `RollResult`, but every control
+       * block above it was still a full-width, left-hugging section).
+       * Making the column itself center its children collapses each
+       * section `<div>` to its own content width so it sits centered as
+       * a block, but that alone doesn't touch alignment *inside* each
+       * section — `DieSelector`/`Stepper`'s own rows, and the Mode/
+       * Modifier chip rows here, default to left-packed content within
+       * whatever box they end up with, so each of those also gets an
+       * explicit `justify-center` (chip rows) or centered `className`
+       * (DieSelector/Stepper, via their existing `className` prop
+       * rather than baking centering into either shared component —
+       * both are generic controls other screens could still want
+       * left-aligned). The fixed-width custom-modifier input needs its
+       * own `mx-auto` for the same reason: a block element with an
+       * explicit width doesn't self-center just because its container
+       * does. */}
+      <div className="flex flex-col items-center gap-6 text-center">
         <div>
           <p className={cx(text.label, 'mb-2')}>Die</p>
           <DieSelector
@@ -170,6 +188,7 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
               setDie(next)
               clearResult()
             }}
+            className="justify-center"
           />
         </div>
 
@@ -183,12 +202,13 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
             }}
             max={MAX_COUNT}
             label="dice"
+            className="justify-center"
           />
         </div>
 
         <div>
           <p className={cx(text.label, 'mb-2')}>Mode</p>
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Mode">
+          <div className="flex flex-wrap justify-center gap-2" role="radiogroup" aria-label="Mode">
             {MODE_OPTIONS.map((option) => (
               <button
                 key={option.mode}
@@ -209,7 +229,7 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
 
         <div>
           <p className={cx(text.label, 'mb-2')}>Modifier</p>
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Modifier">
+          <div className="flex flex-wrap justify-center gap-2" role="radiogroup" aria-label="Modifier">
             <button
               type="button"
               role="radio"
@@ -253,7 +273,7 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
               value={customModifier}
               onChange={(event: { target: { value: string } }) => setCustomModifier(event.target.value)}
               placeholder="e.g. 2 or -1"
-              className="mt-2 w-32"
+              className="mx-auto mt-2 w-32"
               aria-label="Custom modifier"
             />
           )}
@@ -261,9 +281,22 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
 
         {error && <p className={cx(text.caption, 'text-red')}>{error}</p>}
 
-        <RollResult rolling={rolling} die={die} result={result} modifier={activeModifier} flickerTotal={flickerTotal} />
+        {/* `w-full` on both: now that the column centers its children
+         * (shrink-to-fit) instead of stretching them, these two need it
+         * back explicitly — the result card is meant to read as a
+         * full-bleed card, not a shrunk box, and the Roll/Log buttons'
+         * own `flex-1` split only means anything if their row has the
+         * full column width to divide. */}
+        <RollResult
+          rolling={rolling}
+          die={die}
+          result={result}
+          modifier={activeModifier}
+          flickerTotal={flickerTotal}
+          className="w-full"
+        />
 
-        <div className="flex gap-2">
+        <div className="flex w-full gap-2">
           <Button onClick={() => void handleRoll()} disabled={rolling} className="flex-1">
             {rolling ? 'Rolling…' : result ? 'Roll Again' : 'Roll'}
           </Button>
