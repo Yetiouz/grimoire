@@ -88,41 +88,44 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, onBack
         * colored session buttons (SessionAction), which are the
         * far-right element per the owner's design note. */}
       <div className="px-4 py-2">
-        <div className="flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={onBack}
-            aria-label="Back to campaigns"
-            className="flex min-h-11 min-w-0 items-center gap-1 xl:min-h-0 xl:pointer-events-none"
-          >
-            <Icon name="back" className="shrink-0 xl:hidden" />
-            <h1 className={cx(text.h3, 'truncate')}>{campaignName}</h1>
-          </button>
+        {/* Below `xl:` the title and the session meta bracket the
+          * session buttons: `items-stretch` makes the text column take
+          * the buttons' own height, and `justify-between` pins the
+          * title to its top edge and the meta to its bottom edge, so
+          * the three line up as one block (owner's call). At `xl:` the
+          * column collapses back to the v11 single row — title left,
+          * meta immediately left of the far-right buttons. */}
+        <div className="flex items-stretch justify-between gap-3">
+          <div className="flex min-w-0 flex-col justify-between xl:flex-row xl:items-center">
+            {/* `leading-none` strips the half-leading that would
+              * otherwise sit above the caps and push the title down off
+              * the button's top edge. The touch target is restored by
+              * the `after:` pseudo-element rather than `min-h-11`: real
+              * height here has to stay equal to the text for the
+              * top/bottom alignment to hold, but the pseudo-element
+              * extends the hit area 12px past it in both directions
+              * (48px total) without occupying any layout space. */}
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label="Back to campaigns"
+              className="relative flex min-w-0 items-center gap-1 after:absolute after:inset-x-0 after:-inset-y-3 after:content-[''] xl:pointer-events-none"
+            >
+              <Icon name="back" className="shrink-0 xl:hidden" />
+              <h1 className={cx(text.h3, 'truncate leading-none')}>{campaignName}</h1>
+            </button>
+            {/* `ml-7` (28px) is a derived optical offset, not an
+              * off-scale spacing value: the back chevron's fixed 24px
+              * icon box plus its 4px gap, i.e. exactly where the
+              * title's first letter starts. Same category of cited
+              * exception as ColumnHeader's `h-[38px]`. */}
+            <span className={cx(text.label, 'ml-7 block leading-none xl:hidden')}>{sessionMeta}</span>
+          </div>
           <div className="flex shrink-0 items-center gap-3">
-            {/* Below `xl:` the meta moves to its own line under the
-              * title (owner's call) so the session controls can sit on
-              * the title's baseline row instead of being pushed to a
-              * second line by `flex-wrap`. At `xl:` the v11 law still
-              * holds: meta sits immediately left of the buttons, one
-              * row, far right. */}
             <span className={cx(text.label, 'hidden xl:inline')}>{sessionMeta}</span>
             {sessionAction}
           </div>
         </div>
-        {/* `ml-7` (28px) is not a spacing choice off the closed scale —
-          * it's a derived optical offset: the back chevron's fixed 24px
-          * icon box plus the `gap-1` (4px) beside it, i.e. exactly where
-          * the title's first letter starts. Same category of cited
-          * exception as ColumnHeader's `h-[38px]`.
-          *
-          * The negative top margin closes the gap the title's own line
-          * box opens up: `h3` carries a 1.3 line-height, and Bebas Neue
-          * caps have no descenders to fill the space beneath them, so
-          * ~9px of empty leading sits under the title before any margin
-          * is added at all. `-mt-1` pulls the meta back through that
-          * dead space instead of stacking a positive margin on top of
-          * it. */}
-        <span className={cx(text.label, '-mt-1 ml-7 block xl:hidden')}>{sessionMeta}</span>
       </div>
     </header>
   )
