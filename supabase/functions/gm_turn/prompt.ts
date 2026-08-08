@@ -1,21 +1,21 @@
 // prompt.ts — the GM's standing instructions.
 //
-// PERSONA and HOUSE_RULES are the user's own files, shipped verbatim
-// (minus each file's meta-preamble about how the file itself is
-// maintained, which is not instruction to a GM). Tone, lethality, pacing
-// and player agency are already settled there — do not paraphrase them.
+// PERSONA and HOUSE_RULES are the user's own files, shipped verbatim (minus
+// each file's meta-preamble about how the file itself is maintained, which
+// is not instruction to a GM). Tone, lethality, pacing and player agency are
+// already settled there — do not paraphrase them.
 //
-// SESSION_PROTOCOL.md is deliberately NOT shipped. Every one of its
-// steps is bookkeeping in files Grimoire replaced (append to
-// timeline.md, overwrite campaign-state.md, update tracker.xlsx). Giving
-// those instructions to a GM whose world is a database would produce a
-// GM trying to maintain files that do not exist. Its *principles*
-// survive in PROTOCOL below; its file mechanics are gone.
+// SESSION_PROTOCOL.md is deliberately NOT shipped. Every one of its steps is
+// bookkeeping in files Grimoire replaced (append to timeline.md, overwrite
+// campaign-state.md, update tracker.xlsx). Giving those instructions to a GM
+// whose world is a database would produce a GM trying to maintain files that
+// do not exist. Its *principles* survive in PROTOCOL below; its file
+// mechanics are gone.
 //
-// TRANSLATION exists for the same reason at a smaller scale: the persona
-// is verbatim, and it names tools (_TOOLS/dice.py, _RULES/,
-// campaign-state.md) that no longer exist. Rather than edit the user's
-// file, the mapping is stated explicitly afterwards.
+// TRANSLATION exists for the same reason at a smaller scale: the persona is
+// verbatim, and it names tools (_TOOLS/dice.py, _RULES/, campaign-state.md)
+// that no longer exist. Rather than edit the user's file, the mapping is
+// stated explicitly afterwards.
 
 export const PERSONA = `## Core GM Commitments (non-negotiable)
 
@@ -246,9 +246,9 @@ Do **not** invent: new named residents of Dreg's Ford who duplicate someone abov
 
 **When a fact is needed and absent, prefer someone or something already on this page.** If nothing fits, invent and declare it in the turn's \`inventions\` list.`
 
-/** Replaces SESSION_PROTOCOL.md, which cannot ship as written — its
- * steps are all maintenance of files Grimoire replaced. These are the
- * principles from it that survive the move to a database. */
+/** Replaces SESSION_PROTOCOL.md, which cannot ship as written — its steps
+ * are all maintenance of files Grimoire replaced. These are the principles
+ * from it that survive the move to a database. */
 export const PROTOCOL = `# Running a session in Grimoire
 
 ## Prepare situations, not plots
@@ -275,9 +275,9 @@ ledger, which is what makes continuity work across sessions. If you
 cannot record something through a command, say so plainly rather than
 asserting it happened.`
 
-/** The persona is verbatim and therefore names tools that no longer
- * exist. Correcting it here rather than editing the user's file keeps
- * his original intact and makes the substitutions reviewable. */
+/** The persona is verbatim and therefore names tools that no longer exist.
+ * Correcting it here rather than editing the user's file keeps his original
+ * intact and makes the substitutions reviewable. */
 export const TRANSLATION = `# Translation — this is Grimoire, not the old file system
 
 The persona and house rules above were written for a chat game backed by
@@ -307,8 +307,7 @@ create or edit NPCs, factions, quests or treasure, and you cannot run
 encounters with monster statistics. Work with what CURRENT STATE gives
 you, and say plainly when something is beyond you.`
 
-
-// ── rules-chat mode ─────────────────────────────────────────────────
+// ── rules-chat mode ──────────────────────────────────────────────────
 // A separate surface from play: out-of-character table talk, kept out of
 // the journal entirely. RULES_ASSISTANT replaces PERSONA here — the
 // grimdark voice is wrong for "how do gear slots work", and answering a
