@@ -1,8 +1,16 @@
-// gm_turn — Slice 16, Phase 1 (plumbing).
+// gm_turn — Slice 16: the AI GM and the rules chat.
 //
-// Auth, membership, kill switch, daily budget, three loop brakes, telemetry.
-// No game logic yet: the tool registry is deliberately empty and the context
-// packet is a placeholder. Phase 2 fills the packet, phase 3 adds bands.
+// Two surfaces through one function, separated by `mode`:
+//   play  — in-fiction. Full campaign packet including the journal, the
+//           grimdark persona, and the canon brief. Its replies are written
+//           into journal_entries by the client.
+//   rules — out-of-character. No journal in the packet, no persona, no
+//           canon; a rules-reference framing plus the quick-reference files
+//           instead. Its replies go to gm_chat, are private to the asker,
+//           and NEVER reach the journal.
+//
+// The tool registry is still empty: phase 3 adds the outcome bands and the
+// three commands.
 //
 // Two invariants this file exists to guarantee:
 //   1. Everything against the database runs with the CALLER'S JWT. The
@@ -28,7 +36,14 @@ const RULES_HISTORY = Number(Deno.env.get("GM_RULES_HISTORY") ?? "20");
 
 const MAX_ROUNDTRIPS = Number(Deno.env.get("GM_MAX_ROUNDTRIPS") ?? "4");
 const TURN_TIMEOUT_MS = Number(Deno.env.get("GM_TURN_TIMEOUT_MS") ?? "60000");
+/** The real constraint: everyone in a campaign draws on one provider key,
+ * so the ceiling is campaign-wide, not per person. */
 const DAILY_BUDGET = Number(Deno.env.get("GM_DAILY_REQUEST_BUDGET") ?? "150");
+/** A player's slice of that ceiling, so one person can't spend the day
+ * before anyone else sits down. Defaults to the whole thing, which keeps
+ * solo play behaving exactly as it does now — set it lower when the table
+ * grows. */
+const PLAYER_CAP = Number(Deno.env.get("GM_PLAYER_DAILY_CAP") ?? String(DAILY_BUDGET));
 const KILL = (Deno.env.get("GM_KILL_SWITCH") ?? "false").toLowerCase() === "true";
 
 const CORS = {
@@ -67,7 +82,7 @@ function lastPacificMidnight(now = new Date()): Date {
   return new Date(local.getTime() - offset);
 }
 
-// Phase 1: empty on purpose. Phase 3 registers log_journal_entry, roll_dice
+// Still empty on purpose. Phase 3 registers log_journal_entry, roll_dice
 // and adjust_character_hp here, each mapping to an existing RPC.
 const TOOL_REGISTRY: Record<string, unknown> = {};
 const TOOL_SCHEMAS: unknown[] = [];
@@ -79,12 +94,13 @@ Deno.serve(async (req: Request) => {
     return reply({
       status: "disabled",
       message: "The GM is switched off.",
+      requestCount: 0,
     });
   }
 
   const authHeader = req.headers.get("Authorization") ?? "";
   if (!authHeader.startsWith("Bearer ")) {
-    return reply({ status: "error", message: "Not signed in." });
+    return reply({ status: "error", message: "Not signed in.", requestCount: 0 });
   }
 
   // The caller's JWT, not the service role. This is the security boundary.
@@ -96,7 +112,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: userData, error: userErr } = await supabase.auth.getUser();
   if (userErr || !userData?.user) {
-    return reply({ status: "error", message: "Not signed in." });
+    return reply({ status: "error", message: "Not signed in.", requestCount: 0 });
   }
 
   let campaignId: string, sessionId: string | null, input: string, probe: boolean;
@@ -111,7 +127,7 @@ Deno.serve(async (req: Request) => {
     if (!campaignId) throw new Error("campaignId required");
     if (!probe && !input) throw new Error("input required");
   } catch (e) {
-    return reply({ status: "error", message: `Bad request: ${(e as Error).message}` });
+    return reply({ status: "error", message: `Bad request: ${(e as Error).message}`, requestCount: 0 });
   }
 
   // Membership. RLS on campaign_members only returns the caller's own rows,
@@ -122,16 +138,20 @@ Deno.serve(async (req: Request) => {
     .eq("campaign_id", campaignId)
     .maybeSingle();
   if (!member) {
-    return reply({ status: "error", message: "Not a member of this campaign." });
+    return reply({ status: "error", message: "Not a member of this campaign.", requestCount: 0 });
   }
 
   // Budget: check BEFORE spending. Hitting our own ceiling gives a clean
   // refusal with a reset time; hitting the provider's gives a 429 mid-scene.
   const since = lastPacificMidnight();
-  const { data: spent } = await supabase.rpc("gm_requests_since", {
+  const { data: budgetRows } = await supabase.rpc("gm_budget_since", {
+    p_campaign_id: campaignId,
     p_since: since.toISOString(),
   });
-  const used = Number(spent ?? 0);
+  const row = (Array.isArray(budgetRows) ? budgetRows[0] : budgetRows) as
+    { campaign_used?: number; user_used?: number } | null;
+  const used = Number(row?.campaign_used ?? 0);
+  const yours = Number(row?.user_used ?? 0);
 
   // A probe reads the counter and stops. No model call, no telemetry
   // row, no provider request spent — it exists so the UI can show an
@@ -145,20 +165,29 @@ Deno.serve(async (req: Request) => {
       message: "",
       requestCount: 0,
       providerMode,
-      budget: { used, limit: DAILY_BUDGET },
+      budget: { used, limit: DAILY_BUDGET, yours, yourLimit: PLAYER_CAP },
     });
   }
 
-  if (used + MAX_ROUNDTRIPS + 1 > DAILY_BUDGET) {
-    await record(supabase, campaignId, sessionId, "budget_exhausted", 0, null);
+  // Two ceilings, and the tighter one wins. The campaign cap protects the
+  // provider key; the player cap protects everyone else at the table from
+  // whoever asks the most questions.
+  const worstCase = MAX_ROUNDTRIPS + 1;
+  const overCampaign = used + worstCase > DAILY_BUDGET;
+  const overPlayer = yours + worstCase > PLAYER_CAP;
+  if (overCampaign || overPlayer) {
+    await record(supabase, campaignId, sessionId, "budget_exhausted", 0, { mode });
     return reply({
       status: "budget_exhausted",
-      message: "Daily GM budget reached. You can still write your journal by hand.",
+      mode,
+      message: overPlayer && !overCampaign
+        ? "You've used your share of today's GM budget. You can still write your journal by hand."
+        : "The table's daily GM budget is spent. You can still write your journal by hand.",
       requestCount: 0,
       providerMode,
       // Same shape on every path — the client reads budget.used /
       // budget.limit and must never get a bare number here.
-      budget: { used, limit: DAILY_BUDGET },
+      budget: { used, limit: DAILY_BUDGET, yours, yourLimit: PLAYER_CAP },
       resetsAt: new Date(since.getTime() + 86_400_000).toISOString(),
     });
   }
@@ -200,6 +229,11 @@ Deno.serve(async (req: Request) => {
         .from("gm_chat")
         .select("role, body")
         .eq("campaign_id", campaignId)
+        // RLS already restricts this to the caller's own rows, but the
+        // filter is explicit so the intent survives a future policy
+        // change: your follow-up must never attach to someone else's
+        // question.
+        .eq("user_id", userData.user.id)
         .order("created_at", { ascending: false })
         .limit(RULES_HISTORY);
       for (const m of ((history ?? []) as { role: string; body: string }[]).reverse()) {
@@ -273,7 +307,10 @@ Deno.serve(async (req: Request) => {
     message: text || messageFor(status),
     requestCount: requests,
     providerMode,
-    budget: { used: used + requests, limit: DAILY_BUDGET },
+    budget: {
+      used: used + requests, limit: DAILY_BUDGET,
+      yours: yours + requests, yourLimit: PLAYER_CAP,
+    },
     context: contextStats,
   });
 });

@@ -15,8 +15,15 @@ export type GmTurnStatus =
   | 'error'
 
 export interface GmBudget {
+  /** Campaign-wide spend today. Everyone at the table draws on one
+   * provider key, so this — not your own usage — is the real ceiling. */
   used: number
   limit: number
+  /** Your own slice of it. Equal to the campaign limit while you're
+   * playing solo, which is why the counter reads the same either way
+   * until someone else joins. */
+  yours?: number
+  yourLimit?: number
 }
 
 /** `play` is in-fiction and lands in the journal. `rules` is
