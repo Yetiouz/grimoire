@@ -41,6 +41,15 @@ interface RollResultProps {
  * here doesn't touch that governance — it was never grid-bound to begin
  * with, just drawn at grid size by habit.
  *
+ * That hero size is now responsive (56px by default, the full 80px only
+ * from `xl:` up — this app's existing mobile/desktop split): the
+ * `dice-roll` keyframe (index.css) both scales up to 1.1x and rotates
+ * the glyph mid-spin, and on a real phone the flat 80px box plus that
+ * overshoot was wide enough to crowd the narrow mobile sheet. `xl:` is
+ * the same breakpoint `Overlay`'s own `'sheet'` variant already switches
+ * on, so the icon steps up to hero size exactly when the overlay itself
+ * switches to its roomier desktop dialog treatment, not before.
+ *
  * Layout (owner's second round of feedback on this same card): a title
  * comes first — the die notation once a result exists ("2d6", "2d20
  * kept"), falling back to just the selected die ("d20") while rolling
@@ -72,7 +81,7 @@ export function RollResult({ rolling, die, result, modifier, flickerTotal, class
       )}
     >
       <span className={text.label}>{notation}</span>
-      <DieIcon die={die} rolling={rolling} className="h-20 w-20 text-purple" />
+      <DieIcon die={die} rolling={rolling} className="h-14 w-14 text-purple xl:h-20 xl:w-20" />
       {rolling ? (
         // Flicker only — never the real result. The actual server total
         // (and the formatted log text below it) only ever appears once
