@@ -161,13 +161,47 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     setEntries((prev) => [...(prev ?? []), entry])
   }
 
-  // Slice 16 phase 1. Same thin-wrapper boundary as handleRollDice
-  // below: the composer never touches Supabase itself. Note there is no
-  // try/catch and no setError — `askGm` never rejects, and a GM failure
-  // is deliberately not a screen-level error. It renders inside the
-  // composer and leaves everything else, Log mode included, working.
+  // Slice 16. Same thin-wrapper boundary as handleRollDice below: the
+  // composer never touches Supabase itself. Note there is no try/catch and
+  // no setError — `askGm` never rejects, and a GM failure is deliberately
+  // not a screen-level error. It renders inside the composer and leaves
+  // everything else, Log mode included, working.
+  //
+  // A successful reply is written into the journal as a `narration` entry
+  // authored by the GM — the same shape the imported GM entries already
+  // have, so it reads as part of the campaign rather than a side channel.
+  // Owner's decision, overriding the earlier show-and-forget behaviour.
+  //
+  // Two consequences worth knowing. Out-of-character questions ("remind me
+  // who X is") get logged too, because the GM has no way yet to say which
+  // of its replies is narration and which is a lookup — phase 3's
+  // `log_journal_entry` tool is what lets it make that call itself. And
+  // journal entries can be amended but never deleted, so a reply logged in
+  // error is corrected, not removed.
+  //
+  // The logging failure is swallowed on purpose: the GM already answered,
+  // and losing the entry is much better than surfacing an error over a
+  // reply the player can still read in the composer.
   async function handleAskGm(input: string) {
-    return askGm(campaign.id, openSession?.id ?? null, input)
+    const result = await askGm(campaign.id, openSession?.id ?? null, input)
+
+    if (result.status === 'ok' && result.message.trim() && openSession) {
+      try {
+        const entry = await logJournalEntry({
+          campaignId: campaign.id,
+          sessionId: openSession.id,
+          kind: 'narration',
+          body: result.message.trim(),
+          actorName: 'GM',
+        })
+        setEntries((prev) => [...(prev ?? []), entry])
+        return { ...result, logged: true }
+      } catch {
+        return { ...result, logged: false }
+      }
+    }
+
+    return result
   }
 
   // Thin wrapper so DiceRoller never touches Supabase directly (same

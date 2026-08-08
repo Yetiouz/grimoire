@@ -32,6 +32,11 @@ export interface GmTurnResult {
   providerMode?: string
   budget?: GmBudget
   resetsAt?: string
+  /** Set by the screen, not the edge function: whether a successful reply
+   * made it into the journal. `false` means the GM answered but the entry
+   * write failed, which the composer surfaces rather than losing silently.
+   * Undefined for every non-`ok` status. */
+  logged?: boolean
 }
 
 /** Client-side ceiling, deliberately slightly longer than the edge

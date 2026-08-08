@@ -102,8 +102,13 @@ export function JournalComposer({
     try {
       if (gmMode && onAskGm) {
         const result = await onAskGm(trimmed)
-        setReply(result)
         if (result.budget) setBudget(result.budget)
+        // A reply that reached the journal needs no strip — it is already
+        // in the feed above, and showing it twice reads as a duplicate.
+        // Everything else (brakes, budget, errors, and the case where the
+        // GM answered but the journal write failed) still surfaces here,
+        // because none of those land anywhere the player would see them.
+        setReply(result.status === 'ok' && result.logged ? null : result)
         // Only clear the box on a real answer — if a brake fired or the
         // budget ran out, the player hasn't had their turn yet and
         // shouldn't have to retype it.
