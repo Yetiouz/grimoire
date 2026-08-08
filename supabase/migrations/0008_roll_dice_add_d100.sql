@@ -14,7 +14,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path = public, pg_temp
-as $
+as $$
 declare
   v_uid uuid := auth.uid();
   v_faces int;
@@ -90,7 +90,7 @@ begin
     'total', v_total
   );
 end;
-$;
+$$;
 
 grant execute on function roll_dice(uuid, text, int, text) to authenticated;
 revoke execute on function roll_dice(uuid, text, int, text) from public;
