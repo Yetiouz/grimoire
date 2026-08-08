@@ -126,7 +126,19 @@ export function Overlay({ open, onClose, header, children, width = 'default', va
             Close<span className="hidden sm:inline"> · Esc</span>
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-4 pb-6 pt-4 sm:px-6">{children}</div>
+        {/* `min-h-0` (bug fix): a `flex-1` child in a flex column
+         * defaults to `min-height: auto`, which means it won't actually
+         * shrink below its own content's height — so `overflow-y-auto`
+         * here never had anything to scroll, and the panel's own
+         * `max-h-[85vh]`/`overflow-hidden` was hard-clipping whatever
+         * didn't fit instead, with no scrollbar and nothing peeking
+         * through. That's what read as the roll result and the Roll
+         * Again/Log buttons "not showing up" on a real phone once the
+         * Die/Count/Mode/Modifier controls plus a settled result no
+         * longer fit in 85vh. `min-h-0` lets this box actually shrink
+         * to the space the header leaves it, which is what makes
+         * `overflow-y-auto` engage at all. */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-4 sm:px-6">{children}</div>
       </div>
     </div>
   )
