@@ -9,7 +9,7 @@ export function LogEntrySection() {
       number="013"
       group="Components"
       title="Log Entries"
-      description="The scene log / party chat row — five entry kinds from Journal v1's taxonomy (journal-mockup.html, repo root). Sender color is per-character data (SPEC's 'one PC color everywhere' rule), applied inline rather than as a Tailwind class; narration and system entries mute it to a fixed ink-dim/ink-faint tone since they speak in the GM/system voice, not a character's."
+      description="The scene log / party chat row — six entry kinds: Journal v1's original five (journal-mockup.html, repo root) plus 'rules', added for BOB_queue task 1's unified feed. Sender color is per-character data (SPEC's 'one PC color everywhere' rule), applied inline rather than as a Tailwind class; only system entries mute it to a fixed ink-dim tone, since that's the one kind that always speaks in a fixed system voice — narration follows senderColor like any other kind, so AI GM narration can render in its own cyan while a hand-typed entry with no real actor_color still falls back to the same muted gray it always had. Rules entries are gm_chat exchanges merged into the feed for display only — never a real journal_entries row — both the question and the answer get the same quiet orange-tinted card, so an exchange reads as one digression at a glance."
     >
       <div className="flex flex-col gap-2">
         <Specimen tag="LOG_ENTRY_ROW" state="NARRATION">
@@ -59,6 +59,16 @@ export function LogEntrySection() {
             message="Torch burns low — 38 minutes remaining."
             timestamp="9:18 pm"
             kind="system"
+            className="w-full"
+          />
+        </Specimen>
+        <Specimen tag="LOG_ENTRY_ROW" state="RULES" tone="orange">
+          <LogEntryRow
+            senderName="Rules"
+            senderColor="#ff8a3d"
+            message="A shield gives +1 AC and can't stack with a second shield — see page 12."
+            timestamp="9:21 pm"
+            kind="rules"
             className="w-full"
           />
         </Specimen>

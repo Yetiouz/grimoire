@@ -1,19 +1,26 @@
 import { Fragment, useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { LogEntryRow } from '../ui/LogEntryRow'
-import type { LogEntryKind } from '../ui/LogEntryRow'
 import { SceneDivider } from '../ui/SceneDivider'
 import { EmptyState } from '../ui/EmptyState'
-import type { CampaignSession, JournalEntry } from '../../lib/campaigns'
+import type { CampaignSession } from '../../lib/campaigns'
+import type { FeedItem } from '../../lib/feed'
 
 interface JournalFeedProps {
-  entries: JournalEntry[]
+  /** BOB_queue task 1: render-ready rows, already merged from
+   * journal_entries and gm_chat and sorted by created_at (see
+   * lib/feed.ts's buildFeed()) — JournalFeed itself has no idea some of
+   * these came from a different table, which is what keeps it filter-
+   * driven and source-agnostic rather than growing gm_chat awareness of
+   * its own. Was `entries: JournalEntry[]` before this task; every call
+   * site now passes the merged array instead. */
+  items: FeedItem[]
   sessions: CampaignSession[]
-  /** Lets the host screen scope which entries render (e.g. a future
-   * GM-only view) without JournalFeed drawing any filter UI itself —
-   * the component stays filter-driven, not filter-owning. Omit to show
-   * every entry passed in. */
-  filter?: (entry: JournalEntry) => boolean
+  /** Lets the host screen scope which items render (JournalFilterBar's
+   * mute chips, or a future GM-only view) without JournalFeed drawing
+   * any filter UI itself — the component stays filter-driven, not
+   * filter-owning. Omit to show every item passed in. */
+  filter?: (item: FeedItem) => boolean
   /** Rendered below the feed. A ReactNode, not a fixed slot for
    * JournalComposer specifically — the component boundary is "entries +
    * session dividers + optional composer," not "entries + THE
@@ -41,8 +48,8 @@ function sessionLabel(session: CampaignSession): string {
  * player table, GM dashboard, and session review (twice on one screen
  * once party chat arrives). Page chrome like the campaign header stays
  * with the host screen, not here. */
-export function JournalFeed({ entries, sessions, filter, composer, className }: JournalFeedProps) {
-  const visible = filter ? entries.filter(filter) : entries
+export function JournalFeed({ items, sessions, filter, composer, className }: JournalFeedProps) {
+  const visible = filter ? items.filter(filter) : items
   const bottomRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to the newest entry, just above the composer (the
@@ -72,29 +79,32 @@ export function JournalFeed({ entries, sessions, filter, composer, className }: 
   return (
     <div className={className}>
       <div className="flex flex-col gap-2">
-        {visible.map((entry, index) => {
-          const session = sessionById.get(entry.session_id)
-          // Divider shows whenever this entry starts a new session run —
-          // derived from the previous array entry rather than an outer
+        {visible.map((item, index) => {
+          const session = item.session_id ? sessionById.get(item.session_id) : undefined
+          // Divider shows whenever this item starts a new session run —
+          // derived from the previous array item rather than an outer
           // `let` mutated during the map (the prior shape), which
           // react-hooks/immutability now flags as a render-time mutation
           // even though it was harmless here (recomputed fresh every
           // render). Reading `visible[index - 1]` instead keeps the same
-          // result with no mutable state at all.
+          // result with no mutable state at all. Works the same for a
+          // rules item as a journal entry — its session_id is inferred
+          // (lib/feed.ts) rather than stored, but by the time it reaches
+          // here it's just a session_id like any other.
           const previousSessionId = index > 0 ? visible[index - 1].session_id : null
-          const showDivider = Boolean(session) && entry.session_id !== previousSessionId
+          const showDivider = Boolean(session) && item.session_id !== previousSessionId
           return (
-            <Fragment key={entry.id}>
+            <Fragment key={item.id}>
               {showDivider && session && <SceneDivider className="my-3">{sessionLabel(session)}</SceneDivider>}
               <LogEntryRow
-                senderName={entry.actor_name}
-                senderColor={entry.actor_color ?? FALLBACK_COLOR}
-                message={entry.body}
-                timestamp={new Date(entry.created_at).toLocaleTimeString(undefined, {
+                senderName={item.senderName}
+                senderColor={item.senderColor ?? FALLBACK_COLOR}
+                message={item.body}
+                timestamp={new Date(item.created_at).toLocaleTimeString(undefined, {
                   hour: 'numeric',
                   minute: '2-digit',
                 })}
-                kind={entry.kind as LogEntryKind}
+                kind={item.kind}
               />
             </Fragment>
           )

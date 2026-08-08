@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ColumnCard } from '../../components/ui/ColumnCard'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
 import { Skeleton, SkeletonGroup } from '../../components/ui/Skeleton'
 import { text } from '../../lib/typography'
 import { JournalFeed } from '../../components/domain/JournalFeed'
+import { JournalFilterBar, ALL_FILTER_KINDS } from '../../components/domain/JournalFilterBar'
+import type { FilterKind } from '../../components/domain/JournalFilterBar'
 import { JournalComposer } from '../../components/domain/JournalComposer'
 import { JournalHeader } from '../../components/domain/JournalHeader'
 import { PlayerCard } from '../../components/domain/PlayerCard'
@@ -15,6 +17,8 @@ import { ToolsDock } from '../../components/domain/ToolsDock'
 import { MobileJournalView } from '../../components/domain/MobileJournalView'
 import { RulesChat } from '../../components/domain/RulesChat'
 import type { LogEntryKind } from '../../components/ui/LogEntryRow'
+import type { FeedItem } from '../../lib/feed'
+import { useJournalFeed } from '../../hooks/useJournalFeed'
 import { endSession, listJournalEntries, listSessions, logJournalEntry, startSession } from '../../lib/campaigns'
 import type { Campaign, CampaignSession, JournalEntry } from '../../lib/campaigns'
 import { listCharacters } from '../../lib/characters'
@@ -38,6 +42,13 @@ interface JournalScreenProps {
  * constant used to paper over entirely. */
 const FALLBACK_PLAYER_COLOR = '#9b5cff'
 
+/** BOB_queue task 1: "GM entries currently carry no actor_color, so
+ * set it when logging (JournalScreen.handleAskGm) and let LogEntryRow
+ * do the rest." Matches index.css's `--color-cyan` and the gm-composer
+ * mockup's own cyan Ask GM identity — the same accent everywhere the
+ * GM already has a color, just now reaching the journal entry too. */
+const GM_CYAN = '#35f0ff'
+
 /** Screen 2 of Journal v1 (SPEC): the journal, built around the
  * reusable JournalFeed. Page chrome (campaign header, "Start session",
  * the party row) lives here, not in the component — JournalFeed itself
@@ -53,6 +64,13 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   const [openCharacter, setOpenCharacter] = useState<Character | null>(null)
   const [diceOpen, setDiceOpen] = useState(false)
   const [rulesOpen, setRulesOpen] = useState(false)
+  // BOB_queue task 1: which kinds show in the desktop feed — every chip
+  // lit by default. Independent from MobileJournalView's own copy of
+  // this same state; desktop and mobile were never asked to mirror each
+  // other's filter choice, only for a filter to "survive switching tabs
+  // on mobile" (an intra-mobile-shell requirement MobileJournalView
+  // satisfies on its own by never unmounting across tab switches).
+  const [activeFilters, setActiveFilters] = useState<Set<FilterKind>>(() => new Set(ALL_FILTER_KINDS))
 
   // useCallback so the load-on-mount effect can honestly list `load` as
   // its dependency (react-hooks/exhaustive-deps runs at --max-warnings=0
@@ -117,6 +135,29 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   // shows rather than inventing scene text.
   const journalColumnLabel = headerSession?.title ?? sessionMeta
 
+  // BOB_queue task 1: the unified feed. Owns the gm_chat read and the
+  // entries+gm_chat merge — see hooks/useJournalFeed.ts for why this
+  // isn't just inlined here (this file was already over CLAUDE.md's
+  // ~300-line cap before task 1 touched it).
+  const { feedItems, refetchRules } = useJournalFeed(campaign.id, gmEnabled, authorName, entries, sessions)
+
+  function toggleFilter(kind: FilterKind) {
+    setActiveFilters((prev) => {
+      const next = new Set(prev)
+      if (next.has(kind)) next.delete(kind)
+      else next.add(kind)
+      return next
+    })
+  }
+
+  // System entries have no chip and are never muted — see
+  // JournalFilterBar's own comment. Every other kind checks membership
+  // in the active set.
+  const feedFilter = useMemo(
+    () => (item: FeedItem) => item.kind === 'system' || activeFilters.has(item.kind as FilterKind),
+    [activeFilters],
+  )
+
   async function handleStartSession() {
     setStartingSession(true)
     try {
@@ -174,6 +215,13 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   // have, so it reads as part of the campaign rather than a side channel.
   // Owner's decision, overriding the earlier show-and-forget behaviour.
   //
+  // BOB_queue task 1: `actorColor` is now set to GM_CYAN rather than left
+  // undefined — previously it didn't matter because LogEntryRow forced
+  // every narration entry to the same muted ink-dim regardless of color;
+  // now that that override is gone (LogEntryRow.tsx), this is what
+  // actually makes AI GM narration render in its own color instead of
+  // falling back to the same gray a hand-typed narration entry gets.
+  //
   // Two consequences worth knowing. Out-of-character questions ("remind me
   // who X is") get logged too, because the GM has no way yet to say which
   // of its replies is narration and which is a lookup — phase 3's
@@ -195,6 +243,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
           kind: 'narration',
           body: result.message.trim(),
           actorName: 'GM',
+          actorColor: GM_CYAN,
         })
         setEntries((prev) => [...(prev ?? []), entry])
         return { ...result, logged: true }
@@ -210,9 +259,14 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   // deliberately no journal write on this path: a rules answer is table
   // talk, and the whole point of the separation is that it cannot end up
   // in the campaign record. It persists to `gm_chat` server-side and is
-  // read back from Tools -> Rules.
+  // read back from Tools -> Rules, and (BOB_queue task 1) merged into the
+  // unified feed for display via useJournalFeed's refetchRules — the
+  // edge function writes the new gm_chat rows itself, so the client has
+  // to re-read rather than echo a result it was never given.
   async function handleAskRules(input: string) {
-    return askGm(campaign.id, openSession?.id ?? null, input, 'rules')
+    const result = await askGm(campaign.id, openSession?.id ?? null, input, 'rules')
+    if (result.status === 'ok') void refetchRules()
+    return result
   }
 
   // Thin wrapper so DiceRoller never touches Supabase directly (same
@@ -293,10 +347,16 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
         )}
 
         {/* CENTER: the journal card — sticky header, internally
-          * scrolling feed, composer pinned to the card's foot. */}
+          * scrolling feed, composer pinned to the card's foot.
+          * BOB_queue task 1: JournalFilterBar sits above the feed,
+          * inside the same scrolling body — ColumnCard has no separate
+          * pinned sub-header slot, so it scrolls away with the rest of
+          * the content rather than staying fixed; a pinned treatment
+          * would need a new ColumnCard slot, which felt like more scope
+          * than this task asked for. */}
         <ColumnCard
           headerLeft={journalColumnLabel}
-          bodyClassName="gap-4"
+          bodyClassName="gap-3"
           footer={
             <JournalComposer
               onLog={(kind, body) => handleLog(kind, body)}
@@ -318,7 +378,12 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
             </SkeletonGroup>
           )}
 
-          {sessions !== null && entries !== null && <JournalFeed entries={entries} sessions={sessions} />}
+          {sessions !== null && entries !== null && (
+            <>
+              <JournalFilterBar active={activeFilters} onToggle={toggleFilter} showRules={gmEnabled} />
+              <JournalFeed items={feedItems} sessions={sessions} filter={feedFilter} />
+            </>
+          )}
         </ColumnCard>
 
         {/* RIGHT: quest card — same shell, independent scroll. */}
@@ -355,7 +420,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
           characters={characters ?? []}
           quests={quests ?? []}
           sessions={sessions ?? []}
-          entries={entries ?? []}
+          items={feedItems}
           sessionOpen={Boolean(openSession)}
           onLog={(kind, body) => handleLog(kind, body)}
           gmEnabled={gmEnabled}

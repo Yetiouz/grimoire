@@ -1,7 +1,7 @@
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 
-export type LogEntryKind = 'narration' | 'action' | 'roll' | 'note' | 'system'
+export type LogEntryKind = 'narration' | 'action' | 'roll' | 'note' | 'system' | 'rules'
 
 interface LogEntryRowProps {
   senderName: string
@@ -9,9 +9,13 @@ interface LogEntryRowProps {
    * Required, not defaulted — every real entry has an owner. Applied via
    * inline style rather than a Tailwind class: this is arbitrary
    * per-character data, not one of the six fixed palette tones, so
-   * Tailwind can't generate a class for it at build time. Ignored for
-   * 'narration'/'system' kinds — the mockup renders the GM/System voice
-   * in a fixed muted tone regardless of who's speaking. */
+   * Tailwind can't generate a class for it at build time. Ignored only
+   * for 'system' — the mockup renders that voice in a fixed muted tone
+   * regardless of who's speaking. 'narration' USED to be muted the same
+   * way; task 1 (BOB_queue) lifted that so AI GM narration can render in
+   * its own cyan while a hand-typed narration entry with no real
+   * actor_color still falls back to the same muted gray it always had
+   * (JournalFeed's FALLBACK_COLOR is already close to ink-faint). */
   senderColor: string
   message: string
   timestamp?: string
@@ -24,14 +28,19 @@ const tagLabel: Partial<Record<LogEntryKind, string>> = {
   note: 'note',
 }
 
-/** Scene log / party chat row — five entry kinds per Journal v1's
- * taxonomy (SPEC.md; journal-mockup.html in the repo root is the
- * approved visual spec): narration (GM voice, quiet panel card, muted
- * text), action (a character speaks/acts — the plain default), roll
- * (action plus a ROLL tag; v1 rolls are hand-typed text, no dice engine
- * yet), note (NOTE tag, notes-to-future-self), system (receded style —
- * auto-generated from ledger events in later slices, manually
- * creatable in v1 for imports).
+/** Scene log / party chat row — six entry kinds now (SPEC.md's original
+ * five plus 'rules', added for BOB_queue task 1's unified feed;
+ * journal-mockup.html in the repo root is the approved visual spec for
+ * the original five): narration (GM voice, quiet panel card — color now
+ * follows senderColor rather than being forced, see above), action (a
+ * character speaks/acts — the plain default), roll (action plus a ROLL
+ * tag; v1 rolls are hand-typed text, no dice engine yet), note (NOTE
+ * tag, notes-to-future-self), system (receded style — auto-generated
+ * from ledger events in later slices, manually creatable in v1 for
+ * imports), rules (out-of-character gm_chat exchange merged into the
+ * feed for display only — never a real journal_entries row — a quiet
+ * orange-tinted card, same treatment on both the question and the
+ * answer so an exchange reads as one digression at a glance).
  *
  * Audit-fix from the original 3-kind version: 'system' used to carry
  * the panel-card background that the mockup actually specifies for
@@ -47,7 +56,7 @@ export function LogEntryRow({
   kind = 'action',
   className,
 }: LogEntryRowProps) {
-  const muted = kind === 'narration' || kind === 'system'
+  const muted = kind === 'system'
   const dotColor = muted ? 'var(--color-ink-faint)' : senderColor
   const nameColor = muted ? 'var(--color-ink-dim)' : senderColor
   const tag = tagLabel[kind]
@@ -57,6 +66,7 @@ export function LogEntryRow({
       className={cx(
         'rounded-lg px-3 py-2',
         kind === 'narration' && 'border border-line-soft bg-panel',
+        kind === 'rules' && 'border border-orange/25 bg-orange/[0.06]',
         kind === 'system' && 'opacity-[0.85]',
         className,
       )}
