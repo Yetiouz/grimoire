@@ -32,6 +32,12 @@ export interface ContextStats {
 export interface BuiltContext {
   text: string;
   stats: ContextStats;
+  /** Which system pack to load — from campaigns.system, the column that
+   * has been waiting since migration 0001 for exactly this. */
+  system: string;
+  /** The campaign's world-facts brief (campaigns.canon). Campaign data,
+   * not system data; null for a campaign that hasn't written one yet. */
+  canon: string | null;
 }
 
 export async function buildContext(
@@ -47,7 +53,7 @@ export async function buildContext(
   // Parallel: these are independent reads and the turn is latency-bound.
   const [campaignRes, sessionRes, charRes, questRes, npcRes, factionRes, treasureRes, entryRes] =
     await Promise.all([
-      supabase.from("campaigns").select("name, system").eq("id", campaignId).maybeSingle(),
+      supabase.from("campaigns").select("name, system, canon").eq("id", campaignId).maybeSingle(),
       supabase.from("sessions").select("number, title, started_at")
         .eq("campaign_id", campaignId).is("ended_at", null).maybeSingle(),
       supabase.from("characters").select(
@@ -72,7 +78,7 @@ export async function buildContext(
         : Promise.resolve({ data: [] }),
     ]);
 
-  const campaign = campaignRes.data as { name?: string; system?: string } | null;
+  const campaign = campaignRes.data as { name?: string; system?: string; canon?: string | null } | null;
   const session = sessionRes.data as { number?: number; title?: string } | null;
   const characters = (charRes.data ?? []) as Record<string, unknown>[];
   const quests = (questRes.data ?? []) as Record<string, unknown>[];
@@ -149,6 +155,8 @@ ${rendered.length === 0 ? "(empty)" : rendered.join("\n")}`);
 
   return {
     text: parts.join("\n\n"),
+    system: campaign?.system ?? "shadowdark",
+    canon: campaign?.canon ?? null,
     stats: {
       characters: characters.length,
       quests: openQuests.length,

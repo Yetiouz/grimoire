@@ -24,10 +24,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { complete, type Message, providerMode } from "./provider.ts";
 import { buildContext } from "./context.ts";
-import {
-  CANON, ENCOUNTER_TREASURE, HOUSE_RULES, PERSONA, PROTOCOL,
-  QUICK_REFERENCE, RULES_ASSISTANT, TRANSLATION,
-} from "./prompt.ts";
+import { PROTOCOL, RULES_ASSISTANT, TRANSLATION } from "./prompt.ts";
 
 /** How many prior rules-chat messages to carry. Enough that a follow-up
  * ("what about with the house rule?") works, small enough that a long
@@ -210,14 +207,50 @@ Deno.serve(async (req: Request) => {
     const context = await buildContext(supabase, campaignId, sessionId, mode === "play");
     contextStats = context.stats;
 
+    // The system pack: the per-game text (persona, rules references, house
+    // rules) as database rows, keyed by campaigns.system. This is the
+    // multi-system seam cashed in — Mörk Borg is an INSERT, and editing the
+    // GM's voice is a SQL update applied here on the very next turn.
+    const { data: packData } = await supabase
+      .from("system_packs")
+      .select("section, body, use_in_play, use_in_rules, sort_order")
+      .eq("system", context.system)
+      .order("sort_order");
+    const pack = (packData ?? []) as
+      { section: string; body: string; use_in_play: boolean; use_in_rules: boolean }[];
+
+    if (pack.length === 0) {
+      // Fail loud, not vague: a GM running with no persona and no rules
+      // reference would still produce fluent text, which is worse than an
+      // error because it would be believed.
+      clearTimeout(timer);
+      await record(supabase, campaignId, sessionId, "error", 0, {
+        errMsg: `no system pack for '${context.system}'`, mode,
+      });
+      return reply({
+        status: "error",
+        mode,
+        message: `No system pack is installed for '${context.system}', so the GM has no persona or rules to run with. Add rows to system_packs for this system.`,
+        requestCount: 0,
+        providerMode,
+        budget: { used, limit: DAILY_BUDGET, yours, yourLimit: PLAYER_CAP },
+      });
+    }
+
+    const packPlay  = pack.filter((r) => r.use_in_play).map((r) => r.body);
+    const packRules = pack.filter((r) => r.use_in_rules).map((r) => r.body);
+
+    // Assembly order is unchanged from the hardcoded era — stable standing
+    // instructions first (the cacheable part on a paid key), the live
+    // database last so current facts sit closest to the question. Canon
+    // (campaigns.canon) joins in play mode only; rules mode never saw it.
     const system = mode === "rules"
-      // Rules mode swaps PERSONA for RULES_ASSISTANT rather than adding to
-      // it. Keeping the grimdark voice here would produce atmospheric
-      // rulings, which is the worst of both — it reads as authoritative
-      // and is harder to check.
-      ? [RULES_ASSISTANT, QUICK_REFERENCE, ENCOUNTER_TREASURE, HOUSE_RULES, context.text]
-        .join("\n\n---\n\n")
-      : [PERSONA, HOUSE_RULES, PROTOCOL, TRANSLATION, CANON, context.text]
+      // Rules mode swaps the persona for RULES_ASSISTANT rather than adding
+      // to it. Keeping the grimdark voice here would produce atmospheric
+      // rulings, which is the worst of both — it reads as authoritative and
+      // is harder to check.
+      ? [RULES_ASSISTANT, ...packRules, context.text].join("\n\n---\n\n")
+      : [...packPlay, PROTOCOL, TRANSLATION, ...(context.canon ? [context.canon] : []), context.text]
         .join("\n\n---\n\n");
 
     // Rules chat is a conversation; play is not. A play turn stands alone
