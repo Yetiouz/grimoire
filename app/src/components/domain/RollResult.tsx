@@ -41,14 +41,18 @@ interface RollResultProps {
  * here doesn't touch that governance — it was never grid-bound to begin
  * with, just drawn at grid size by habit.
  *
- * That hero size is now responsive (56px by default, the full 80px only
- * from `xl:` up — this app's existing mobile/desktop split): the
- * `dice-roll` keyframe (index.css) both scales up to 1.1x and rotates
- * the glyph mid-spin, and on a real phone the flat 80px box plus that
- * overshoot was wide enough to crowd the narrow mobile sheet. `xl:` is
- * the same breakpoint `Overlay`'s own `'sheet'` variant already switches
- * on, so the icon steps up to hero size exactly when the overlay itself
- * switches to its roomier desktop dialog treatment, not before.
+ * That hero size is responsive (this app's existing mobile/desktop
+ * split, `xl:`) rather than one fixed number, and has shrunk twice on
+ * the mobile side specifically: 80px flat first, then 56px, and now
+ * 40px, because the settled state adds a title line, the total, an
+ * optional dice-pip row, and the log text below the glyph — on a real
+ * phone that combined stack plus a still-sizable icon was tall enough
+ * to push content past the sheet's visible area right when a roll
+ * finished and the extra rows appeared, reading as "cut off" rather
+ * than just scrollable. `xl:` keeps the full 80px hero size, unchanged
+ * — that's the same breakpoint `Overlay`'s own `'sheet'` variant already
+ * switches on, so the icon only grows once the overlay itself has the
+ * roomier desktop dialog treatment to grow into.
  *
  * Layout (owner's second round of feedback on this same card): a title
  * comes first — the die notation once a result exists ("2d6", "2d20
@@ -81,7 +85,7 @@ export function RollResult({ rolling, die, result, modifier, flickerTotal, class
       )}
     >
       <span className={text.label}>{notation}</span>
-      <DieIcon die={die} rolling={rolling} className="h-14 w-14 text-purple xl:h-20 xl:w-20" />
+      <DieIcon die={die} rolling={rolling} className="h-10 w-10 text-purple xl:h-20 xl:w-20" />
       {rolling ? (
         // Flicker only — never the real result. The actual server total
         // (and the formatted log text below it) only ever appears once
