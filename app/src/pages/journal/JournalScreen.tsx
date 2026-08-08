@@ -13,6 +13,7 @@ import { QuestLogPanel } from '../../components/domain/QuestLogPanel'
 import { SessionAction } from '../../components/domain/SessionAction'
 import { ToolsDock } from '../../components/domain/ToolsDock'
 import { MobileJournalView } from '../../components/domain/MobileJournalView'
+import { RulesChat } from '../../components/domain/RulesChat'
 import type { LogEntryKind } from '../../components/ui/LogEntryRow'
 import { endSession, listJournalEntries, listSessions, logJournalEntry, startSession } from '../../lib/campaigns'
 import type { Campaign, CampaignSession, JournalEntry } from '../../lib/campaigns'
@@ -51,6 +52,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   const [endingSession, setEndingSession] = useState(false)
   const [openCharacter, setOpenCharacter] = useState<Character | null>(null)
   const [diceOpen, setDiceOpen] = useState(false)
+  const [rulesOpen, setRulesOpen] = useState(false)
 
   // useCallback so the load-on-mount effect can honestly list `load` as
   // its dependency (react-hooks/exhaustive-deps runs at --max-warnings=0
@@ -204,6 +206,15 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     return result
   }
 
+  // The out-of-character surface. Same call, different mode — and
+  // deliberately no journal write on this path: a rules answer is table
+  // talk, and the whole point of the separation is that it cannot end up
+  // in the campaign record. It persists to `gm_chat` server-side and is
+  // read back from Tools -> Rules.
+  async function handleAskRules(input: string) {
+    return askGm(campaign.id, openSession?.id ?? null, input, 'rules')
+  }
+
   // Thin wrapper so DiceRoller never touches Supabase directly (same
   // component-boundary rule PlayerCard/CharacterSheet already follow) —
   // it just calls this prop and gets a typed result back.
@@ -272,7 +283,11 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
               ))}
             </ColumnCard>
             <ColumnCard headerLeft="Tools">
-              <ToolsDock onOpenDice={() => setDiceOpen(true)} diceDisabled={!openSession} />
+              <ToolsDock
+                onOpenDice={() => setDiceOpen(true)}
+                diceDisabled={!openSession}
+                onOpenRules={gmEnabled ? () => setRulesOpen(true) : undefined}
+              />
             </ColumnCard>
           </div>
         )}
@@ -288,6 +303,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
               sessionOpen={Boolean(openSession)}
               gmEnabled={gmEnabled}
               onAskGm={handleAskGm}
+              onAskRules={handleAskRules}
               campaignId={campaign.id}
             />
           }
@@ -344,7 +360,9 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
           onLog={(kind, body) => handleLog(kind, body)}
           gmEnabled={gmEnabled}
           onAskGm={handleAskGm}
+          onAskRules={handleAskRules}
           campaignId={campaign.id}
+          onOpenRules={gmEnabled ? () => setRulesOpen(true) : undefined}
           onOpenCharacter={setOpenCharacter}
           onOpenDice={() => setDiceOpen(true)}
         />
@@ -356,6 +374,8 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
         onClose={() => setOpenCharacter(null)}
         onUpdate={handleCharacterUpdate}
       />
+
+      <RulesChat open={rulesOpen} campaignId={campaign.id} onClose={() => setRulesOpen(false)} />
 
       <DiceRoller
         open={diceOpen}

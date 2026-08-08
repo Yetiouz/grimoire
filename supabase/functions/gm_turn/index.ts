@@ -16,7 +16,15 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { complete, type Message, providerMode } from "./provider.ts";
 import { buildContext } from "./context.ts";
-import { CANON, HOUSE_RULES, PERSONA, PROTOCOL, TRANSLATION } from "./prompt.ts";
+import {
+  CANON, ENCOUNTER_TREASURE, HOUSE_RULES, PERSONA, PROTOCOL,
+  QUICK_REFERENCE, RULES_ASSISTANT, TRANSLATION,
+} from "./prompt.ts";
+
+/** How many prior rules-chat messages to carry. Enough that a follow-up
+ * ("what about with the house rule?") works, small enough that a long
+ * chat doesn't grow without limit. */
+const RULES_HISTORY = Number(Deno.env.get("GM_RULES_HISTORY") ?? "20");
 
 const MAX_ROUNDTRIPS = Number(Deno.env.get("GM_MAX_ROUNDTRIPS") ?? "4");
 const TURN_TIMEOUT_MS = Number(Deno.env.get("GM_TURN_TIMEOUT_MS") ?? "60000");
@@ -92,12 +100,14 @@ Deno.serve(async (req: Request) => {
   }
 
   let campaignId: string, sessionId: string | null, input: string, probe: boolean;
+  let mode: "play" | "rules";
   try {
     const body = await req.json();
     campaignId = String(body.campaignId ?? "");
     sessionId = body.sessionId ? String(body.sessionId) : null;
     input = String(body.input ?? "");
     probe = body.probe === true;
+    mode = body.mode === "rules" ? "rules" : "play";
     if (!campaignId) throw new Error("campaignId required");
     if (!probe && !input) throw new Error("input required");
   } catch (e) {
@@ -157,7 +167,7 @@ Deno.serve(async (req: Request) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TURN_TIMEOUT_MS);
 
-  const messages: Message[] = [{ role: "user", content: input }];
+  const messages: Message[] = [];
   const transcript: unknown[] = [];
   const seen = new Set<string>();
   let requests = 0, inTok = 0, outTok = 0;
@@ -168,10 +178,35 @@ Deno.serve(async (req: Request) => {
     // Order matters: standing instructions first (stable, and the part
     // worth caching on a paid key), then the live database last so the
     // most current facts sit closest to the question.
-    const context = await buildContext(supabase, campaignId, sessionId);
+    const context = await buildContext(supabase, campaignId, sessionId, mode === "play");
     contextStats = context.stats;
-    const system = [PERSONA, HOUSE_RULES, PROTOCOL, TRANSLATION, CANON, context.text]
-      .join("\n\n---\n\n");
+
+    const system = mode === "rules"
+      // Rules mode swaps PERSONA for RULES_ASSISTANT rather than adding to
+      // it. Keeping the grimdark voice here would produce atmospheric
+      // rulings, which is the worst of both — it reads as authoritative
+      // and is harder to check.
+      ? [RULES_ASSISTANT, QUICK_REFERENCE, ENCOUNTER_TREASURE, HOUSE_RULES, context.text]
+        .join("\n\n---\n\n")
+      : [PERSONA, HOUSE_RULES, PROTOCOL, TRANSLATION, CANON, context.text]
+        .join("\n\n---\n\n");
+
+    // Rules chat is a conversation; play is not. A play turn stands alone
+    // because its continuity lives in the journal, which is already in the
+    // packet. A rules question needs its own recent history so follow-ups
+    // like "what about with the house rule?" resolve.
+    if (mode === "rules") {
+      const { data: history } = await supabase
+        .from("gm_chat")
+        .select("role, body")
+        .eq("campaign_id", campaignId)
+        .order("created_at", { ascending: false })
+        .limit(RULES_HISTORY);
+      for (const m of ((history ?? []) as { role: string; body: string }[]).reverse()) {
+        messages.push({ role: m.role, content: m.body });
+      }
+    }
+    messages.push({ role: "user", content: input });
 
     while (true) {
       // Brake 1 — round-trip cap.
@@ -214,12 +249,27 @@ Deno.serve(async (req: Request) => {
     clearTimeout(timer);
   }
 
+  // Persist the exchange BEFORE replying. A rules answer that reached the
+  // player but never reached the transcript would silently break the
+  // conversation's memory on the next question.
+  if (mode === "rules" && status === "ok" && text.trim()) {
+    try {
+      await supabase.rpc("gm_record_chat", {
+        p_campaign_id: campaignId, p_role: "user", p_body: input,
+      });
+      await supabase.rpc("gm_record_chat", {
+        p_campaign_id: campaignId, p_role: "assistant", p_body: text,
+      });
+    } catch (_) { /* best effort: the answer still returns */ }
+  }
+
   await record(supabase, campaignId, sessionId, status, requests, {
-    inTok, outTok, transcript, errMsg, contextStats,
+    inTok, outTok, transcript, errMsg, contextStats, mode,
   });
 
   return reply({
     status,
+    mode,
     message: text || messageFor(status),
     requestCount: requests,
     providerMode,
@@ -246,7 +296,7 @@ async function record(
   requests: number,
   extra: {
     inTok?: number; outTok?: number; transcript?: unknown[]; errMsg?: string | null;
-    contextStats?: unknown;
+    contextStats?: unknown; mode?: string;
   } | null,
 ) {
   // Telemetry is best-effort: a failure here must never fail the turn.
@@ -266,6 +316,7 @@ async function record(
         : null,
       p_inventions: null,
       p_error: extra?.errMsg ?? null,
+      p_mode: extra?.mode ?? "play",
     });
   } catch (_) { /* ignore */ }
 }

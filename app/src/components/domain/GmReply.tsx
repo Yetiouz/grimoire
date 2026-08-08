@@ -14,6 +14,9 @@ import type { GmTurnResult } from '../../lib/gm'
  * lost just because it couldn't be filed. */
 export function GmReply({ result, onDismiss }: { result: GmTurnResult; onDismiss: () => void }) {
   const unfiled = result.status === 'ok' && result.logged === false
+  // A rules answer is never 'unfiled' — it belongs in gm_chat, not the
+  // journal, so the strip is its normal home rather than a fallback.
+  const isRules = result.mode === 'rules'
 
   const tone =
     result.status === 'ok'
@@ -22,14 +25,18 @@ export function GmReply({ result, onDismiss }: { result: GmTurnResult; onDismiss
         ? 'bad'
         : 'stop'
 
-  const label = unfiled ? 'Not filed' : tone === 'gm' ? 'GM' : tone === 'bad' ? 'Budget' : 'Stopped'
+  const label = unfiled
+    ? 'Not filed'
+    : isRules && tone === 'gm'
+      ? 'Rules'
+      : tone === 'gm' ? 'GM' : tone === 'bad' ? 'Budget' : 'Stopped'
 
   return (
     <div
       role="status"
       className={cx(
         'flex items-start gap-2.5 rounded-card border px-3 py-2.5',
-        tone === 'gm' && 'border-cyan/30 bg-cyan/[0.07]',
+        tone === 'gm' && (isRules ? 'border-orange/30 bg-orange/[0.07]' : 'border-cyan/30 bg-cyan/[0.07]'),
         tone === 'stop' && 'border-yellow/30 bg-yellow/[0.07]',
         tone === 'bad' && 'border-red/30 bg-red/[0.07]',
       )}
@@ -38,7 +45,7 @@ export function GmReply({ result, onDismiss }: { result: GmTurnResult; onDismiss
         className={cx(
           text.label,
           'mt-px shrink-0 rounded px-1.5 py-0.5',
-          tone === 'gm' && 'bg-cyan/15 text-cyan',
+          tone === 'gm' && (isRules ? 'bg-orange/15 text-orange' : 'bg-cyan/15 text-cyan'),
           tone === 'stop' && 'bg-yellow/15 text-yellow',
           tone === 'bad' && 'bg-red/15 text-red',
         )}
@@ -51,6 +58,7 @@ export function GmReply({ result, onDismiss }: { result: GmTurnResult; onDismiss
           {result.requestCount} {result.requestCount === 1 ? 'request' : 'requests'}
           {result.providerMode === 'stub' && ' · stub'}
           {unfiled && ' · could not be written to the journal — copy it if you want to keep it'}
+          {isRules && result.status === 'ok' && ' · kept in Rules, not the journal'}
           {result.resetsAt && ` · resets ${new Date(result.resetsAt).toLocaleTimeString()}`}
         </span>
       </span>

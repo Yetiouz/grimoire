@@ -9,6 +9,9 @@ interface ToolsDockProps {
    * v10's `.tooldock`, not the composer). */
   onOpenDice: () => void
   diceDisabled?: boolean
+  /** Slice 16. Optional: with the GM off, Rules stays the disabled stub
+   * it has always been. */
+  onOpenRules?: () => void
   className?: string
 }
 
@@ -52,11 +55,20 @@ function DockButton({
  * pixel-for-pixel. Labels stay at `text.label` (11px) rather than the
  * mockup's 8px for the same reason: typography is a closed set too.
  */
-export function ToolsDock({ onOpenDice, diceDisabled, className }: ToolsDockProps) {
+export function ToolsDock({ onOpenDice, diceDisabled, onOpenRules, className }: ToolsDockProps) {
   return (
     <div className={cx('flex gap-2', className)}>
       <DockButton icon="map" label="Maps" title="Maps (coming soon)" disabled />
-      <DockButton icon="rules" label="Rules" title="Rules (coming soon)" disabled />
+      {/* Rules stops being a stub when the GM is on: it opens the
+        * out-of-character rules transcript. Questions are asked from the
+        * composer; this is where you read them back. */}
+      <DockButton
+        icon="rules"
+        label="Rules"
+        title={onOpenRules ? 'Rules chat' : 'Rules (coming soon)'}
+        onClick={onOpenRules}
+        disabled={!onOpenRules}
+      />
       <DockButton icon="dice" label="Roll" title="Roll dice" onClick={onOpenDice} disabled={diceDisabled} />
     </div>
   )

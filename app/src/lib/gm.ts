@@ -19,6 +19,17 @@ export interface GmBudget {
   limit: number
 }
 
+/** `play` is in-fiction and lands in the journal. `rules` is
+ * out-of-character table talk that never touches it — see `gm_chat`. */
+export type GmMode = 'play' | 'rules'
+
+export interface GmChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  body: string
+  created_at: string
+}
+
 export interface GmTurnResult {
   status: GmTurnStatus
   message: string
@@ -32,6 +43,9 @@ export interface GmTurnResult {
   providerMode?: string
   budget?: GmBudget
   resetsAt?: string
+  /** Echoed back by the edge function so the UI can tell a rules answer
+   * from a GM turn without threading the request mode through. */
+  mode?: GmMode
   /** Set by the screen, not the edge function: whether a successful reply
    * made it into the journal. `false` means the GM answered but the entry
    * write failed, which the composer surfaces rather than losing silently.
@@ -60,11 +74,12 @@ export async function askGm(
   campaignId: string,
   sessionId: string | null,
   input: string,
+  mode: GmMode = 'play',
 ): Promise<GmTurnResult> {
   try {
     const result = await Promise.race([
       supabase.functions.invoke('gm_turn', {
-        body: { campaignId, sessionId, input },
+        body: { campaignId, sessionId, input, mode },
       }),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('The GM did not respond.')), CLIENT_TIMEOUT_MS),
@@ -88,6 +103,7 @@ export async function askGm(
       status: data.status,
       message: data.message ?? '',
       requestCount: data.requestCount ?? 0,
+      mode: data.mode,
       providerMode: data.providerMode,
       budget: data.budget,
       resetsAt: data.resetsAt,
@@ -99,6 +115,19 @@ export async function askGm(
       requestCount: 0,
     }
   }
+}
+
+/** The rules-chat transcript, oldest first. Read directly rather than
+ * through the edge function: it's an ordinary member-scoped select, and
+ * routing it through the function would cost an invocation for no gain. */
+export async function listRulesChat(campaignId: string): Promise<GmChatMessage[]> {
+  const { data, error } = await supabase
+    .from('gm_chat')
+    .select('id, role, body, created_at')
+    .eq('campaign_id', campaignId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return (data ?? []) as GmChatMessage[]
 }
 
 /** Reads the day's budget without spending anything. The edge function

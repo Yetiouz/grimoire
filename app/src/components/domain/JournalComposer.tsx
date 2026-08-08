@@ -15,7 +15,7 @@ const KIND_CHIPS: { kind: LogEntryKind; label: string }[] = [
   { kind: 'note', label: 'Note' },
 ]
 
-type Mode = 'log' | 'gm'
+type Mode = 'log' | 'gm' | 'rules'
 
 interface JournalComposerProps {
   onLog: (kind: LogEntryKind, body: string) => Promise<void>
@@ -30,6 +30,9 @@ interface JournalComposerProps {
    * untouched either way. */
   gmEnabled?: boolean
   onAskGm?: (input: string) => Promise<GmTurnResult>
+  /** Slice 16. Out-of-character lookups: never reach the journal,
+   * stored in gm_chat and read back from Tools -> Rules. */
+  onAskRules?: (input: string) => Promise<GmTurnResult>
   /** Only needed to read the day's remaining GM turns on mount. */
   campaignId?: string
   className?: string
@@ -57,6 +60,7 @@ export function JournalComposer({
   sessionOpen,
   gmEnabled = false,
   onAskGm,
+  onAskRules,
   campaignId,
   className,
 }: JournalComposerProps) {
@@ -75,6 +79,10 @@ export function JournalComposer({
 
   const gmAvailable = gmEnabled && Boolean(onAskGm)
   const gmMode = gmAvailable && mode === 'gm'
+  const rulesMode = gmAvailable && mode === 'rules' && Boolean(onAskRules)
+  // Either AI mode hides the kind chips: in play the GM picks the kind,
+  // and in rules nothing is being logged to the journal at all.
+  const aiMode = gmMode || rulesMode
 
   // Read the day's budget once on mount so the counter is honest before
   // the first question rather than appearing only after a reply carries
@@ -100,8 +108,9 @@ export function JournalComposer({
     if (!trimmed || disabled) return
     setSubmitting(true)
     try {
-      if (gmMode && onAskGm) {
-        const result = await onAskGm(trimmed)
+      if (aiMode) {
+        const ask = rulesMode ? onAskRules! : onAskGm!
+        const result = await ask(trimmed)
         if (result.budget) setBudget(result.budget)
         // A reply that reached the journal needs no strip — it is already
         // in the feed above, and showing it twice reads as a duplicate.
@@ -132,7 +141,7 @@ export function JournalComposer({
             role="radiogroup"
             aria-label="Composer mode"
           >
-            {(['log', 'gm'] as Mode[]).map((value) => {
+            {(['log', 'gm', 'rules'] as Mode[]).map((value) => {
               const active = mode === value
               return (
                 <button
@@ -140,7 +149,7 @@ export function JournalComposer({
                   type="button"
                   role="radio"
                   aria-checked={active}
-                  disabled={value === 'gm' && outOfBudget}
+                  disabled={value !== 'log' && outOfBudget}
                   onClick={() => setMode(value)}
                   className={cx(
                     // Same compact-pill exception as the kind chips
@@ -154,11 +163,16 @@ export function JournalComposer({
                     // region, and a second purple control there blurs
                     // which one is the thing you press.
                     active && value === 'gm' && 'bg-cyan text-[#04262b]',
+                    // Orange: the third distinct accent not already
+                    // spoken for in this region. Rules must never be
+                    // mistaken for Ask GM at a glance mid-scene —
+                    // one writes to your campaign, the other cannot.
+                    active && value === 'rules' && 'bg-orange text-[#2b1204]',
                     !active && 'text-ink-faint hover:text-ink-dim',
-                    value === 'gm' && outOfBudget && 'pointer-events-none opacity-35',
+                    value !== 'log' && outOfBudget && 'pointer-events-none opacity-35',
                   )}
                 >
-                  {value === 'log' ? 'Log' : 'Ask GM'}
+                  {value === 'log' ? 'Log' : value === 'gm' ? 'Ask GM' : 'Ask Rules'}
                 </button>
               )
             })}
@@ -198,7 +212,7 @@ export function JournalComposer({
 
       {reply && <GmReply result={reply} onDismiss={() => setReply(null)} />}
 
-      {!gmMode && (
+      {!aiMode && (
         <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Entry kind">
           {KIND_CHIPS.map((chip) => (
             <button
@@ -237,14 +251,17 @@ export function JournalComposer({
         </div>
       )}
 
-      {gmMode && submitting && (
-        <div className={cx(text.label, 'flex items-center gap-2 text-cyan')} aria-live="polite">
+      {aiMode && submitting && (
+        <div
+          className={cx(text.label, 'flex items-center gap-2', rulesMode ? 'text-orange' : 'text-cyan')}
+          aria-live="polite"
+        >
           <span className="flex gap-1" aria-hidden="true">
-            <span className="h-1 w-1 animate-pulse rounded-full bg-cyan" />
-            <span className="h-1 w-1 animate-pulse rounded-full bg-cyan [animation-delay:150ms]" />
-            <span className="h-1 w-1 animate-pulse rounded-full bg-cyan [animation-delay:300ms]" />
+            <span className={cx('h-1 w-1 animate-pulse rounded-full', rulesMode ? 'bg-orange' : 'bg-cyan')} />
+            <span className={cx('h-1 w-1 animate-pulse rounded-full [animation-delay:150ms]', rulesMode ? 'bg-orange' : 'bg-cyan')} />
+            <span className={cx('h-1 w-1 animate-pulse rounded-full [animation-delay:300ms]', rulesMode ? 'bg-orange' : 'bg-cyan')} />
           </span>
-          The GM is thinking
+          {rulesMode ? 'Checking the rules' : 'The GM is thinking'}
         </div>
       )}
 
@@ -261,11 +278,13 @@ export function JournalComposer({
                 ? 'Start a session to log entries'
                 : gmMode
                   ? 'Tell the GM what you do…'
-                  : 'Add to the journal…'
+                  : rulesMode
+                    ? 'Ask a rules question…'
+                    : 'Add to the journal…'
             }
             disabled={disabled}
             className="w-full"
-            aria-label={gmMode ? 'Message to the GM' : 'Journal entry'}
+            aria-label={gmMode ? 'Message to the GM' : rulesMode ? 'Rules question' : 'Journal entry'}
           />
         </div>
         {/* Deliberately NOT recoloured cyan to match the mockup. Button
@@ -277,7 +296,7 @@ export function JournalComposer({
           * wanted, the correct fix is a third `variant` on Button, which
           * is a style-guide change and its own decision. */}
         <Button onClick={() => void handleSubmit()} disabled={disabled || !body.trim()}>
-          {gmMode ? 'Ask' : 'Log'}
+          {aiMode ? 'Ask' : 'Log'}
         </Button>
       </div>
     </div>

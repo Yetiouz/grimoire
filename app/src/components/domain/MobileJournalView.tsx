@@ -32,6 +32,8 @@ interface MobileJournalViewProps {
   gmEnabled?: boolean
   onAskGm?: (input: string) => Promise<GmTurnResult>
   campaignId?: string
+  /** Slice 16 — opens the rules transcript from the Tools tile. */
+  onOpenRules?: () => void
   onOpenCharacter: (character: Character) => void
   onOpenDice: () => void
 }
@@ -54,14 +56,19 @@ const TOOL_TILES: Array<{ icon: IconName; label: string }> = [
   { icon: 'world', label: 'World' },
 ]
 
-function ToolTile({ icon, label }: { icon: IconName; label: string }) {
+function ToolTile({ icon, label, onClick }: { icon: IconName; label: string; onClick?: () => void }) {
+  const live = Boolean(onClick)
   return (
     <button
       type="button"
-      disabled
-      title={`${label} (coming soon)`}
-      aria-label={`${label} (coming soon)`}
-      className="flex aspect-square flex-col items-center justify-center gap-2 rounded-card border border-line bg-panel text-ink-dim opacity-50"
+      disabled={!live}
+      onClick={onClick}
+      title={live ? label : `${label} (coming soon)`}
+      aria-label={live ? label : `${label} (coming soon)`}
+      className={cx(
+        'flex aspect-square flex-col items-center justify-center gap-2 rounded-card border border-line bg-panel',
+        live ? 'text-ink-dim hover:border-line-hover hover:text-ink' : 'text-ink-dim opacity-50',
+      )}
     >
       <Icon name={icon} />
       <span className={text.label}>{label}</span>
@@ -101,6 +108,7 @@ export function MobileJournalView({
   gmEnabled,
   onAskGm,
   campaignId,
+  onOpenRules,
   onOpenCharacter,
   onOpenDice,
 }: MobileJournalViewProps) {
@@ -175,7 +183,11 @@ export function MobileJournalView({
         ) : activeView === 'tools' ? (
           <div className={cx('grid grid-cols-2 gap-3 p-4', text.label)}>
             {TOOL_TILES.map((tile) => (
-              <ToolTile key={tile.label} {...tile} />
+              <ToolTile
+                key={tile.label}
+                {...tile}
+                onClick={tile.label === 'Rules' ? onOpenRules : undefined}
+              />
             ))}
           </div>
         ) : (

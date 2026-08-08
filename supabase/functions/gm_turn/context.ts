@@ -37,7 +37,12 @@ export interface BuiltContext {
 export async function buildContext(
   supabase: Client,
   campaignId: string,
-  sessionId: string | null,
+  _sessionId: string | null,
+  /** Rules mode omits the journal. A rules question needs the sheet, not
+   * the story, and dropping ~3k tokens of narration off every lookup is
+   * the difference between rules chat being cheap and it quietly eating
+   * the same daily budget as play. */
+  includeJournal = true,
 ): Promise<BuiltContext> {
   // Parallel: these are independent reads and the turn is latency-bound.
   const [campaignRes, sessionRes, charRes, questRes, npcRes, factionRes, treasureRes, entryRes] =
@@ -60,9 +65,11 @@ export async function buildContext(
         .eq("campaign_id", campaignId).order("name"),
       // Newest first for the query so the LIMIT keeps the most recent;
       // reversed below so the GM reads them in the order they happened.
-      supabase.from("journal_entries").select("kind, body, actor_name, created_at")
-        .eq("campaign_id", campaignId).order("created_at", { ascending: false })
-        .limit(JOURNAL_MAX_ENTRIES),
+      includeJournal
+        ? supabase.from("journal_entries").select("kind, body, actor_name, created_at")
+          .eq("campaign_id", campaignId).order("created_at", { ascending: false })
+          .limit(JOURNAL_MAX_ENTRIES)
+        : Promise.resolve({ data: [] }),
     ]);
 
   const campaign = campaignRes.data as { name?: string; system?: string } | null;
@@ -135,8 +142,10 @@ ${treasure.length === 0 ? "(none)" : treasure.map((t) =>
     t.held_by ? `, held by ${t.held_by}` : ""}${t.location ? `, at ${t.location}` : ""}
   ${t.notes}`).join("\n")}`);
 
-  parts.push(`## Recent journal${truncated ? " (older entries omitted — this is not the whole campaign)" : ""}
+  if (includeJournal) {
+    parts.push(`## Recent journal${truncated ? " (older entries omitted — this is not the whole campaign)" : ""}
 ${rendered.length === 0 ? "(empty)" : rendered.join("\n")}`);
+  }
 
   return {
     text: parts.join("\n\n"),
