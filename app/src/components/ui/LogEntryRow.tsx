@@ -1,5 +1,6 @@
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
+import { Markdown } from './Markdown'
 
 export type LogEntryKind = 'narration' | 'action' | 'roll' | 'note' | 'system' | 'rules'
 
@@ -40,7 +41,10 @@ const tagLabel: Partial<Record<LogEntryKind, string>> = {
  * imports), rules (out-of-character gm_chat exchange merged into the
  * feed for display only — never a real journal_entries row — a quiet
  * orange-tinted card, same treatment on both the question and the
- * answer so an exchange reads as one digression at a glance).
+ * answer so an exchange reads as one digression at a glance; its body
+ * renders through the markdown subset renderer, BOB_queue task 2 — the
+ * rules assistant is asked to structure its answers, unlike narration,
+ * which stays plain prose by design).
  *
  * Audit-fix from the original 3-kind version: 'system' used to carry
  * the panel-card background that the mockup actually specifies for
@@ -95,14 +99,18 @@ export function LogEntryRow({
        * row) — 24px is the dot's 8px width plus the row's 16px gap
        * above, so the message text lines up under the name rather than
        * the dot. */}
-      <p
-        className={cx(
-          kind === 'system' ? cx(text.caption, 'text-ink-faint') : text.bodySecondary,
-          'max-w-[35ch] pl-6 sm:max-w-[65ch]',
-        )}
-      >
-        {message}
-      </p>
+      {kind === 'rules' ? (
+        <Markdown text={message} className="max-w-[35ch] pl-6 sm:max-w-[65ch]" />
+      ) : (
+        <p
+          className={cx(
+            kind === 'system' ? cx(text.caption, 'text-ink-faint') : text.bodySecondary,
+            'max-w-[35ch] pl-6 sm:max-w-[65ch]',
+          )}
+        >
+          {message}
+        </p>
+      )}
     </div>
   )
 }

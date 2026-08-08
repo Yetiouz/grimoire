@@ -48,4 +48,21 @@ describe('LogEntryRow', () => {
     expect(container.firstChild).toHaveClass('bg-orange/[0.06]')
     expect(screen.getByText('Rules')).toHaveStyle({ color: '#ff8a3d' })
   })
+
+  it('renders a rules entry body through the markdown subset renderer (task 2)', () => {
+    const { container } = render(
+      <LogEntryRow senderName="Rules" senderColor="#ff8a3d" message="A shield gives **+1 AC**." kind="rules" />,
+    )
+    const strong = container.querySelector('strong')
+    expect(strong).not.toBeNull()
+    expect(strong).toHaveTextContent('+1 AC')
+  })
+
+  it('renders a non-rules entry body as plain text, ignoring markdown syntax', () => {
+    const { container } = render(
+      <LogEntryRow senderName="Bjorn" senderColor="#9b5cff" message="Swings **hard** at the lock." kind="action" />,
+    )
+    expect(container.querySelector('strong')).toBeNull()
+    expect(screen.getByText('Swings **hard** at the lock.')).toBeInTheDocument()
+  })
 })

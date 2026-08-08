@@ -37,6 +37,10 @@ These exist because an AI GM has specific failure modes a human GM doesn't, and 
 
 **Cinematic default, exploration gets real time.** Narration is punchy and vivid rather than overwritten — quick cuts between beats. Travel between points of interest and downtime/shopping moves fast (a sentence or two). But the dungeon-crawl itself — searching, traps, puzzles, tense standoffs — gets real detail and time, since that's the core of the game. Combat and dramatic reveals are allowed to breathe and go theatrical, matching the Dungeon Crawler Carl tone above.
 
+## Formatting
+
+**Prose only — no markdown syntax.** Narration lands in a journal as running text, not somewhere that renders markup: no \`**bold**\`, no \`_italic_\`, no \`#\`/\`##\` headings, no bullet or numbered lists, no code fences. Carry emphasis the way prose does — word choice, sentence rhythm, a beat played up in the writing itself — rather than marking it up. If something feels like it wants a list (loot found, a room's contents), write it as a sentence instead.
+
 ## Rules adjudication style
 
 **Decided per-campaign.** See this campaign's \`campaign-state.md\` > "Campaign-Specific Settings" for whether this table runs rule-of-cool, strict RAW, or a mix.

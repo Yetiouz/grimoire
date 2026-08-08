@@ -1,5 +1,6 @@
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
+import { Markdown } from '../ui/Markdown'
 import type { GmTurnResult } from '../../lib/gm'
 
 /** The reply strip. Three tones, matching the three families of outcome
@@ -53,7 +54,19 @@ export function GmReply({ result, onDismiss }: { result: GmTurnResult; onDismiss
         {label}
       </span>
       <span className="min-w-0 flex-1">
-        <span className={cx(text.body, 'block')}>{result.message}</span>
+        {/* BOB_queue task 2: a successful rules answer runs through the
+          * markdown subset renderer here too — this strip is a rules
+          * answer's normal home (see comment above), not just a
+          * fallback, so it needs the same structure RulesChat's
+          * transcript gets. Narration text (including the 'unfiled'
+          * case) stays plain — the prompt fix means it shouldn't carry
+          * markdown syntax in the first place, and it's meant to read
+          * as prose either way. */}
+        {isRules && result.status === 'ok' ? (
+          <Markdown text={result.message} variant="body" />
+        ) : (
+          <span className={cx(text.body, 'block')}>{result.message}</span>
+        )}
         <span className={cx(text.label, 'mt-1 block text-ink-faint')}>
           {result.requestCount} {result.requestCount === 1 ? 'request' : 'requests'}
           {result.providerMode === 'stub' && ' · stub'}

@@ -5,6 +5,7 @@ import { Overlay } from '../ui/Overlay'
 import { EmptyState } from '../ui/EmptyState'
 import { Skeleton, SkeletonGroup } from '../ui/Skeleton'
 import { ErrorBanner } from '../ui/ErrorBanner'
+import { Markdown } from '../ui/Markdown'
 import { listRulesChat } from '../../lib/gm'
 import type { GmChatMessage } from '../../lib/gm'
 
@@ -91,7 +92,16 @@ export function RulesChat({ open, campaignId, onClose }: RulesChatProps) {
                 {' · '}
                 {new Date(m.created_at).toLocaleString()}
               </div>
-              <div className={cx(text.body, 'mt-1 whitespace-pre-wrap')}>{m.body}</div>
+              {/* BOB_queue task 2: rendered through the markdown subset
+                * renderer rather than raw `whitespace-pre-wrap` text —
+                * the rules assistant is explicitly asked to structure
+                * its answers (page citations bolded, lists of Modes of
+                * Play), so this is the surface where that structure
+                * should actually show up. Applied to both roles rather
+                * than assistant-only: a typed question with no markdown
+                * syntax in it renders identically either way, and this
+                * keeps the two message shapes on one code path. */}
+              <Markdown text={m.body} variant="body" className="mt-1" />
             </div>
           ))}
         </div>
