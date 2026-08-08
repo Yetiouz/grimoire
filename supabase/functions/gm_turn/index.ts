@@ -89,13 +89,15 @@ Deno.serve(async (req: Request) => {
     return reply({ status: "error", message: "Not signed in." });
   }
 
-  let campaignId: string, sessionId: string | null, input: string;
+  let campaignId: string, sessionId: string | null, input: string, probe: boolean;
   try {
     const body = await req.json();
     campaignId = String(body.campaignId ?? "");
     sessionId = body.sessionId ? String(body.sessionId) : null;
     input = String(body.input ?? "");
-    if (!campaignId || !input) throw new Error("campaignId and input required");
+    probe = body.probe === true;
+    if (!campaignId) throw new Error("campaignId required");
+    if (!probe && !input) throw new Error("input required");
   } catch (e) {
     return reply({ status: "error", message: `Bad request: ${(e as Error).message}` });
   }
@@ -118,12 +120,33 @@ Deno.serve(async (req: Request) => {
     p_since: since.toISOString(),
   });
   const used = Number(spent ?? 0);
+
+  // A probe reads the counter and stops. No model call, no telemetry
+  // row, no provider request spent — it exists so the UI can show an
+  // honest "N left today" before the first question of a session rather
+  // than only after a reply carries the number back. The ceiling lives
+  // here rather than in a VITE_ variable so there is one source of
+  // truth for it.
+  if (probe) {
+    return reply({
+      status: "ok",
+      message: "",
+      requestCount: 0,
+      providerMode,
+      budget: { used, limit: DAILY_BUDGET },
+    });
+  }
+
   if (used + MAX_ROUNDTRIPS + 1 > DAILY_BUDGET) {
     await record(supabase, campaignId, sessionId, "budget_exhausted", 0, null);
     return reply({
       status: "budget_exhausted",
-      message: "Daily GM budget reached.",
-      used, budget: DAILY_BUDGET,
+      message: "Daily GM budget reached. You can still write your journal by hand.",
+      requestCount: 0,
+      providerMode,
+      // Same shape on every path — the client reads budget.used /
+      // budget.limit and must never get a bare number here.
+      budget: { used, limit: DAILY_BUDGET },
       resetsAt: new Date(since.getTime() + 86_400_000).toISOString(),
     });
   }

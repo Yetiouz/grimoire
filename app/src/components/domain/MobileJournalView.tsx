@@ -12,6 +12,7 @@ import { JournalComposer } from './JournalComposer'
 import { PlayerCard } from './PlayerCard'
 import { QuestLogPanel } from './QuestLogPanel'
 import type { LogEntryKind } from '../ui/LogEntryRow'
+import type { GmTurnResult } from '../../lib/gm'
 import type { CampaignSession, JournalEntry } from '../../lib/campaigns'
 import type { Character } from '../../lib/characters'
 import type { Quest } from '../../lib/quests'
@@ -25,6 +26,12 @@ interface MobileJournalViewProps {
   entries: JournalEntry[]
   sessionOpen: boolean
   onLog: (kind: LogEntryKind, body: string) => Promise<void>
+  /** Slice 16 — handed straight through to `JournalComposer`. Both
+   * optional, so the mobile shell is completely unaffected while the
+   * GM is off (which is the default). */
+  gmEnabled?: boolean
+  onAskGm?: (input: string) => Promise<GmTurnResult>
+  campaignId?: string
   onOpenCharacter: (character: Character) => void
   onOpenDice: () => void
 }
@@ -91,6 +98,9 @@ export function MobileJournalView({
   entries,
   sessionOpen,
   onLog,
+  gmEnabled,
+  onAskGm,
+  campaignId,
   onOpenCharacter,
   onOpenDice,
 }: MobileJournalViewProps) {
@@ -181,7 +191,13 @@ export function MobileJournalView({
 
       {activeView === null && (
         <div className="shrink-0 border-t border-line-soft bg-panel px-4 py-3">
-          <JournalComposer onLog={onLog} sessionOpen={sessionOpen} />
+          <JournalComposer
+            onLog={onLog}
+            sessionOpen={sessionOpen}
+            gmEnabled={gmEnabled}
+            onAskGm={onAskGm}
+            campaignId={campaignId}
+          />
         </div>
       )}
 

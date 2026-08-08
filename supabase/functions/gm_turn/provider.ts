@@ -22,8 +22,13 @@ const MODE = Deno.env.get("GM_PROVIDER_MODE") ?? "stub";
 // three loop brakes, telemetry — is verifiable without a provider key and
 // without spending quota. The magic strings let each brake be triggered
 // deliberately from the app.
-async function stubComplete(messages: Message[]): Promise<Completion> {
-  const last = JSON.stringify(messages[messages.length - 1]?.content ?? "");
+async function stubComplete(messages: Message[], signal: AbortSignal): Promise<Completion> {
+  // Scan the WHOLE conversation, not just the last message. After the
+  // first tool call the last message is the harness's own tool result
+  // ("unknown tool: roll_dice"), so a last-message check would lose the
+  // magic string on iteration two and fall through to a normal reply —
+  // meaning the brakes would look fine while never actually firing.
+  const last = JSON.stringify(messages);
 
   if (last.includes("__loop")) {
     // Same tool, same arguments, forever → brake 2 (repeat detection).
@@ -49,7 +54,19 @@ async function stubComplete(messages: Message[]): Promise<Completion> {
 
   if (last.includes("__hang")) {
     // Never returns in time → brake 3 (wall-clock timeout).
-    await new Promise((r) => setTimeout(r, 90_000));
+    //
+    // This MUST honour the abort signal. A plain 90s sleep would simply
+    // outlast the turn timeout and then resolve successfully, so the
+    // brake would appear not to work while actually being untested —
+    // the worst of both. Rejecting on abort is what makes the timeout
+    // observable.
+    await new Promise((_resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("stub hang elapsed")), 90_000);
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(new Error("aborted"));
+      }, { once: true });
+    });
   }
 
   return {
@@ -126,7 +143,7 @@ export async function complete(
   tools: unknown[],
   signal: AbortSignal,
 ): Promise<Completion> {
-  if (MODE === "stub") return await stubComplete(messages);
+  if (MODE === "stub") return await stubComplete(messages, signal);
 
   const delays = [1000, 3000, 8000];
   for (let attempt = 0; ; attempt++) {

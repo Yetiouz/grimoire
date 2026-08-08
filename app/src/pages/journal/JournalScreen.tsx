@@ -20,6 +20,7 @@ import { listCharacters } from '../../lib/characters'
 import type { Character } from '../../lib/characters'
 import { rollDice } from '../../lib/dice'
 import type { DieType, RollMode } from '../../lib/dice'
+import { askGm, gmEnabled } from '../../lib/gm'
 import { listQuests } from '../../lib/quests'
 import type { Quest } from '../../lib/quests'
 
@@ -160,6 +161,15 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     setEntries((prev) => [...(prev ?? []), entry])
   }
 
+  // Slice 16 phase 1. Same thin-wrapper boundary as handleRollDice
+  // below: the composer never touches Supabase itself. Note there is no
+  // try/catch and no setError — `askGm` never rejects, and a GM failure
+  // is deliberately not a screen-level error. It renders inside the
+  // composer and leaves everything else, Log mode included, working.
+  async function handleAskGm(input: string) {
+    return askGm(campaign.id, openSession?.id ?? null, input)
+  }
+
   // Thin wrapper so DiceRoller never touches Supabase directly (same
   // component-boundary rule PlayerCard/CharacterSheet already follow) —
   // it just calls this prop and gets a typed result back.
@@ -238,7 +248,15 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
         <ColumnCard
           headerLeft={journalColumnLabel}
           bodyClassName="gap-4"
-          footer={<JournalComposer onLog={(kind, body) => handleLog(kind, body)} sessionOpen={Boolean(openSession)} />}
+          footer={
+            <JournalComposer
+              onLog={(kind, body) => handleLog(kind, body)}
+              sessionOpen={Boolean(openSession)}
+              gmEnabled={gmEnabled}
+              onAskGm={handleAskGm}
+              campaignId={campaign.id}
+            />
+          }
         >
           {error && <ErrorBanner onRetry={() => { setError(null); void load() }}>{error}</ErrorBanner>}
 
@@ -290,6 +308,9 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
           entries={entries ?? []}
           sessionOpen={Boolean(openSession)}
           onLog={(kind, body) => handleLog(kind, body)}
+          gmEnabled={gmEnabled}
+          onAskGm={handleAskGm}
+          campaignId={campaign.id}
           onOpenCharacter={setOpenCharacter}
           onOpenDice={() => setDiceOpen(true)}
         />
