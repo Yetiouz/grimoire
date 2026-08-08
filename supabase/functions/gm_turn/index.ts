@@ -15,6 +15,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { complete, type Message, providerMode } from "./provider.ts";
+import { buildContext } from "./context.ts";
+import { CANON, HOUSE_RULES, PERSONA, PROTOCOL, TRANSLATION } from "./prompt.ts";
 
 const MAX_ROUNDTRIPS = Number(Deno.env.get("GM_MAX_ROUNDTRIPS") ?? "4");
 const TURN_TIMEOUT_MS = Number(Deno.env.get("GM_TURN_TIMEOUT_MS") ?? "60000");
@@ -160,14 +162,23 @@ Deno.serve(async (req: Request) => {
   const seen = new Set<string>();
   let requests = 0, inTok = 0, outTok = 0;
   let status = "ok", text = "", errMsg: string | null = null;
+  let contextStats: unknown = null;
 
   try {
+    // Order matters: standing instructions first (stable, and the part
+    // worth caching on a paid key), then the live database last so the
+    // most current facts sit closest to the question.
+    const context = await buildContext(supabase, campaignId, sessionId);
+    contextStats = context.stats;
+    const system = [PERSONA, HOUSE_RULES, PROTOCOL, TRANSLATION, CANON, context.text]
+      .join("\n\n---\n\n");
+
     while (true) {
       // Brake 1 — round-trip cap.
       if (requests > MAX_ROUNDTRIPS) { status = "capped"; break; }
       requests++;
 
-      const res = await complete("You are a placeholder GM.", messages, TOOL_SCHEMAS, controller.signal);
+      const res = await complete(system, messages, TOOL_SCHEMAS, controller.signal);
       transcript.push({ request: messages.slice(-2), response: res.raw });
       inTok += res.inputTokens ?? 0;
       outTok += res.outputTokens ?? 0;
@@ -204,7 +215,7 @@ Deno.serve(async (req: Request) => {
   }
 
   await record(supabase, campaignId, sessionId, status, requests, {
-    inTok, outTok, transcript, errMsg,
+    inTok, outTok, transcript, errMsg, contextStats,
   });
 
   return reply({
@@ -213,6 +224,7 @@ Deno.serve(async (req: Request) => {
     requestCount: requests,
     providerMode,
     budget: { used: used + requests, limit: DAILY_BUDGET },
+    context: contextStats,
   });
 });
 
@@ -234,6 +246,7 @@ async function record(
   requests: number,
   extra: {
     inTok?: number; outTok?: number; transcript?: unknown[]; errMsg?: string | null;
+    contextStats?: unknown;
   } | null,
 ) {
   // Telemetry is best-effort: a failure here must never fail the turn.
@@ -245,7 +258,12 @@ async function record(
       p_request_count: requests,
       p_input_tokens: extra?.inTok ?? null,
       p_output_tokens: extra?.outTok ?? null,
-      p_transcript: extra?.transcript ?? null,
+      // Context stats ride along in the transcript so how much the GM
+      // was shown — and whether the journal window truncated — is
+      // recoverable per turn without another column.
+      p_transcript: extra?.transcript
+        ? { turns: extra.transcript, context: extra?.contextStats ?? null }
+        : null,
       p_inventions: null,
       p_error: extra?.errMsg ?? null,
     });
