@@ -35,15 +35,23 @@ interface JournalScreenProps {
  * constant used to paper over entirely. */
 const FALLBACK_PLAYER_COLOR = '#9b5cff'
 
+/** Slice 17: the header's "who's running this" word, keyed off the real
+ * `campaigns.gm_mode` column (migration 0020) instead of the hardcoded
+ * "Solo" every build before this slice showed regardless of the actual
+ * mode. Any value this map doesn't recognize falls back to "Solo" —
+ * defensive against a future mode this build doesn't know about yet,
+ * rather than rendering nothing. */
+const GM_MODE_LABEL: Record<string, string> = { solo: 'Solo', ai: 'AI GM', human: 'Human GM' }
+
 /** Screen 2 of Journal v1 (SPEC): the journal, built around the
  * reusable JournalFeed. Page chrome (campaign header, "Start session",
  * the party row) lives here, not in the component — JournalFeed itself
  * has no idea it's on the journal screen.
  *
  * Owns state + handlers only; the data fetch (`useJournalScreenData`),
- * the Ask GM/Ask Rules handlers (`useGmJournalHandlers`), and the two
- * responsive layouts (`JournalDesktopLayout` at `xl:` and up,
- * `MobileJournalView` below it) are all split-out — BOB_fixes.md's
+ * the Ask GM/Ask Rules/resolve-check handlers (`useGmJournalHandlers`),
+ * and the two responsive layouts (`JournalDesktopLayout` at `xl:` and
+ * up, `MobileJournalView` below it) are all split-out — BOB_fixes.md's
  * recommended cut once this file crossed CLAUDE.md's ~300-line cap,
  * plus a follow-up cut once the recommended split alone wasn't enough
  * (the file had grown past the ~390 lines that recommendation assumed).
@@ -104,16 +112,29 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
 
   const openSession = sessions?.find((session) => session.ended_at === null) ?? null
 
-  // Header meta line ("Solo · Session N"): "Solo" is a static placeholder
-  // — there's no game-mode field yet (party vs. solo vs. AI-GM'd isn't
-  // modeled in this slice) — but the session number is real, sourced
-  // from `sessions` rather than hardcoded. Prefers the open session; if
-  // none is open, falls back to the most recent one (listSessions orders
-  // ascending by number, so the last array item is the latest); with no
-  // sessions at all yet, says so instead of showing a fabricated number.
+  // Slice 17: gates every NEW AI-GM interaction (the composer's Ask
+  // chips, and opening the Rules transcript to ask another question) on
+  // both the build-wide feature flag AND this campaign's own gm_mode —
+  // a 'solo' or 'human'-GM'd campaign has no AI GM to ask in-fiction
+  // things of. Deliberately NOT used to gate useJournalFeed's own
+  // rules/checks reads below (see that hook's doc comment): a campaign
+  // that switches away from 'ai' should keep showing its history, only
+  // stop offering new asks.
+  const aiGmActive = gmEnabled && campaign.gm_mode === 'ai'
+
+  // Header meta line ("<mode> · Session N"): the game-mode word used to
+  // be a hardcoded "Solo" (no such field existed yet) — now sourced from
+  // the real `campaigns.gm_mode` column (migration 0020) via
+  // GM_MODE_LABEL above. The session number is, and always was, real,
+  // sourced from `sessions` rather than hardcoded. Prefers the open
+  // session; if none is open, falls back to the most recent one
+  // (listSessions orders ascending by number, so the last array item is
+  // the latest); with no sessions at all yet, says so instead of
+  // showing a fabricated number.
+  const gmModeLabel = GM_MODE_LABEL[campaign.gm_mode] ?? 'Solo'
   const latestSession = sessions && sessions.length > 0 ? sessions[sessions.length - 1] : null
   const headerSession = openSession ?? latestSession
-  const sessionMeta = headerSession ? `Solo · Session ${headerSession.number}` : 'Solo · No sessions yet'
+  const sessionMeta = headerSession ? `${gmModeLabel} · Session ${headerSession.number}` : `${gmModeLabel} · No sessions yet`
   // Journal column header label: the mockup's `.col-head` shows a scene
   // title we have no equivalent field for (no encounter/scene model
   // exists yet) — the session's own real `title` is the closest honest
@@ -122,16 +143,20 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   // shows rather than inventing scene text.
   const journalColumnLabel = headerSession?.title ?? sessionMeta
 
-  // BOB_queue task 1: the unified feed. Owns the gm_chat read and the
-  // entries+gm_chat merge — see hooks/useJournalFeed.ts for why this
-  // isn't just inlined here.
-  const { feedItems, refetchRules } = useJournalFeed(campaign.id, gmEnabled, authorName, entries, sessions)
+  // BOB_queue task 1: the unified feed. Owns the gm_chat/gm_checks reads
+  // and the entries+gm_chat+gm_checks merge — see hooks/useJournalFeed.ts
+  // for why this isn't just inlined here. Reads are gated on the plain
+  // `gmEnabled` flag (not `aiGmActive`) — see that hook's own comment.
+  const { feedItems, refetchRules, refetchChecks } = useJournalFeed(campaign.id, gmEnabled, authorName, entries, sessions)
 
-  const { handleAskGm, handleAskRules } = useGmJournalHandlers({
+  const { handleAskGm, handleAskRules, handleResolveCheck, resolvingCheckId } = useGmJournalHandlers({
     campaignId: campaign.id,
     sessionId: openSession?.id ?? null,
     setEntries,
     refetchRules,
+    refetchChecks,
+    reloadScreenData: load,
+    setError,
   })
 
   function toggleFilter(kind: FilterKind) {
@@ -144,10 +169,12 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   }
 
   // System entries have no chip and are never muted — see
-  // JournalFilterBar's own comment. Every other kind checks membership
-  // in the active set.
+  // JournalFilterBar's own comment. Checks (Slice 17) get the same
+  // treatment: no chip of their own, always shown regardless of the
+  // active filter set. Every other kind checks membership in the
+  // active set.
   const feedFilter = useMemo(
-    () => (item: FeedItem) => item.kind === 'system' || activeFilters.has(item.kind as FilterKind),
+    () => (item: FeedItem) => item.kind === 'system' || item.kind === 'check' || activeFilters.has(item.kind as FilterKind),
     [activeFilters],
   )
 
@@ -254,11 +281,13 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
         openSession={openSession}
         onOpenCharacter={setOpenCharacter}
         onOpenDice={() => setDiceOpen(true)}
-        gmEnabled={gmEnabled}
-        onOpenRules={gmEnabled ? () => setRulesOpen(true) : undefined}
+        gmEnabled={aiGmActive}
+        onOpenRules={aiGmActive ? () => setRulesOpen(true) : undefined}
         onLog={(kind, body) => handleLog(kind, body)}
         onAskGm={handleAskGm}
         onAskRules={handleAskRules}
+        onResolveCheck={(check, source, total) => void handleResolveCheck(check, source, total)}
+        resolvingCheckId={resolvingCheckId}
         campaignId={campaign.id}
       />
 
@@ -283,11 +312,13 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
           items={feedItems}
           sessionOpen={Boolean(openSession)}
           onLog={(kind, body) => handleLog(kind, body)}
-          gmEnabled={gmEnabled}
+          gmEnabled={aiGmActive}
           onAskGm={handleAskGm}
           onAskRules={handleAskRules}
+          onResolveCheck={(check, source, total) => void handleResolveCheck(check, source, total)}
+          resolvingCheckId={resolvingCheckId}
           campaignId={campaign.id}
-          onOpenRules={gmEnabled ? () => setRulesOpen(true) : undefined}
+          onOpenRules={aiGmActive ? () => setRulesOpen(true) : undefined}
           onOpenCharacter={setOpenCharacter}
           onOpenDice={() => setDiceOpen(true)}
         />

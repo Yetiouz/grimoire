@@ -1,19 +1,23 @@
 import { Fragment, useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { LogEntryRow } from '../ui/LogEntryRow'
+import type { LogEntryKind } from '../ui/LogEntryRow'
+import { CheckCard } from './CheckCard'
 import { SceneDivider } from '../ui/SceneDivider'
 import { EmptyState } from '../ui/EmptyState'
 import type { CampaignSession } from '../../lib/campaigns'
 import type { FeedItem } from '../../lib/feed'
+import type { GmCheck, ResolveSource } from '../../lib/checks'
 
 interface JournalFeedProps {
   /** BOB_queue task 1: render-ready rows, already merged from
-   * journal_entries and gm_chat and sorted by created_at (see
-   * lib/feed.ts's buildFeed()) — JournalFeed itself has no idea some of
-   * these came from a different table, which is what keeps it filter-
-   * driven and source-agnostic rather than growing gm_chat awareness of
-   * its own. Was `entries: JournalEntry[]` before this task; every call
-   * site now passes the merged array instead. */
+   * journal_entries and gm_chat (and, Slice 17, gm_checks) and sorted by
+   * created_at (see lib/feed.ts's buildFeed()) — JournalFeed itself has
+   * no idea some of these came from a different table, which is what
+   * keeps it filter-driven and source-agnostic rather than growing
+   * gm_chat/gm_checks awareness of its own. Was `entries: JournalEntry[]`
+   * before BOB_queue task 1; every call site now passes the merged array
+   * instead. */
   items: FeedItem[]
   sessions: CampaignSession[]
   /** Lets the host screen scope which items render (JournalFilterBar's
@@ -36,6 +40,13 @@ interface JournalFeedProps {
    * for `'note'` items below regardless of whether this is set — saving
    * a note from a note is a no-op the button shouldn't even offer. */
   onSaveAsNote?: (item: FeedItem) => void
+  /** Slice 17: forwarded straight to whichever `CheckCard` the player
+   * acts on. Omit for a read-only feed (same convention as
+   * `onSaveAsNote`) — every check then renders with no live controls. */
+  onResolveCheck?: (check: GmCheck, source: ResolveSource, total?: number) => void
+  /** The one check currently mid-resolve, if any — see `CheckCard`'s own
+   * `resolving` prop. */
+  resolvingCheckId?: string | null
   className?: string
 }
 
@@ -57,7 +68,16 @@ function sessionLabel(session: CampaignSession): string {
  * player table, GM dashboard, and session review (twice on one screen
  * once party chat arrives). Page chrome like the campaign header stays
  * with the host screen, not here. */
-export function JournalFeed({ items, sessions, filter, composer, onSaveAsNote, className }: JournalFeedProps) {
+export function JournalFeed({
+  items,
+  sessions,
+  filter,
+  composer,
+  onSaveAsNote,
+  onResolveCheck,
+  resolvingCheckId,
+  className,
+}: JournalFeedProps) {
   const visible = filter ? items.filter(filter) : items
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -105,19 +125,27 @@ export function JournalFeed({ items, sessions, filter, composer, onSaveAsNote, c
           return (
             <Fragment key={item.id}>
               {showDivider && session && <SceneDivider className="my-3">{sessionLabel(session)}</SceneDivider>}
-              <LogEntryRow
-                senderName={item.senderName}
-                senderColor={item.senderColor ?? FALLBACK_COLOR}
-                message={item.body}
-                timestamp={new Date(item.created_at).toLocaleTimeString(undefined, {
-                  hour: 'numeric',
-                  minute: '2-digit',
-                })}
-                kind={item.kind}
-                onSaveAsNote={
-                  onSaveAsNote && item.kind !== 'note' ? () => onSaveAsNote(item) : undefined
-                }
-              />
+              {item.kind === 'check' && item.check ? (
+                <CheckCard
+                  check={item.check}
+                  resolving={resolvingCheckId === item.check.id}
+                  onResolve={onResolveCheck}
+                />
+              ) : (
+                <LogEntryRow
+                  senderName={item.senderName}
+                  senderColor={item.senderColor ?? FALLBACK_COLOR}
+                  message={item.body}
+                  timestamp={new Date(item.created_at).toLocaleTimeString(undefined, {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  })}
+                  kind={item.kind as LogEntryKind}
+                  onSaveAsNote={
+                    onSaveAsNote && item.kind !== 'note' ? () => onSaveAsNote(item) : undefined
+                  }
+                />
+              )}
             </Fragment>
           )
         })}

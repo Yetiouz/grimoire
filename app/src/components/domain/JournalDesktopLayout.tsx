@@ -12,6 +12,7 @@ import { QuestLogPanel } from './QuestLogPanel'
 import { ToolsDock } from './ToolsDock'
 import type { LogEntryKind } from '../ui/LogEntryRow'
 import type { FeedItem } from '../../lib/feed'
+import type { GmCheck, ResolveSource } from '../../lib/checks'
 import type { GmTurnResult } from '../../lib/gm'
 import type { CampaignSession, JournalEntry } from '../../lib/campaigns'
 import type { Character } from '../../lib/characters'
@@ -34,15 +35,24 @@ interface JournalDesktopLayoutProps {
   onOpenDice: () => void
   /** Slice 16 — threaded straight through to `JournalComposer`/
    * `JournalFilterBar`, same optional-and-off-by-default shape
-   * `MobileJournalView` already takes for its own copy of this prop. */
+   * `MobileJournalView` already takes for its own copy of this prop.
+   * Slice 17: the caller now passes its own `gm_mode`-gated value here
+   * (`aiGmActive` in `JournalScreen`), not the raw feature flag — this
+   * component doesn't know or care about that distinction, it just
+   * gates the same two things it always has. */
   gmEnabled?: boolean
-  /** Pre-gated by the caller (`gmEnabled ? () => setRulesOpen(true) :
+  /** Pre-gated by the caller (`aiGmActive ? () => setRulesOpen(true) :
    * undefined`), same convention `MobileJournalView` already uses —
    * this component doesn't re-derive the gate itself. */
   onOpenRules?: () => void
   onLog: (kind: LogEntryKind, body: string) => Promise<void>
   onAskGm?: (input: string) => Promise<GmTurnResult>
   onAskRules?: (input: string) => Promise<GmTurnResult>
+  /** Slice 17: forwarded straight to `JournalFeed` — see its own doc
+   * comment. Both optional, same "omit for read-only" convention every
+   * other feed callback here already follows. */
+  onResolveCheck?: (check: GmCheck, source: ResolveSource, total?: number) => void
+  resolvingCheckId?: string | null
   campaignId: string
 }
 
@@ -81,6 +91,8 @@ export function JournalDesktopLayout({
   onLog,
   onAskGm,
   onAskRules,
+  onResolveCheck,
+  resolvingCheckId,
   campaignId,
 }: JournalDesktopLayoutProps) {
   // "Save as note" quick action (2026-08-09): local to this layout, not
@@ -154,6 +166,8 @@ export function JournalDesktopLayout({
             sessions={sessions}
             filter={feedFilter}
             onSaveAsNote={openSession ? (item) => setNoteSeed({ body: item.body }) : undefined}
+            onResolveCheck={onResolveCheck}
+            resolvingCheckId={resolvingCheckId}
           />
         )}
       </ColumnCard>

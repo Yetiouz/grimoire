@@ -1,5 +1,6 @@
 import type { CampaignSession, JournalEntry } from './campaigns'
 import type { GmChatMessage } from './gm'
+import type { GmCheck } from './checks'
 import type { LogEntryKind } from '../components/ui/LogEntryRow'
 
 /** Fixed color for every rules-chat row in the unified feed — both the
@@ -16,18 +17,29 @@ const RULES_COLOR = '#ff8a3d'
  * what color, what body" regardless of whether it came from
  * `journal_entries` or `gm_chat`. `JournalFeed` stays a dumb renderer
  * over this shape; every "what does this kind of item look like"
- * decision lives here instead, next to the merge that produces it. */
+ * decision lives here instead, next to the merge that produces it.
+ *
+ * Slice 17: a third source, `gm_checks`, joins the merge below. A check
+ * isn't text — it needs live controls (Roll / physical-total entry) a
+ * plain `body` string can't carry — so `kind: 'check'` is a deliberate
+ * escape hatch from `LogEntryKind`'s closed set: `JournalFeed` special-
+ * cases it and renders `CheckCard` instead of `LogEntryRow`, using the
+ * `check` payload below rather than `body`/`senderName`/`senderColor`
+ * (all left as harmless placeholders on a check item — see `buildFeed`). */
 export interface FeedItem {
   id: string
   created_at: string
   session_id: string | null
-  kind: LogEntryKind
+  kind: LogEntryKind | 'check'
   senderName: string
   /** Undefined means "let LogEntryRow's own FALLBACK_COLOR apply" —
    * same as a journal entry with no `actor_color` today. Always set for
    * rules items. */
   senderColor?: string
   body: string
+  /** Set only when `kind === 'check'` — the live check payload
+   * `CheckCard` renders and acts on. */
+  check?: GmCheck
 }
 
 /**
@@ -68,18 +80,22 @@ function inferSessionId(createdAt: string, sessions: CampaignSession[]): string 
  * real `journal_entries` row, `kind: 'narration'`) alongside `gm_chat`'s
  * rules exchanges, merged by `created_at`. Rules rows are *displayed*
  * here and never written back to `journal_entries` — this function only
- * reads two arrays the caller already fetched and produces a third; it
+ * reads arrays the caller already fetched and produces a new one; it
  * has no Supabase access of its own.
  *
- * Each `gm_chat` row is already one message (one row per turn of the
- * exchange, per its own schema), so this is a straight 1:1 map, not a
- * question+answer pairing step — `direction` just reads `role` to pick
- * the author-line convention ("`<name> -> Rules`" for the question,
- * "Rules" for the answer).
+ * Slice 17: `checks` joins the same merge, sorted in at its own
+ * `created_at` (when the GM proposed it) — not `resolved_at` — so a
+ * check card holds its place in the timeline as it moves from pending
+ * to resolved rather than jumping to wherever it lands when someone
+ * finally rolls. Each `gm_chat` row is already one message (one row per
+ * turn of the exchange, per its own schema) and each `gm_checks` row is
+ * already one check, so both are straight 1:1 maps, not a
+ * question+answer or band-reveal pairing step.
  */
 export function buildFeed(
   entries: JournalEntry[],
   rulesMessages: GmChatMessage[],
+  checks: GmCheck[],
   sessions: CampaignSession[],
   authorName: string,
 ): FeedItem[] {
@@ -103,7 +119,17 @@ export function buildFeed(
     body: message.body,
   }))
 
-  return [...journalItems, ...rulesItems].sort(
+  const checkItems: FeedItem[] = checks.map((check) => ({
+    id: `check-${check.id}`,
+    created_at: check.created_at,
+    session_id: check.session_id,
+    kind: 'check',
+    senderName: 'Check',
+    body: '',
+    check,
+  }))
+
+  return [...journalItems, ...rulesItems, ...checkItems].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
   )
 }

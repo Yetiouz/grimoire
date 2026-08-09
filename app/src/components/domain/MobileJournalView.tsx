@@ -17,6 +17,7 @@ import { QuestLogPanel } from './QuestLogPanel'
 import type { LogEntryKind } from '../ui/LogEntryRow'
 import type { GmTurnResult } from '../../lib/gm'
 import type { FeedItem } from '../../lib/feed'
+import type { GmCheck, ResolveSource } from '../../lib/checks'
 import type { CampaignSession } from '../../lib/campaigns'
 import type { Character } from '../../lib/characters'
 import type { Quest } from '../../lib/quests'
@@ -36,7 +37,9 @@ interface MobileJournalViewProps {
   onLog: (kind: LogEntryKind, body: string) => Promise<void>
   /** Slice 16 — handed straight through to `JournalComposer`. Both
    * optional, so the mobile shell is completely unaffected while the
-   * GM is off (which is the default). */
+   * GM is off (which is the default). Slice 17: the caller now passes
+   * its own `gm_mode`-gated value here (`aiGmActive` in `JournalScreen`)
+   * — this component doesn't know or care about that distinction. */
   gmEnabled?: boolean
   onAskGm?: (input: string) => Promise<GmTurnResult>
   /** BOB_queue task 1 fold-in: this was accepted as a prop already but
@@ -45,6 +48,11 @@ interface MobileJournalViewProps {
    * the raw question as a journal entry instead. Fixed alongside the
    * rest of this task since both files were already open for it. */
   onAskRules?: (input: string) => Promise<GmTurnResult>
+  /** Slice 17: forwarded straight to `JournalFeed` — see its own doc
+   * comment. Both optional, same "omit for read-only" convention every
+   * other feed callback here already follows. */
+  onResolveCheck?: (check: GmCheck, source: ResolveSource, total?: number) => void
+  resolvingCheckId?: string | null
   campaignId?: string
   /** Slice 16 — opens the rules transcript from the Tools tile. */
   onOpenRules?: () => void
@@ -129,6 +137,8 @@ export function MobileJournalView({
   gmEnabled,
   onAskGm,
   onAskRules,
+  onResolveCheck,
+  resolvingCheckId,
   campaignId,
   onOpenRules,
   onOpenCharacter,
@@ -156,8 +166,12 @@ export function MobileJournalView({
     })
   }
 
+  // Slice 17: 'check' bypasses the filter same as 'system' — a check
+  // card has no chip of its own to mute it by (ALL_FILTER_KINDS never
+  // included it, same reasoning journalFilters.ts already documents for
+  // 'system').
   const feedFilter = useMemo(
-    () => (item: FeedItem) => item.kind === 'system' || activeFilters.has(item.kind as FilterKind),
+    () => (item: FeedItem) => item.kind === 'system' || item.kind === 'check' || activeFilters.has(item.kind as FilterKind),
     [activeFilters],
   )
 
@@ -220,6 +234,8 @@ export function MobileJournalView({
               sessions={sessions}
               filter={feedFilter}
               onSaveAsNote={sessionOpen ? (item) => setNoteSeed({ body: item.body }) : undefined}
+              onResolveCheck={onResolveCheck}
+              resolvingCheckId={resolvingCheckId}
             />
           </div>
         ) : activeView === 'party' ? (
