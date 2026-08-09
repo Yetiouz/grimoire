@@ -285,7 +285,24 @@ Deno.serve(async (req: Request) => {
       inTok += res.inputTokens ?? 0;
       outTok += res.outputTokens ?? 0;
 
-      if (!res.toolCalls.length) { text = res.text; break; }
+      if (!res.toolCalls.length) {
+        text = res.text;
+        // 2026-08-09: a provider can reject an undeclared/malformed
+        // tool-call attempt and hand back a completion with no text and
+        // no toolCalls at all — TOOL_SCHEMAS is empty today, so nothing
+        // is ever declared, but a model can still try to call one it
+        // read about in the prompt (see prompt.ts's TRANSLATION fix).
+        // That used to fall through as a silent "ok" with a blank
+        // message: the turn still spent a request, but nothing was said
+        // and — since an empty message never gets logged — nothing
+        // reached the journal either, with no sign anything went wrong.
+        // Treat it as the real failure it is instead.
+        if (!text.trim()) {
+          status = "error";
+          errMsg = `empty completion${res.finishReason ? ` (${res.finishReason})` : ""}`;
+        }
+        break;
+      }
 
       // Brake 2 — repeat detection. Identical tool + identical arguments
       // twice in one turn is the actual signature of a runaway, and catches

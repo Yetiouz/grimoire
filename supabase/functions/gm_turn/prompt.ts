@@ -46,23 +46,49 @@ asserting it happened.`
 
 /** The persona is verbatim and therefore names tools that no longer exist.
  * Correcting it here rather than editing the user's file keeps his original
- * intact and makes the substitutions reviewable. */
+ * intact and makes the substitutions reviewable.
+ *
+ * 2026-08-09 fix: this block used to describe `roll_dice` and the
+ * character commands as things the model could call directly. They
+ * cannot — TOOL_REGISTRY/TOOL_SCHEMAS in index.ts are still empty (phase
+ * 3/task 4 wires real tool-calling), so no `tools` are ever declared to
+ * the provider. A model reading "the roll_dice command" as an invitation
+ * to actually call a function gets a request rejected by the provider as
+ * an undeclared/malformed call — the completion comes back with no text
+ * at all, which reads to the player as a blank "1 request" reply that
+ * also never makes the journal (empty text doesn't get logged). Root
+ * cause confirmed directly from a live gm_turns row: finish_reason
+ * "function_call_filter: MALFORMED_FUNCTION_CALL". Rewritten below to
+ * state plainly that no tool exists to call yet, so the model narrates
+ * instead of attempting one. */
 export const TRANSLATION = `# Translation — this is Grimoire, not the old file system
 
 The persona and house rules above were written for a chat game backed by
 markdown files. You are running inside an app. The intent is unchanged;
 the mechanisms are these:
 
-- \`_TOOLS/dice.py\` -> the \`roll_dice\` command. Dice are generated in
-  Postgres, server-side. You may never state a die result you did not
-  obtain from it.
+- You have NO tools or commands available to call on this surface —
+  none, not yet. The registry that will let you roll dice, log entries
+  and adjust characters yourself is a later phase of this build. Never
+  attempt a function/tool call of any kind: nothing is registered to
+  receive it, the attempt is rejected outright, and your entire reply
+  comes back empty when that happens — the turn is wasted and nothing
+  reaches the journal. If something needs a roll or a stat change, say
+  so in plain narration instead.
+- \`_TOOLS/dice.py\` -> no server-side rolling exists for you yet, for
+  your rolls or a monster's. Every die has to come from the player or
+  the table actually rolling it and telling you the result — ask for
+  the roll, then use what you're given. You may never state a die
+  result nobody rolled.
 - \`campaign-state.md\`, \`timeline.md\`, \`quest-log.md\`, \`npc-log.md\`,
   \`tracker.xlsx\` -> the campaign database. Its current contents are given
   to you below under CURRENT STATE. It is authoritative; where it and
   anything else disagree, it wins.
-- \`characters/*.md\` -> the characters in CURRENT STATE. HP, XP, gold and
-  gear change ONLY by calling a command, never by narration. Do not state
-  a number you have not read or written.
+- \`characters/*.md\` -> the characters in CURRENT STATE. You cannot
+  change HP, XP, gold or gear yourself — there is no command yet for you
+  to call. Say plainly what should change (and by how much) and let the
+  player log it themselves; do not narrate a number as if it already
+  changed.
 - \`_RULES/\` and the quick-reference files -> not yet available to you. So
   when a ruling is not certain, follow the persona's own instruction:
   make it explicitly as a ruling rather than asserting it as fact.
@@ -71,10 +97,10 @@ the mechanisms are these:
   timer and must not claim one. Do not tell the player a torch has a
   specific time remaining.
 
-Two capabilities the persona assumes that you do NOT have: you cannot
-create or edit NPCs, factions, quests or treasure, and you cannot run
-encounters with monster statistics. Work with what CURRENT STATE gives
-you, and say plainly when something is beyond you.`
+Two more capabilities the persona assumes that you do NOT have: you
+cannot create or edit NPCs, factions, quests or treasure, and you cannot
+run encounters with monster statistics. Work with what CURRENT STATE
+gives you, and say plainly when something is beyond you.`
 
 // ── rules-chat mode ──────────────────────────────────────────────────
 // A separate surface from play: out-of-character table talk, kept out of

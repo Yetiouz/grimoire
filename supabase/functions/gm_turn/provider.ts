@@ -10,6 +10,14 @@ export type Completion = {
   toolCalls: ToolCall[];
   inputTokens: number | null;
   outputTokens: number | null;
+  /** The provider's own finish_reason, when it gives one — e.g. "stop",
+   * "length", or (2026-08-09, added after a real incident) something
+   * like "function_call_filter: MALFORMED_FUNCTION_CALL", which is what
+   * an undeclared/rejected tool-call attempt looks like: no text, no
+   * tool_calls, just this. index.ts uses it to tell a real empty
+   * completion apart from a normal one and to record what actually
+   * happened rather than a bare "empty". */
+  finishReason: string | null;
   raw: unknown;
 };
 
@@ -35,7 +43,7 @@ async function stubComplete(messages: Message[], signal: AbortSignal): Promise<C
     return {
       text: "",
       toolCalls: [{ id: "stub", name: "roll_dice", args: { die: "d20" } }],
-      inputTokens: 10, outputTokens: 5, raw: { stub: "loop" },
+      inputTokens: 10, outputTokens: 5, finishReason: "tool_calls", raw: { stub: "loop" },
     };
   }
 
@@ -48,7 +56,7 @@ async function stubComplete(messages: Message[], signal: AbortSignal): Promise<C
         name: "roll_dice",
         args: { die: "d20", nonce: crypto.randomUUID() },
       }],
-      inputTokens: 10, outputTokens: 5, raw: { stub: "vary" },
+      inputTokens: 10, outputTokens: 5, finishReason: "tool_calls", raw: { stub: "vary" },
     };
   }
 
@@ -72,7 +80,7 @@ async function stubComplete(messages: Message[], signal: AbortSignal): Promise<C
   return {
     text: "[stub GM] The plumbing works. Phase 1 is alive.",
     toolCalls: [],
-    inputTokens: 10, outputTokens: 12, raw: { stub: "text" },
+    inputTokens: 10, outputTokens: 12, finishReason: "stop", raw: { stub: "text" },
   };
 }
 
@@ -113,11 +121,12 @@ async function liveComplete(
   }
 
   const body = await res.json();
-  const choice = body.choices?.[0]?.message ?? {};
+  const choice = body.choices?.[0] ?? {};
+  const message = choice.message ?? {};
 
   return {
-    text: choice.content ?? "",
-    toolCalls: (choice.tool_calls ?? []).map((t: {
+    text: message.content ?? "",
+    toolCalls: (message.tool_calls ?? []).map((t: {
       id: string;
       function: { name: string; arguments: string };
     }) => ({
@@ -127,6 +136,7 @@ async function liveComplete(
     })),
     inputTokens: body.usage?.prompt_tokens ?? null,
     outputTokens: body.usage?.completion_tokens ?? null,
+    finishReason: choice.finish_reason ?? null,
     raw: body,
   };
 }
