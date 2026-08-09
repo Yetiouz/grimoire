@@ -225,53 +225,67 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
           />
         </div>
 
-        <div>
-          <p className={cx(text.label, 'mb-2')}>Count</p>
-          <Stepper
-            value={count}
-            onChange={(next) => {
-              setCount(next)
-              clearResult()
-            }}
-            max={MAX_COUNT}
-            label="dice"
-            className="justify-center"
-          />
-        </div>
+        {/* Count and Mode are both compact controls (a three-button
+         * stepper; a three-segment pill) with nothing else competing for
+         * width on the same line, so they share a row instead of each
+         * claiming a full-width block of vertical space — owner's
+         * layout pass. `flex-wrap` is safety, not the intended state:
+         * on any sheet width both should fit on one line, but a phone
+         * narrow enough to force a wrap still gets two clean stacked
+         * rows instead of a clipped one. */}
+        <div className="flex flex-wrap items-start justify-center gap-6">
+          <div>
+            <p className={cx(text.label, 'mb-2')}>Count</p>
+            <Stepper
+              value={count}
+              onChange={(next) => {
+                setCount(next)
+                clearResult()
+              }}
+              max={MAX_COUNT}
+              label="dice"
+              className="justify-center"
+            />
+          </div>
 
-        <div>
-          <p className={cx(text.label, 'mb-2')}>Mode</p>
-          {/* One bordered pill, internally divided — replaces three
-           * separately bordered chips (reference mockup: a single
-           * segmented Disadvantage/Normal/Advantage control, not three
-           * standalone buttons). One shared `border` on the outer pill
-           * plus `p-1` padding means the segments themselves need no
-           * border of their own, so there's no seam to manage between
-           * them. */}
-          <div
-            className="inline-flex rounded-button border border-line-soft bg-panel2 p-1"
-            role="radiogroup"
-            aria-label="Mode"
-          >
-            {MODE_OPTIONS.map((option) => (
-              <button
-                key={option.mode}
-                type="button"
-                role="radio"
-                aria-checked={mode === option.mode}
-                onClick={() => {
-                  setMode(option.mode)
-                  clearResult()
-                }}
-                className={cx(
-                  'rounded-button px-3 py-2 uppercase transition-colors',
-                  text.caption,
-                  mode === option.mode ? 'bg-purple text-white' : 'text-ink-dim hover:text-ink',
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
+          <div>
+            <p className={cx(text.label, 'mb-2')}>Mode</p>
+            {/* One bordered pill, internally divided — replaces three
+             * separately bordered chips (reference mockup: a single
+             * segmented Disadvantage/Normal/Advantage control, not three
+             * standalone buttons). One shared `border` on the outer pill
+             * plus `p-1` padding means the segments themselves need no
+             * border of their own, so there's no seam to manage between
+             * them. `px-2` rather than Modifier's `px-3` — this control
+             * now shares a row with Count instead of owning the sheet's
+             * full width, and "Disadvantage" is the longest label on the
+             * whole sheet, so it's the one place worth trimming a scale
+             * step to help the pair actually fit side by side. */}
+            <div
+              className="inline-flex rounded-button border border-line-soft bg-panel2 p-1"
+              role="radiogroup"
+              aria-label="Mode"
+            >
+              {MODE_OPTIONS.map((option) => (
+                <button
+                  key={option.mode}
+                  type="button"
+                  role="radio"
+                  aria-checked={mode === option.mode}
+                  onClick={() => {
+                    setMode(option.mode)
+                    clearResult()
+                  }}
+                  className={cx(
+                    'rounded-button px-2 py-2 uppercase transition-colors',
+                    text.caption,
+                    mode === option.mode ? 'bg-purple text-white' : 'text-ink-dim hover:text-ink',
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
