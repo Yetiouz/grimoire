@@ -143,36 +143,6 @@ export function LogEntryRow({
           {timestamp && <span className={cx(text.caption, 'text-ink-faint')}>{timestamp}</span>}
           {tag && <span className={cx(text.label, 'rounded-full border border-line px-2 py-1')}>{tag}</span>}
         </div>
-        {/* Compact-control exception, same call as the composer's mode
-         * pill and the header filter chips — this sits in a dense
-         * per-entry row repeated many times down the feed, so a full
-         * 44px touch target on every single one would add real bulk. A
-         * small ghost icon button, matching `GmReply`'s dismiss "×" in
-         * spirit (a low-emphasis inline utility control, not a primary
-         * action). Flagged rather than assumed settled — worth
-         * revisiting if it proves fiddly to tap on a phone. */}
-        {canSpeak && (
-          <button
-            type="button"
-            onClick={handleSpeak}
-            aria-label={speaking ? 'Stop reading aloud' : 'Read aloud'}
-            title={speaking ? 'Stop reading aloud' : 'Read aloud'}
-            className="shrink-0 rounded p-1 text-ink-faint transition-colors hover:text-ink"
-          >
-            <Icon name="speak" state={speaking ? 'active' : 'default'} />
-          </button>
-        )}
-        {onSaveAsNote && (
-          <button
-            type="button"
-            onClick={onSaveAsNote}
-            aria-label="Save as note"
-            title="Save as note"
-            className="shrink-0 rounded p-1 text-ink-faint transition-colors hover:text-ink"
-          >
-            <Icon name="saveNote" />
-          </button>
-        )}
       </div>
       {/* `pl-6` (24px) re-creates the indent the old flex layout gave
        * the message for free (it used to share a column with the name
@@ -190,6 +160,45 @@ export function LogEntryRow({
         >
           {message}
         </p>
+      )}
+      {/* Quick actions moved below the message (2026-08-09, owner
+       * feedback) — they used to sit in the header row, level with the
+       * name/timestamp, but that put them above content they act on
+       * (read this message, save this message) rather than after it.
+       * `pl-6` keeps them in the same left indent as the message text
+       * above. Compact-control exception, same call as the composer's
+       * mode pill and the header filter chips — this sits in a dense
+       * per-entry row repeated many times down the feed, so a full
+       * 44px touch target on every single one would add real bulk. A
+       * small ghost icon button, matching `GmReply`'s dismiss "×" in
+       * spirit (a low-emphasis inline utility control, not a primary
+       * action). Flagged rather than assumed settled — worth
+       * revisiting if it proves fiddly to tap on a phone. */}
+      {(canSpeak || onSaveAsNote) && (
+        <div className="flex items-center gap-1 pl-6 pt-1">
+          {canSpeak && (
+            <button
+              type="button"
+              onClick={handleSpeak}
+              aria-label={speaking ? 'Stop reading aloud' : 'Read aloud'}
+              title={speaking ? 'Stop reading aloud' : 'Read aloud'}
+              className="shrink-0 rounded p-1 text-ink-faint transition-colors hover:text-ink"
+            >
+              <Icon name="speak" state={speaking ? 'active' : 'default'} />
+            </button>
+          )}
+          {onSaveAsNote && (
+            <button
+              type="button"
+              onClick={onSaveAsNote}
+              aria-label="Save as note"
+              title="Save as note"
+              className="shrink-0 rounded p-1 text-ink-faint transition-colors hover:text-ink"
+            >
+              <Icon name="saveNote" />
+            </button>
+          )}
+        </div>
       )}
     </div>
   )
