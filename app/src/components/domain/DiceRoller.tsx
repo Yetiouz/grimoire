@@ -3,19 +3,17 @@ import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { Overlay } from '../ui/Overlay'
 import { Button } from '../ui/Button'
-import { TextInput } from '../ui/TextInput'
-import { Stepper } from '../ui/Stepper'
-import { DieSelector } from './DieSelector'
+import { DiceControls } from './DiceControls'
+import type { ModifierSource } from './DiceControls'
 import { RollResult } from './RollResult'
 import { RecentRolls } from './RecentRolls'
 import type { RecentRoll } from './RecentRolls'
 import { readCharacterAbilities } from '../../lib/characters'
-import type { Character, CharacterAbilities } from '../../lib/characters'
+import type { Character } from '../../lib/characters'
 import { formatRollText } from '../../lib/dice'
 import type { DieType, DiceRollResult, RollMode, RollModifier } from '../../lib/dice'
 
 const FACES: Record<DieType, number> = { d4: 4, d6: 6, d8: 8, d10: 10, d12: 12, d20: 20, d100: 100 }
-const MAX_COUNT = 10
 /** Roll always takes at least this long, even when the RPC round-trip is
  * faster — otherwise RollResult's tumble animation would sometimes
  * flash for a single frame instead of reading as an actual roll. */
@@ -28,31 +26,6 @@ const MAX_RECENT_ROLLS = 5
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
-
-/** `short` is what actually renders — `label` stays the full word for
- * `aria-label` only. Measured against the Stepper it now shares a row
- * with: Stepper's two 44px touch-target buttons plus its number readout
- * come to ~136px on their own (not shrinking that — it's the shared
- * component SPEC's touch-target minimum owns), which leaves too little
- * of a narrow sheet's width for "Disadvantage" spelled out next to it.
- * "Normal" stays full — it's the shortest of the three and the
- * default, worth keeping unambiguous. */
-const MODE_OPTIONS: Array<{ mode: RollMode; label: string; short: string }> = [
-  { mode: 'disadvantage', label: 'Disadvantage', short: 'Dis' },
-  { mode: 'normal', label: 'Normal', short: 'Normal' },
-  { mode: 'advantage', label: 'Advantage', short: 'Adv' },
-]
-
-const ABILITY_ORDER: Array<{ key: keyof CharacterAbilities; label: string }> = [
-  { key: 'str', label: 'STR' },
-  { key: 'dex', label: 'DEX' },
-  { key: 'con', label: 'CON' },
-  { key: 'int', label: 'INT' },
-  { key: 'wis', label: 'WIS' },
-  { key: 'cha', label: 'CHA' },
-]
-
-type ModifierSource = { kind: 'none' } | { kind: 'ability'; key: keyof CharacterAbilities; label: string; value: number } | { kind: 'custom' }
 
 interface DiceRollerProps {
   open: boolean
@@ -69,13 +42,6 @@ interface DiceRollerProps {
   onLog: (body: string) => Promise<void>
 }
 
-const chipClass = (active: boolean) =>
-  cx(
-    'inline-flex items-center justify-center rounded-full border px-3 py-1 uppercase',
-    text.caption,
-    active ? 'border-purple bg-purple text-white' : 'border-line-soft bg-panel2 text-ink-dim hover:border-line-hover',
-  )
-
 /**
  * The app-rolled half of dice (BUILD_PLAN.md slice 4: server-
  * authoritative dice). The hand-rolled half — someone rolling real dice
@@ -88,13 +54,15 @@ const chipClass = (active: boolean) =>
  * JournalScreen, same component-boundary rule CharacterSheet and
  * PlayerCard already follow (SPEC's "Shared components rule").
  *
- * Split into three files in the retroactive-review pass (this file was
- * 367 lines, over CLAUDE.md's ~300-line cap): `DieSelector.tsx` (the
- * die-shape chip row) and `RollResult.tsx` (the roll preview card, also
- * BUILD_PLAN.md's own named `RollResult` domain component) each own
- * their rendering; this file keeps the controls (count/mode/modifier)
- * and all the roll/log orchestration. `RecentRolls.tsx` was split out
- * the same way rather than grown here, for the same reason.
+ * Split into four files across two passes (this file was 367 lines,
+ * then 447, both over CLAUDE.md's ~300-line cap): `DieSelector.tsx`
+ * (the die-shape chip row), `RollResult.tsx` (the roll preview card,
+ * also BUILD_PLAN.md's own named `RollResult` domain component),
+ * `RecentRolls.tsx` (the session scoreboard, now its own overlay
+ * window), and `DiceControls.tsx` (BOB_fixes.md's follow-up cut: the
+ * Die/Count/Mode/Modifier block, the one piece still inlined after the
+ * first three splits) each own their rendering; this file keeps state
+ * and all the roll/log orchestration.
  *
  * Reference pass (owner pointed at a mobile attack-roll mockup — "keep
  * our style, the layout and ideas are good"): the Mode control is now
@@ -262,145 +230,28 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
           className="w-full"
         />
 
-        <div>
-          <p className={cx(text.label, 'mb-2')}>Die</p>
-          {/* No `justify-center` here (every other control on this sheet
-           * gets one) — `DieSelector` scrolls horizontally now, and
-           * centering a row that overflows its container pushes content
-           * off BOTH edges symmetrically, meaning the row would open
-           * scrolled to its middle instead of starting at d4 the way a
-           * scrollable strip should. */}
-          <DieSelector
-            value={die}
-            onChange={(next) => {
-              setDie(next)
-              clearResult()
-            }}
-          />
-        </div>
-
-        {/* Count and Mode are both compact controls (a three-button
-         * stepper; a three-segment pill) with nothing else competing for
-         * width on the same line, so they share a row instead of each
-         * claiming a full-width block of vertical space — owner's
-         * layout pass. `flex-wrap` is safety, not the intended state:
-         * on any sheet width both should fit on one line, but a phone
-         * narrow enough to force a wrap still gets two clean stacked
-         * rows instead of a clipped one. `gap-4` (16px, "component" on
-         * the closed scale) rather than the sheet's usual `gap-6` — the
-         * two controls in this one row need to actually fit, and this
-         * pair reads as one related unit rather than two "separated"
-         * (24px-slot) blocks anyway. */}
-        <div className="flex flex-wrap items-start justify-center gap-4">
-          <div>
-            <p className={cx(text.label, 'mb-2')}>Count</p>
-            <Stepper
-              value={count}
-              onChange={(next) => {
-                setCount(next)
-                clearResult()
-              }}
-              max={MAX_COUNT}
-              label="dice"
-              className="justify-center"
-            />
-          </div>
-
-          <div>
-            <p className={cx(text.label, 'mb-2')}>Mode</p>
-            {/* One bordered pill, internally divided — replaces three
-             * separately bordered chips (reference mockup: a single
-             * segmented Disadvantage/Normal/Advantage control, not three
-             * standalone buttons). One shared `border` on the outer pill
-             * plus `p-1` padding means the segments themselves need no
-             * border of their own, so there's no seam to manage between
-             * them. `px-2 py-1` rather than Modifier's `px-3 py-1` — the
-             * same "compact-pill exception" JournalFilterBar's own
-             * header comment already invokes (reused from the
-             * composer's kind-chip sizing rather than the 44px touch
-             * target every primary control gets), pushed one step
-             * further here since this control now shares a row with
-             * Count instead of owning the sheet's full width. */}
-            <div
-              className="inline-flex rounded-button border border-line-soft bg-panel2 p-1"
-              role="radiogroup"
-              aria-label="Mode"
-            >
-              {MODE_OPTIONS.map((option) => (
-                <button
-                  key={option.mode}
-                  type="button"
-                  role="radio"
-                  aria-checked={mode === option.mode}
-                  aria-label={option.label}
-                  onClick={() => {
-                    setMode(option.mode)
-                    clearResult()
-                  }}
-                  className={cx(
-                    'rounded-button px-2 py-1 uppercase transition-colors',
-                    text.caption,
-                    mode === option.mode ? 'bg-purple text-white' : 'text-ink-dim hover:text-ink',
-                  )}
-                >
-                  {option.short}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <p className={cx(text.label, 'mb-2')}>Modifier</p>
-          <div className="flex flex-wrap justify-center gap-2" role="radiogroup" aria-label="Modifier">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={modifierSource.kind === 'none'}
-              onClick={() => setModifierSource({ kind: 'none' })}
-              className={chipClass(modifierSource.kind === 'none')}
-            >
-              None
-            </button>
-            {ABILITY_ORDER.map(({ key, label }) => {
-              const score = abilities[key]
-              if (!score) return null
-              const active = modifierSource.kind === 'ability' && modifierSource.key === key
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  onClick={() => setModifierSource({ kind: 'ability', key, label: `${label} Modifier`, value: score.mod })}
-                  className={chipClass(active)}
-                >
-                  {label}
-                </button>
-              )
-            })}
-            <button
-              type="button"
-              role="radio"
-              aria-checked={modifierSource.kind === 'custom'}
-              onClick={() => setModifierSource({ kind: 'custom' })}
-              className={chipClass(modifierSource.kind === 'custom')}
-            >
-              Custom
-            </button>
-          </div>
-          {modifierSource.kind === 'custom' && (
-            <TextInput
-              type="number"
-              inputMode="numeric"
-              value={customModifier}
-              onChange={(event: { target: { value: string } }) => setCustomModifier(event.target.value)}
-              placeholder="e.g. 2 or -1"
-              className="mx-auto mt-2 w-32"
-              aria-label="Custom modifier"
-            />
-          )}
-        </div>
+        <DiceControls
+          die={die}
+          onDieChange={(next) => {
+            setDie(next)
+            clearResult()
+          }}
+          count={count}
+          onCountChange={(next) => {
+            setCount(next)
+            clearResult()
+          }}
+          mode={mode}
+          onModeChange={(next) => {
+            setMode(next)
+            clearResult()
+          }}
+          abilities={abilities}
+          modifierSource={modifierSource}
+          onModifierSourceChange={setModifierSource}
+          customModifier={customModifier}
+          onCustomModifierChange={setCustomModifier}
+        />
 
         {error && <p className={cx(text.caption, 'text-red')}>{error}</p>}
 
