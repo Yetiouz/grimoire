@@ -266,6 +266,12 @@ Deno.serve(async (req: Request) => {
   // ride back in the reply/telemetry regardless of how the turn ends.
   let narrationLoggedByTool = false;
   const inventions: { name: string; detail: string }[] = [];
+  // 2026-08-09 hotfix: true once a round of tool calls has landed this
+  // turn without tripping the dice_violation brake — i.e. real, already-
+  // committed progress (a journal write, a check, an HP change, ...)
+  // happened. See the empty-completion branch below, the reason this
+  // exists.
+  let toolProgressThisTurn = false;
 
   try {
     // Order matters: standing instructions first (stable, and the part
@@ -397,7 +403,19 @@ Deno.serve(async (req: Request) => {
         // never gets logged — nothing reached the journal either, with
         // no sign anything went wrong. Treat it as the real failure it
         // is instead.
-        if (!text.trim()) {
+        //
+        // 2026-08-09 hotfix: that check was too broad. Caught live — a
+        // turn whose first round already ran log_journal_entry and
+        // propose_check successfully (real narration written, a real
+        // check created), then a second round, fed those tool results
+        // back, came back completely empty. With no carve-out this
+        // reported status "error" / "Your journal is unaffected" even
+        // though the journal WAS affected and a check was waiting to be
+        // resolved. Only the no-progress-at-all case (the one this
+        // branch was written for) is still a hard error; once a round of
+        // tool calls has landed without a dice_violation, a trailing
+        // empty completion just means the model had nothing more to add.
+        if (!text.trim() && !toolProgressThisTurn) {
           status = "error";
           errMsg = `empty completion${res.finishReason ? ` (${res.finishReason})` : ""}`;
         }
@@ -463,6 +481,7 @@ Deno.serve(async (req: Request) => {
         errMsg = diceViolation;
         break;
       }
+      toolProgressThisTurn = true;
     }
   } catch (e) {
     // Brake 3 — wall-clock timeout lands here via the abort signal.

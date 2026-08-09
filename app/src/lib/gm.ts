@@ -58,6 +58,12 @@ export interface GmTurnResult {
    * write failed, which the composer surfaces rather than losing silently.
    * Undefined for every non-`ok` status. */
   logged?: boolean
+  /** From the edge function directly (unlike `logged`, above): true when
+   * the GM logged its own narration via the log_journal_entry tool this
+   * turn. The screen's pre-slice-17 fallback (auto-logging `message` as
+   * a journal entry) must run only when this is false, or the same
+   * narration lands twice — see useGmJournalHandlers.ts's handleAskGm. */
+  loggedByTool?: boolean
 }
 
 /** Client-side ceiling, deliberately slightly longer than the edge
@@ -114,6 +120,7 @@ export async function askGm(
       providerMode: data.providerMode,
       budget: data.budget,
       resetsAt: data.resetsAt,
+      loggedByTool: data.loggedByTool,
     }
   } catch (err) {
     return {

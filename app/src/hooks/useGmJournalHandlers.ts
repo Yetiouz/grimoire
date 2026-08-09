@@ -112,6 +112,19 @@ export function useGmJournalHandlers({
 
     if (result.status === 'ok') void refetchChecks()
 
+    // Slice 17 hotfix (2026-08-09): when the GM logged its own narration
+    // via log_journal_entry this turn, that entry already exists
+    // server-side — the fallback below must not also write `message` as
+    // a second entry (index.ts's own `loggedByTool` comment documents
+    // this invariant; it just wasn't wired up here yet). A full reload
+    // is what picks the new entry up client-side, the same mechanism
+    // handleResolveCheck already relies on for resolve_check's own
+    // server-side writes.
+    if (result.status === 'ok' && result.loggedByTool) {
+      void reloadScreenData()
+      return { ...result, logged: true }
+    }
+
     if (result.status === 'ok' && result.message.trim() && sessionId) {
       try {
         const entry = await logJournalEntry({
