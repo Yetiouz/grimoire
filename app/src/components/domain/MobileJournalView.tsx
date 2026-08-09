@@ -198,7 +198,7 @@ export function MobileJournalView({
           active={activeFilters}
           onToggle={toggleFilter}
           showRules={gmEnabled}
-          className="shrink-0 px-4 pt-3"
+          className="shrink-0 px-4 pt-3 pb-2"
         />
       )}
 

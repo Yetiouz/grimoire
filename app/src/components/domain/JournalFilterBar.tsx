@@ -52,11 +52,12 @@ export function JournalFilterBar({ active, onToggle, showRules = true, compact =
 
   return (
     <div
-      // Full-size (mobile) spreads the chips edge-to-edge with
-      // `justify-between` — owner: the row should sit "the same space on
-      // one side as it is on the other", not left-packed with a ragged
-      // gap at the right. Compact (desktop header) keeps natural widths.
-      className={cx('flex items-center', compact ? 'shrink-0 gap-1' : 'w-full justify-between gap-1', className)}
+      // Full-size (mobile) fills the row: every chip stretches to equal
+      // width (`flex-1` on the buttons) so the strip reads as one even
+      // band, symmetric margins both sides — owner's follow-up after
+      // plain `justify-between` left natural-width pills with gaps that
+      // "look funny". Compact (desktop header) keeps natural widths.
+      className={cx('flex items-center', compact ? 'shrink-0 gap-1' : 'w-full gap-2', className)}
       role="group"
       aria-label="Filter journal entries"
     >
@@ -69,8 +70,8 @@ export function JournalFilterBar({ active, onToggle, showRules = true, compact =
             aria-pressed={isActive}
             onClick={() => onToggle(chip.kind)}
             className={cx(
-              'inline-flex items-center justify-center rounded-full border uppercase',
-              compact ? 'px-2 py-0.5 text-[10px] leading-none tracking-wide' : cx(text.caption, 'px-3 py-1'),
+              'inline-flex items-center justify-center whitespace-nowrap rounded-full border uppercase',
+              compact ? 'px-2 py-0.5 text-[10px] leading-none tracking-wide' : cx(text.caption, 'flex-1 px-1 py-1.5'),
               isActive
                 ? 'border-purple/40 bg-purple/15 text-purple'
                 : 'border-line-soft bg-transparent text-ink-faint hover:border-line-hover hover:text-ink-dim',
