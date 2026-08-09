@@ -29,10 +29,18 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-const MODE_OPTIONS: Array<{ mode: RollMode; label: string }> = [
-  { mode: 'disadvantage', label: 'Disadvantage' },
-  { mode: 'normal', label: 'Normal' },
-  { mode: 'advantage', label: 'Advantage' },
+/** `short` is what actually renders — `label` stays the full word for
+ * `aria-label` only. Measured against the Stepper it now shares a row
+ * with: Stepper's two 44px touch-target buttons plus its number readout
+ * come to ~136px on their own (not shrinking that — it's the shared
+ * component SPEC's touch-target minimum owns), which leaves too little
+ * of a narrow sheet's width for "Disadvantage" spelled out next to it.
+ * "Normal" stays full — it's the shortest of the three and the
+ * default, worth keeping unambiguous. */
+const MODE_OPTIONS: Array<{ mode: RollMode; label: string; short: string }> = [
+  { mode: 'disadvantage', label: 'Disadvantage', short: 'Dis' },
+  { mode: 'normal', label: 'Normal', short: 'Normal' },
+  { mode: 'advantage', label: 'Advantage', short: 'Adv' },
 ]
 
 const ABILITY_ORDER: Array<{ key: keyof CharacterAbilities; label: string }> = [
@@ -232,8 +240,12 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
          * layout pass. `flex-wrap` is safety, not the intended state:
          * on any sheet width both should fit on one line, but a phone
          * narrow enough to force a wrap still gets two clean stacked
-         * rows instead of a clipped one. */}
-        <div className="flex flex-wrap items-start justify-center gap-6">
+         * rows instead of a clipped one. `gap-4` (16px, "component" on
+         * the closed scale) rather than the sheet's usual `gap-6` — the
+         * two controls in this one row need to actually fit, and this
+         * pair reads as one related unit rather than two "separated"
+         * (24px-slot) blocks anyway. */}
+        <div className="flex flex-wrap items-start justify-center gap-4">
           <div>
             <p className={cx(text.label, 'mb-2')}>Count</p>
             <Stepper
@@ -256,11 +268,13 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
              * standalone buttons). One shared `border` on the outer pill
              * plus `p-1` padding means the segments themselves need no
              * border of their own, so there's no seam to manage between
-             * them. `px-2` rather than Modifier's `px-3` — this control
-             * now shares a row with Count instead of owning the sheet's
-             * full width, and "Disadvantage" is the longest label on the
-             * whole sheet, so it's the one place worth trimming a scale
-             * step to help the pair actually fit side by side. */}
+             * them. `px-2 py-1` rather than Modifier's `px-3 py-1` — the
+             * same "compact-pill exception" JournalFilterBar's own
+             * header comment already invokes (reused from the
+             * composer's kind-chip sizing rather than the 44px touch
+             * target every primary control gets), pushed one step
+             * further here since this control now shares a row with
+             * Count instead of owning the sheet's full width. */}
             <div
               className="inline-flex rounded-button border border-line-soft bg-panel2 p-1"
               role="radiogroup"
@@ -272,17 +286,18 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
                   type="button"
                   role="radio"
                   aria-checked={mode === option.mode}
+                  aria-label={option.label}
                   onClick={() => {
                     setMode(option.mode)
                     clearResult()
                   }}
                   className={cx(
-                    'rounded-button px-2 py-2 uppercase transition-colors',
+                    'rounded-button px-2 py-1 uppercase transition-colors',
                     text.caption,
                     mode === option.mode ? 'bg-purple text-white' : 'text-ink-dim hover:text-ink',
                   )}
                 >
-                  {option.label}
+                  {option.short}
                 </button>
               ))}
             </div>
