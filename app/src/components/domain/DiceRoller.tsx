@@ -232,10 +232,11 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
       <div className="flex flex-col items-center gap-4 text-center">
         {/* `w-full`: the result card reads as a full-bleed card, not a
          * shrunk box, now that the column centers its children (shrink-
-         * to-fit) instead of stretching them. Renders nothing before the
-         * first roll (RollResult's own null-return guard), so leading
-         * with it doesn't leave dead space above Die on first open —
-         * only once a result exists does this block claim any height. */}
+         * to-fit) instead of stretching them. Always mounted now (owner's
+         * third round: "I want the animation window to always be there"),
+         * with its own idle state for before the first roll — it no
+         * longer needs a visibility gate here, so the sheet's height
+         * doesn't jump the moment a result first lands. */}
         <RollResult
           rolling={rolling}
           die={die}

@@ -52,27 +52,36 @@ function describeRoll(result: DiceRollResult, modifier?: RollModifier): string {
  * (tap-to-reapply is pure client state; surviving a reload is genuine
  * new schema), not something to guess at here.
  *
- * The list itself scrolls (owner's mobile pass, second round: on a real
- * phone this was growing the whole sheet taller with every roll instead
- * of staying put, when the actual ask was a small fixed-size window).
- * Capped at roughly 3 rows' worth of height with its own
- * `overflow-y-auto` — the "Recent rolls" label sits outside that box so
- * it never scrolls away, and `overscroll-contain` stops a scroll that
- * hits this list's own top/bottom edge from bleeding into the sheet's
- * outer scroll the way nested scroll areas otherwise do by default.
+ * One bordered/padded card (owner's third round of feedback: "the
+ * recent rolls should be on its own card ... you can scroll through if
+ * you need to"), matching `RollResult`'s own card treatment rather than
+ * a label floating above a separate box. The "Recent rolls" label lives
+ * inside that same card, above the scrollable region, so it's always
+ * visible and never scrolls away with the rows; only the row list itself
+ * scrolls, still capped at roughly 3 rows' worth of height with its own
+ * `overflow-y-auto` — `overscroll-contain` stops a scroll that hits this
+ * list's own top/bottom edge from bleeding into the sheet's outer scroll
+ * the way nested scroll areas otherwise do by default. Per-row
+ * horizontal padding was dropped in the same pass since the outer card
+ * now supplies it.
  */
 export function RecentRolls({ rolls, className }: RecentRollsProps) {
   if (rolls.length === 0) return null
   const shown = rolls.slice(0, MAX_SHOWN)
 
   return (
-    <div className={cx('flex w-full flex-col gap-2 text-left', className)}>
+    <div
+      className={cx(
+        'flex w-full flex-col gap-3 rounded-card border border-line-soft bg-panel2 px-4 py-4 text-left',
+        className,
+      )}
+    >
       <p className={text.label}>Recent rolls</p>
-      <div className="flex max-h-[150px] flex-col divide-y divide-line-soft overflow-y-auto overscroll-contain rounded-card border border-line-soft bg-panel2">
+      <div className="flex max-h-[150px] flex-col divide-y divide-line-soft overflow-y-auto overscroll-contain">
         {shown.map((roll) => {
           const total = roll.result.total + (roll.modifier?.value ?? 0)
           return (
-            <div key={roll.id} className="flex items-center gap-3 px-3 py-2">
+            <div key={roll.id} className="flex items-center gap-3 py-2">
               <DieIcon die={roll.result.die} className="h-5 w-5 shrink-0 text-ink-faint" />
               <span className={cx(text.bodySecondary, 'flex-1 truncate')}>
                 {describeRoll(roll.result, roll.modifier)}
