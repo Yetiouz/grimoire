@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cx } from '../../lib/cx'
-import { speakText } from '../../lib/speech'
+import { browserSpeechAvailable, startSpeaking } from '../../lib/speech'
+import type { SpeechHandle } from '../../lib/speech'
 import { text } from '../../lib/typography'
 import { Icon } from './Icon'
 import { Markdown } from './Markdown'
@@ -79,48 +80,59 @@ export function LogEntryRow({
 
   // Read-aloud (2026-08-09) — narration only (GM voice, whether AI- or
   // hand-typed; see senderColor's note above on the two sources sharing
-  // this kind), using the browser's own speech synthesis rather than a
-  // paid API: no backend involved, works offline. Self-contained (no
-  // prop from the caller) since, unlike "save as note," nothing above
-  // this component needs to know playback happened. Feature-detected so
-  // the button simply doesn't render on a browser without support
-  // rather than rendering a control that does nothing. Voice selection
-  // (picking something that doesn't sound like a default robotic
-  // voice) lives in `lib/speech.ts`, not here — this component just
-  // asks it to speak.
-  const canSpeak = kind === 'narration' && typeof window !== 'undefined' && 'speechSynthesis' in window
+  // this kind). All voice logic — the GM's real Gemini voice with the
+  // browser voice as fallback, singleton playback, caching — lives in
+  // `lib/speech.ts`; this component just asks for a `SpeechHandle` and
+  // tracks whether it's the row currently talking. The button renders
+  // whenever ANY tier could speak; on a browser with no speechSynthesis
+  // at all the AI tier still works, so the old hard feature-gate on
+  // speechSynthesis alone would hide a working button.
+  const canSpeak = kind === 'narration' && (browserSpeechAvailable() || typeof window !== 'undefined')
   const [speaking, setSpeaking] = useState(false)
+  const handleRef = useRef<SpeechHandle | null>(null)
 
-  // Stops this row's own speech if it unmounts mid-read (e.g. the
-  // player switches campaigns while narration is still playing) —
-  // guarded on `speaking` so it's a no-op cleanup on every render where
-  // this row was never the one talking.
+  // Stops this row's own playback if it unmounts mid-read (e.g. the
+  // player switches campaigns while narration is still playing).
   useEffect(() => {
-    if (!speaking) return
     return () => {
-      window.speechSynthesis.cancel()
+      handleRef.current?.stop()
     }
-  }, [speaking])
+  }, [])
+
+  // Guards the stop-while-synthesizing race: clicking stop during the
+  // AI tier's second-or-two synthesis wait bumps the generation, and
+  // when the stale `startSpeaking` finally resolves it sees the bump
+  // and kills its own playback instead of starting it.
+  const genRef = useRef(0)
 
   async function handleSpeak() {
     if (speaking) {
-      window.speechSynthesis.cancel()
+      genRef.current++
+      handleRef.current?.stop()
+      handleRef.current = null
       setSpeaking(false)
       return
     }
-    // Only one entry reads at a time — cancel whatever else (if
-    // anything) the browser was mid-utterance on before starting this
-    // one.
-    window.speechSynthesis.cancel()
-    const utterance = await speakText(message)
-    utterance.onend = () => setSpeaking(false)
-    utterance.onerror = () => setSpeaking(false)
-    // Set only once the utterance is actually queued/speaking, not
-    // before `speakText`'s await — clicking the button again during
-    // that (first-load-only) voice-list wait should be able to cancel
-    // cleanly rather than racing a "Stop" state that isn't playing
-    // anything yet.
+    // `startSpeaking` itself stops any other row's playback — the
+    // singleton lives in lib/speech.ts, not here. The AI tier can take
+    // a second or two to synthesize; flip the state immediately so the
+    // button reads as "stop" (and can cancel) during that wait.
+    const gen = ++genRef.current
     setSpeaking(true)
+    const handle = await startSpeaking(message)
+    if (genRef.current !== gen) {
+      handle.stop()
+      return
+    }
+    handleRef.current = handle
+    void handle.done.then(() => {
+      // Only clear if this row is still the active one — a second
+      // click may already have replaced the handle.
+      if (handleRef.current === handle) {
+        handleRef.current = null
+        setSpeaking(false)
+      }
+    })
   }
 
   return (

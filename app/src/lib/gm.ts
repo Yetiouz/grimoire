@@ -124,6 +124,40 @@ export async function askGm(
   }
 }
 
+/** Read-aloud (mode `speak`): asks the edge function to synthesize
+ * `text` through the provider's TTS and returns base64 WAV. Costs one
+ * request from the same daily budget as GM turns. Never rejects, same
+ * contract as `askGm` — callers switch on `status`, and any non-`ok`
+ * result means "use the browser voice instead" (see lib/speech.ts),
+ * never a broken button. */
+export async function askGmSpeak(
+  campaignId: string,
+  text: string,
+): Promise<{ status: GmTurnStatus; audio: string | null; message: string }> {
+  try {
+    const result = await Promise.race([
+      supabase.functions.invoke('gm_turn', {
+        body: { campaignId, input: text, mode: 'speak' },
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('TTS timed out.')), CLIENT_TIMEOUT_MS),
+      ),
+    ])
+    if (result.error) return { status: 'error', audio: null, message: result.error.message ?? '' }
+    const data = result.data as { status?: GmTurnStatus; audio?: string; message?: string } | null
+    if (data?.status !== 'ok' || !data.audio) {
+      return { status: data?.status ?? 'error', audio: null, message: data?.message ?? '' }
+    }
+    return { status: 'ok', audio: data.audio, message: '' }
+  } catch (err) {
+    return {
+      status: 'error',
+      audio: null,
+      message: err instanceof Error ? err.message : 'TTS failed.',
+    }
+  }
+}
+
 /** The rules-chat transcript, oldest first. Read directly rather than
  * through the edge function: it's an ordinary member-scoped select, and
  * routing it through the function would cost an invocation for no gain. */

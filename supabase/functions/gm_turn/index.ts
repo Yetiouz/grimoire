@@ -1,6 +1,6 @@
 // gm_turn — Slice 16: the AI GM and the rules chat.
 //
-// Two surfaces through one function, separated by `mode`:
+// Three surfaces through one function, separated by `mode`:
 //   play  — in-fiction. Full campaign packet including the journal, the
 //           grimdark persona, and the canon brief. Its replies are written
 //           into journal_entries by the client.
@@ -8,6 +8,12 @@
 //           canon; a rules-reference framing plus the quick-reference files
 //           instead. Its replies go to gm_chat, are private to the asker,
 //           and NEVER reach the journal.
+//   speak — read-aloud (tts.ts). Turns a narration entry's text into
+//           audio through the same provider key. No context build, no
+//           model conversation — one TTS request, counted against the
+//           same daily budget, telemetry mode "speak". The client falls
+//           back to the browser's own voice on any non-ok status, so
+//           this path failing can never break the speaker button.
 //
 // The tool registry is still empty: phase 3 adds the outcome bands and the
 // three commands.
@@ -25,6 +31,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { complete, type Message, providerMode } from "./provider.ts";
 import { buildContext } from "./context.ts";
 import { PROTOCOL, RULES_ASSISTANT, TRANSLATION } from "./prompt.ts";
+import { synthesize } from "./tts.ts";
 
 /** How many prior rules-chat messages to carry. Enough that a follow-up
  * ("what about with the house rule?") works, small enough that a long
@@ -113,14 +120,14 @@ Deno.serve(async (req: Request) => {
   }
 
   let campaignId: string, sessionId: string | null, input: string, probe: boolean;
-  let mode: "play" | "rules";
+  let mode: "play" | "rules" | "speak";
   try {
     const body = await req.json();
     campaignId = String(body.campaignId ?? "");
     sessionId = body.sessionId ? String(body.sessionId) : null;
     input = String(body.input ?? "");
     probe = body.probe === true;
-    mode = body.mode === "rules" ? "rules" : "play";
+    mode = body.mode === "rules" ? "rules" : body.mode === "speak" ? "speak" : "play";
     if (!campaignId) throw new Error("campaignId required");
     if (!probe && !input) throw new Error("input required");
   } catch (e) {
@@ -168,8 +175,10 @@ Deno.serve(async (req: Request) => {
 
   // Two ceilings, and the tighter one wins. The campaign cap protects the
   // provider key; the player cap protects everyone else at the table from
-  // whoever asks the most questions.
-  const worstCase = MAX_ROUNDTRIPS + 1;
+  // whoever asks the most questions. A speak turn is exactly one TTS
+  // request — reserving a text turn's full worst case for it would
+  // refuse read-alouds while budget for them still existed.
+  const worstCase = mode === "speak" ? 1 : MAX_ROUNDTRIPS + 1;
   const overCampaign = used + worstCase > DAILY_BUDGET;
   const overPlayer = yours + worstCase > PLAYER_CAP;
   if (overCampaign || overPlayer) {
@@ -186,6 +195,48 @@ Deno.serve(async (req: Request) => {
       // budget.limit and must never get a bare number here.
       budget: { used, limit: DAILY_BUDGET, yours, yourLimit: PLAYER_CAP },
       resetsAt: new Date(since.getTime() + 86_400_000).toISOString(),
+    });
+  }
+
+  // ── speak: one TTS request, then out ──────────────────────────────
+  // Before the text-turn machinery on purpose: none of it (context,
+  // packs, history, the tool loop) applies to reading existing words
+  // aloud, and sharing its code path would mean sharing its failure
+  // modes too.
+  if (mode === "speak") {
+    const speakController = new AbortController();
+    const speakTimer = setTimeout(() => speakController.abort(), TURN_TIMEOUT_MS);
+    let ttsAudio: string | null = null;
+    let ttsErr: string | null = null;
+    try {
+      const result = await synthesize(input, speakController.signal);
+      ttsAudio = result.audio;
+      ttsErr = result.error;
+    } catch (e) {
+      ttsErr = speakController.signal.aborted
+        ? "tts timeout"
+        : ((e as Error).message?.slice(0, 300) ?? "unknown");
+    } finally {
+      clearTimeout(speakTimer);
+    }
+
+    const speakStatus = ttsAudio ? "ok" : "error";
+    await record(supabase, campaignId, sessionId, speakStatus, 1, {
+      errMsg: ttsErr, mode: "speak",
+    });
+    return reply({
+      status: speakStatus,
+      mode: "speak",
+      // The audio rides the same structured 200 as everything else.
+      // WAV base64; the client turns it into a Blob and plays it.
+      audio: ttsAudio,
+      message: ttsAudio ? "" : "The GM's voice is unavailable right now.",
+      requestCount: 1,
+      providerMode,
+      budget: {
+        used: used + 1, limit: DAILY_BUDGET,
+        yours: yours + 1, yourLimit: PLAYER_CAP,
+      },
     });
   }
 
