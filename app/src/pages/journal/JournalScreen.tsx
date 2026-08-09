@@ -78,13 +78,18 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   // satisfies on its own by never unmounting across tab switches).
   const [activeFilters, setActiveFilters] = useState<Set<FilterKind>>(() => new Set(ALL_FILTER_KINDS))
 
-  // Wires the read-aloud's AI tier (lib/speech.ts) to this campaign.
-  // LogEntryRow deliberately has no campaign prop — it's a dumb
-  // renderer — so the screen, which does know the id and the flag, is
-  // what tells the speech module where to send TTS requests. Cleared on
-  // unmount so a stray late click can't bill a campaign we've left.
+  // Wires the read-aloud's AI tier (lib/speech.ts) to this campaign —
+  // but only when VITE_GM_TTS is explicitly on, which today it is NOT.
+  // Owner's call after hearing it live: free-tier TTS is throttled so
+  // hard that even a successful read takes ~9s (and most requests just
+  // time out), each listen costs a budget request better spent on GM
+  // turns, and the system voices on his own devices sound as good. So
+  // the browser voice IS the feature now, and the Gemini voice is a
+  // dormant tier for a future paid key: flip VITE_GM_TTS=true in
+  // Vercel and it all comes back, server side already deployed.
   useEffect(() => {
-    configureAiSpeech(gmEnabled ? campaign.id : null)
+    const ttsOn = gmEnabled && import.meta.env.VITE_GM_TTS === 'true'
+    configureAiSpeech(ttsOn ? campaign.id : null)
     return () => configureAiSpeech(null)
   }, [campaign.id])
 

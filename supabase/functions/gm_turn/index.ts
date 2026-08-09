@@ -204,8 +204,17 @@ Deno.serve(async (req: Request) => {
   // aloud, and sharing its code path would mean sharing its failure
   // modes too.
   if (mode === "speak") {
+    // TTS gets its OWN, much shorter timeout — not the text turn's 60s.
+    // Discovered live: the free tier throttles TTS aggressively, and a
+    // throttled request doesn't 429, it just sits in Google's queue
+    // until the timeout kills it. With a 60s ceiling that meant a
+    // player pressing play, hearing nothing for a full minute, then
+    // getting the browser voice — indistinguishable from a dead
+    // button. 20s is enough for every synthesis that is actually going
+    // to happen (observed: ~4-10s) and fails over fast when it isn't.
+    const TTS_TIMEOUT_MS = Number(Deno.env.get("GM_TTS_TIMEOUT_MS") ?? "20000");
     const speakController = new AbortController();
-    const speakTimer = setTimeout(() => speakController.abort(), TURN_TIMEOUT_MS);
+    const speakTimer = setTimeout(() => speakController.abort(), TTS_TIMEOUT_MS);
     let ttsAudio: string | null = null;
     let ttsErr: string | null = null;
     try {
