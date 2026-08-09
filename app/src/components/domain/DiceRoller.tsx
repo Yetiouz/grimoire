@@ -194,15 +194,24 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
 
   return (
     <Overlay open={open} onClose={handleClose} width="narrow" variant="sheet" header={<h2 className={text.h2}>Roll</h2>}>
-      {/* gap-6 (retroactive-review fix: was gap-5, 20px, not on the
-       * closed 4/8/12/16/24/32/48/64 spacing scale — 24px is the
-       * scale's "separated" slot, which is exactly what this is: the
-       * distinct Die/Count/Mode/Modifier/Result/Buttons/Recent blocks on
-       * one screen).
+      {/* Owner's mobile pass, second round — a real phone showed four
+       * problems this pass fixes together: the die row was wrapping D100
+       * onto its own orphaned line, the whole sheet scrolled longer than
+       * it needed to, the result card sat below every control (a scroll
+       * down just to see what you rolled), and Recent Rolls was growing
+       * the page instead of scrolling in its own small window.
+       * `DieSelector` now scrolls horizontally instead of wrapping (see
+       * its own header comment for the sizing math), `RollResult` now
+       * leads the column instead of trailing the Modifier row,
+       * `RecentRolls` caps its own height with an internal scroll (see
+       * that file), and `gap-4` (16px, "component" on the closed scale)
+       * replaces the previous gap-6 (24px, "separated") to tighten the
+       * whole column's vertical rhythm now that there's one more section
+       * competing for the same screen.
        *
        * `items-center text-center` (owner's centering pass, round two —
        * the first round only centered `RollResult`, but every control
-       * block above it was still a full-width, left-hugging section).
+       * block below it was still a full-width, left-hugging section).
        * Making the column itself center its children collapses each
        * section `<div>` to its own content width so it sits centered as
        * a block, but that alone doesn't touch alignment *inside* each
@@ -220,16 +229,36 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
        * `text-left` class) — a list of rows reads naturally left-
        * aligned, matching the reference mockup, unlike every other
        * block on this sheet. */}
-      <div className="flex flex-col items-center gap-6 text-center">
+      <div className="flex flex-col items-center gap-4 text-center">
+        {/* `w-full`: the result card reads as a full-bleed card, not a
+         * shrunk box, now that the column centers its children (shrink-
+         * to-fit) instead of stretching them. Renders nothing before the
+         * first roll (RollResult's own null-return guard), so leading
+         * with it doesn't leave dead space above Die on first open —
+         * only once a result exists does this block claim any height. */}
+        <RollResult
+          rolling={rolling}
+          die={die}
+          result={result}
+          modifier={activeModifier}
+          flickerTotal={flickerTotal}
+          className="w-full"
+        />
+
         <div>
           <p className={cx(text.label, 'mb-2')}>Die</p>
+          {/* No `justify-center` here (every other control on this sheet
+           * gets one) — `DieSelector` scrolls horizontally now, and
+           * centering a row that overflows its container pushes content
+           * off BOTH edges symmetrically, meaning the row would open
+           * scrolled to its middle instead of starting at d4 the way a
+           * scrollable strip should. */}
           <DieSelector
             value={die}
             onChange={(next) => {
               setDie(next)
               clearResult()
             }}
-            className="justify-center"
           />
         </div>
 
@@ -358,21 +387,8 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
 
         {error && <p className={cx(text.caption, 'text-red')}>{error}</p>}
 
-        {/* `w-full` on both: now that the column centers its children
-         * (shrink-to-fit) instead of stretching them, these two need it
-         * back explicitly — the result card is meant to read as a
-         * full-bleed card, not a shrunk box, and the Roll/Log buttons'
-         * own `flex-1` split only means anything if their row has the
-         * full column width to divide. */}
-        <RollResult
-          rolling={rolling}
-          die={die}
-          result={result}
-          modifier={activeModifier}
-          flickerTotal={flickerTotal}
-          className="w-full"
-        />
-
+        {/* `w-full`: the Roll/Log buttons' own `flex-1` split only means
+         * anything if their row has the full column width to divide. */}
         <div className="flex w-full gap-2">
           <Button onClick={() => void handleRoll()} disabled={rolling} className="flex-1">
             {rolling ? 'Rolling…' : result ? 'Roll Again' : 'Roll'}

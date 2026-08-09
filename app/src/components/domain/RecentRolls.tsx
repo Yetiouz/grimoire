@@ -51,6 +51,15 @@ function describeRoll(result: DiceRollResult, modifier?: RollModifier): string {
  * the page. If that turns out to be wanted, it's real follow-up scope
  * (tap-to-reapply is pure client state; surviving a reload is genuine
  * new schema), not something to guess at here.
+ *
+ * The list itself scrolls (owner's mobile pass, second round: on a real
+ * phone this was growing the whole sheet taller with every roll instead
+ * of staying put, when the actual ask was a small fixed-size window).
+ * Capped at roughly 3 rows' worth of height with its own
+ * `overflow-y-auto` — the "Recent rolls" label sits outside that box so
+ * it never scrolls away, and `overscroll-contain` stops a scroll that
+ * hits this list's own top/bottom edge from bleeding into the sheet's
+ * outer scroll the way nested scroll areas otherwise do by default.
  */
 export function RecentRolls({ rolls, className }: RecentRollsProps) {
   if (rolls.length === 0) return null
@@ -59,7 +68,7 @@ export function RecentRolls({ rolls, className }: RecentRollsProps) {
   return (
     <div className={cx('flex w-full flex-col gap-2 text-left', className)}>
       <p className={text.label}>Recent rolls</p>
-      <div className="flex flex-col divide-y divide-line-soft rounded-card border border-line-soft bg-panel2">
+      <div className="flex max-h-[150px] flex-col divide-y divide-line-soft overflow-y-auto overscroll-contain rounded-card border border-line-soft bg-panel2">
         {shown.map((roll) => {
           const total = roll.result.total + (roll.modifier?.value ?? 0)
           return (
