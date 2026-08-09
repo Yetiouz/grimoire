@@ -44,6 +44,27 @@ export async function asUser<T>(
   }
 }
 
+/** Run `fn` on a connection with auth.uid() forced to null — i.e. what an
+ * unsigned request looks like. Explicitly CLEARS the session-local claim
+ * rather than just skipping test_set_user(): pg.Pool reuses physical
+ * connections across tests, and set_config(..., false) is session-scoped,
+ * not transaction-scoped, so a connection a previous test impersonated a
+ * real user on would otherwise still resolve auth.uid() to that user here.
+ * (Found for real in CI: `create_campaign` "succeeded" under an
+ * unauthenticated caller because the pooled connection still had the
+ * previous test's identity attached — this is the fix.) */
+export async function asAnonymous<T>(
+  fn: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query("select set_config('request.jwt.claim.sub', '', false)");
+    return await fn(client);
+  } finally {
+    client.release();
+  }
+}
+
 /** The common case: call one command as one user, get its one result row.
  * Every command in this schema returns either a single row (the table it
  * just wrote) or a scalar — both come back as row 0. */

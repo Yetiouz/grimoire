@@ -12,6 +12,7 @@ import {
   createTestUser,
   createFixtureCampaign,
   expectRejection,
+  asAnonymous,
   closePool,
 } from "../helpers/db.ts";
 
@@ -45,11 +46,8 @@ describe("create_campaign", () => {
   });
 
   it("rejects an unauthenticated caller", async () => {
-    // No test_set_user() call at all — auth.uid() resolves to null, same
-    // as an unsigned request would.
-    const { pool } = await import("../helpers/db.ts");
     const message = await expectRejection(
-      pool.query("select * from create_campaign($1)", ["Nope"]),
+      asAnonymous((client) => client.query("select * from create_campaign($1)", ["Nope"])),
     );
     expect(message).toMatch(/not authenticated/);
   });
