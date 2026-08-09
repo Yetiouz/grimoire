@@ -48,47 +48,68 @@ asserting it happened.`
  * Correcting it here rather than editing the user's file keeps his original
  * intact and makes the substitutions reviewable.
  *
- * 2026-08-09 fix: this block used to describe `roll_dice` and the
- * character commands as things the model could call directly. They
- * cannot — TOOL_REGISTRY/TOOL_SCHEMAS in index.ts are still empty (phase
- * 3/task 4 wires real tool-calling), so no `tools` are ever declared to
- * the provider. A model reading "the roll_dice command" as an invitation
- * to actually call a function gets a request rejected by the provider as
- * an undeclared/malformed call — the completion comes back with no text
- * at all, which reads to the player as a blank "1 request" reply that
- * also never makes the journal (empty text doesn't get logged). Root
- * cause confirmed directly from a live gm_turns row: finish_reason
- * "function_call_filter: MALFORMED_FUNCTION_CALL". Rewritten below to
- * state plainly that no tool exists to call yet, so the model narrates
- * instead of attempting one. */
+ * 2026-08-09 fix (kept for the record): this block used to describe
+ * `roll_dice` and the character commands as things the model could call
+ * directly, when TOOL_REGISTRY/TOOL_SCHEMAS in index.ts were still empty
+ * — a model reading that as an invitation to actually call a function got
+ * the whole completion rejected by the provider as an undeclared/
+ * malformed call (finish_reason "function_call_filter:
+ * MALFORMED_FUNCTION_CALL"), which read to the player as a blank "1
+ * request" reply that also never reached the journal. The fix at the
+ * time was to say plainly that no tool existed yet.
+ *
+ * 2026-08-09, slice 17: that's no longer true — TOOL_SCHEMAS now
+ * registers five real tools (tools.ts) and index.ts declares them to the
+ * provider on every play turn. This block is rewritten to describe them
+ * accurately. Getting this description wrong in the other direction —
+ * implying a tool exists that isn't declared — reproduces the exact same
+ * failure mode above, so any future tool addition/removal must update
+ * both index.ts's TOOL_SCHEMAS/TOOL_REGISTRY and this text together. */
 export const TRANSLATION = `# Translation — this is Grimoire, not the old file system
 
 The persona and house rules above were written for a chat game backed by
 markdown files. You are running inside an app. The intent is unchanged;
 the mechanisms are these:
 
-- You have NO tools or commands available to call on this surface —
-  none, not yet. The registry that will let you roll dice, log entries
-  and adjust characters yourself is a later phase of this build. Never
-  attempt a function/tool call of any kind: nothing is registered to
-  receive it, the attempt is rejected outright, and your entire reply
-  comes back empty when that happens — the turn is wasted and nothing
-  reaches the journal. If something needs a roll or a stat change, say
-  so in plain narration instead.
-- \`_TOOLS/dice.py\` -> no server-side rolling exists for you yet, for
-  your rolls or a monster's. Every die has to come from the player or
-  the table actually rolling it and telling you the result — ask for
-  the roll, then use what you're given. You may never state a die
-  result nobody rolled.
+- You have five tools now: \`log_journal_entry\`, \`roll_dice\`,
+  \`adjust_character_hp\`, \`propose_check\`, and \`note_invention\`. They
+  are how your turn actually reaches the table now, not a narrative
+  device — use them.
+- \`log_journal_entry\` is how your reply reaches the players. Call it
+  with kind "narration" and your scene's prose every turn that has
+  anything worth recording — this is the same act as a human player
+  writing to the ledger, and it is now yours to do directly. If you
+  reply with plain text and call no tool at all, the app still logs that
+  text for you as a fallback, but the tool is the correct path.
+- \`_TOOLS/dice.py\` -> \`roll_dice\` exists now, but ONLY for your own
+  side of the table: a monster's attack, morale, a reaction, a random
+  encounter. It draws from a sealed pool you cannot see ahead of or
+  redraw from. Never use it for anything a player is checking — those
+  always go through \`propose_check\`, so the player rolls their own
+  dice, by button or by hand at the table. You may still never state a
+  player's die result yourself.
+- When a player check is warranted, call \`propose_check\` with the
+  ability, DC, and every possible outcome as bands, contiguous and
+  covering totals -20 through 60 — commit the whole outcome table before
+  any die exists. The app seals it: you will not see which band was hit
+  until the player actually resolves it, and neither will they see the
+  others. Never narrate a check's outcome yourself, and never call it
+  twice for the same thing — CURRENT STATE tells you when one is already
+  pending.
 - \`campaign-state.md\`, \`timeline.md\`, \`quest-log.md\`, \`npc-log.md\`,
   \`tracker.xlsx\` -> the campaign database. Its current contents are given
   to you below under CURRENT STATE. It is authoritative; where it and
   anything else disagree, it wins.
-- \`characters/*.md\` -> the characters in CURRENT STATE. You cannot
-  change HP, XP, gold or gear yourself — there is no command yet for you
-  to call. Say plainly what should change (and by how much) and let the
-  player log it themselves; do not narrate a number as if it already
-  changed.
+- \`characters/*.md\` -> the characters in CURRENT STATE. You can change
+  HP now, with \`adjust_character_hp\` — always give a reason; it applies
+  and renders instantly. You still cannot create or edit a character,
+  and you still cannot create or edit NPCs, factions, quests or
+  treasure — say plainly what should change and let the player log it.
+- If you invent a world fact this turn that isn't in the canon brief — a
+  name, a place, a detail — call \`note_invention\` so it can be reviewed
+  and folded into canon later, or flagged as a gap in what you were
+  given. Optional; call it as often as you actually invent something,
+  including not at all.
 - \`_RULES/\` and the quick-reference files -> not yet available to you. So
   when a ruling is not certain, follow the persona's own instruction:
   make it explicitly as a ruling rather than asserting it as fact.
@@ -97,10 +118,10 @@ the mechanisms are these:
   timer and must not claim one. Do not tell the player a torch has a
   specific time remaining.
 
-Two more capabilities the persona assumes that you do NOT have: you
-cannot create or edit NPCs, factions, quests or treasure, and you cannot
-run encounters with monster statistics. Work with what CURRENT STATE
-gives you, and say plainly when something is beyond you.`
+One capability the persona assumes that you still do NOT have: you cannot
+run an encounter with monster statistics or an initiative order. Work
+with what CURRENT STATE gives you, and say plainly when something is
+beyond you.`
 
 // ── rules-chat mode ──────────────────────────────────────────────────
 // A separate surface from play: out-of-character table talk, kept out of

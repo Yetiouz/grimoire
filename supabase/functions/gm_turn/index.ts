@@ -1,13 +1,16 @@
-// gm_turn — Slice 16: the AI GM and the rules chat.
+// gm_turn — Slice 16 (the AI GM and the rules chat) + Slice 17 (the GM
+// acts: sealed outcome bands and the three tools).
 //
 // Three surfaces through one function, separated by `mode`:
 //   play  — in-fiction. Full campaign packet including the journal, the
-//           grimdark persona, and the canon brief. Its replies are written
-//           into journal_entries by the client.
+//           grimdark persona, and the canon brief. Tool calls are declared
+//           only in this mode (see TOOL_SCHEMAS below); a reply that used
+//           no tools is still written into journal_entries by the client,
+//           same as slice 16 — see `loggedByTool` in the reply.
 //   rules — out-of-character. No journal in the packet, no persona, no
-//           canon; a rules-reference framing plus the quick-reference files
-//           instead. Its replies go to gm_chat, are private to the asker,
-//           and NEVER reach the journal.
+//           canon, no tools; a rules-reference framing plus the
+//           quick-reference files instead. Its replies go to gm_chat, are
+//           private to the asker, and NEVER reach the journal.
 //   speak — read-aloud (tts.ts). Turns a narration entry's text into
 //           audio through the same provider key. No context build, no
 //           model conversation — one TTS request, counted against the
@@ -15,8 +18,11 @@
 //           back to the browser's own voice on any non-ok status, so
 //           this path failing can never break the speaker button.
 //
-// The tool registry is still empty: phase 3 adds the outcome bands and the
-// three commands.
+// Slice 17's tools (tools.ts): log_journal_entry, roll_dice (a GM-only
+// dice pool, created fresh per play turn), adjust_character_hp, and
+// propose_check (sealed outcome bands — resolution is pure app, no
+// provider request; see gm_checks/resolve_check in migration 0017/0020).
+// note_invention is a fifth, small tool for gm_turns.inventions.
 //
 // Two invariants this file exists to guarantee:
 //   1. Everything against the database runs with the CALLER'S JWT. The
@@ -32,6 +38,7 @@ import { complete, type Message, providerMode } from "./provider.ts";
 import { buildContext } from "./context.ts";
 import { PROTOCOL, RULES_ASSISTANT, TRANSLATION } from "./prompt.ts";
 import { synthesize } from "./tts.ts";
+import { DiceViolation, TOOL_REGISTRY, TOOL_SCHEMAS, type ToolCtx } from "./tools.ts";
 
 /** How many prior rules-chat messages to carry. Enough that a follow-up
  * ("what about with the house rule?") works, small enough that a long
@@ -85,11 +92,6 @@ function lastPacificMidnight(now = new Date()): Date {
   local.setUTCHours(0, 0, 0, 0);
   return new Date(local.getTime() - offset);
 }
-
-// Still empty on purpose. Phase 3 registers log_journal_entry, roll_dice
-// and adjust_character_hp here, each mapping to an existing RPC.
-const TOOL_REGISTRY: Record<string, unknown> = {};
-const TOOL_SCHEMAS: unknown[] = [];
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -259,6 +261,11 @@ Deno.serve(async (req: Request) => {
   let requests = 0, inTok = 0, outTok = 0;
   let status = "ok", text = "", errMsg: string | null = null;
   let contextStats: unknown = null;
+  // Slice 17: whether log_journal_entry actually logged narration this
+  // turn, and any world facts the GM flagged via note_invention. Both
+  // ride back in the reply/telemetry regardless of how the turn ends.
+  let narrationLoggedByTool = false;
+  const inventions: { name: string; detail: string }[] = [];
 
   try {
     // Order matters: standing instructions first (stable, and the part
@@ -335,28 +342,61 @@ Deno.serve(async (req: Request) => {
     }
     messages.push({ role: "user", content: input });
 
+    // Slice 17: a fresh sealed dice pool per play turn, created here
+    // regardless of whether the GM ends up rolling anything — the spec's
+    // own build order calls for creating it "at turn start", and these
+    // are cheap, turn-scoped rows that are harmless to orphan (0018's
+    // migration comment). Rules mode never touches dice or the other
+    // tools, so it skips this and gets an empty tool declaration below.
+    let dicePoolId: string | null = null;
+    if (mode === "play") {
+      const { data: poolId } = await supabase.rpc("gm_create_dice_pool", {
+        p_campaign_id: campaignId,
+      });
+      dicePoolId = (poolId as string) ?? null;
+    }
+    const toolCtx: ToolCtx = {
+      supabase, campaignId, sessionId, dicePoolId,
+      markNarrationLogged: () => { narrationLoggedByTool = true; },
+      addInvention: (name, detail) => { inventions.push({ name, detail }); },
+    };
+    // Tools are declared to the provider in play mode only. Rules mode
+    // gets an empty array — same as every turn before this slice — so a
+    // rules question is never even offered a way to touch game state.
+    const tools = mode === "play" ? TOOL_SCHEMAS : [];
+
     while (true) {
       // Brake 1 — round-trip cap.
       if (requests > MAX_ROUNDTRIPS) { status = "capped"; break; }
       requests++;
 
-      const res = await complete(system, messages, TOOL_SCHEMAS, controller.signal);
+      const res = await complete(system, messages, tools, controller.signal);
       transcript.push({ request: messages.slice(-2), response: res.raw });
       inTok += res.inputTokens ?? 0;
       outTok += res.outputTokens ?? 0;
 
+      // Capture narration text from ANY round, not just a final tool-less
+      // one. Slice 17's check flow wants "the narration and the check
+      // arrive together" in one request (SLICE_17_SPEC.md) — some
+      // providers put both content and tool_calls on the same message,
+      // in which case this captures it immediately; providers that null
+      // out content while calling a tool (common) instead produce the
+      // real narration on the next, tool-less round, which still
+      // overwrites this with the real text. Either way `text` ends up
+      // holding the last non-empty narration the GM actually said.
+      if (res.text && res.text.trim()) text = res.text;
+
       if (!res.toolCalls.length) {
-        text = res.text;
         // 2026-08-09: a provider can reject an undeclared/malformed
         // tool-call attempt and hand back a completion with no text and
-        // no toolCalls at all — TOOL_SCHEMAS is empty today, so nothing
-        // is ever declared, but a model can still try to call one it
-        // read about in the prompt (see prompt.ts's TRANSLATION fix).
-        // That used to fall through as a silent "ok" with a blank
-        // message: the turn still spent a request, but nothing was said
-        // and — since an empty message never gets logged — nothing
-        // reached the journal either, with no sign anything went wrong.
-        // Treat it as the real failure it is instead.
+        // no toolCalls at all — a model can try to call something it
+        // read about in the prompt that isn't declared (see prompt.ts's
+        // TRANSLATION fix history). That used to fall through as a
+        // silent "ok" with a blank message: the turn still spent a
+        // request, but nothing was said and — since an empty message
+        // never gets logged — nothing reached the journal either, with
+        // no sign anything went wrong. Treat it as the real failure it
+        // is instead.
         if (!text.trim()) {
           status = "error";
           errMsg = `empty completion${res.finishReason ? ` (${res.finishReason})` : ""}`;
@@ -375,14 +415,53 @@ Deno.serve(async (req: Request) => {
       }
       if (looped) { status = "looped"; break; }
 
-      messages.push({ role: "assistant", content: null, tool_calls: res.raw });
+      // res.rawToolCalls (not res.raw, the whole response body) is the
+      // exact shape the provider needs to see echoed back — see
+      // provider.ts's 2026-08-09 note on why this was wrong before any
+      // real tool existed to expose the bug.
+      messages.push({ role: "assistant", content: res.text || null, tool_calls: res.rawToolCalls });
+      let diceViolation: string | null = null;
       for (const tc of res.toolCalls) {
-        const handler = TOOL_REGISTRY[tc.name];
-        messages.push({
-          role: "tool",
-          tool_call_id: tc.id,
-          content: handler ? "ok" : `unknown tool: ${tc.name}`,
-        });
+        // Gated on mode here, not just on what was declared to complete()
+        // above: a REAL provider given tools=[] never emits a tool call to
+        // begin with, but stub mode's __loop/__vary brake simulations
+        // (provider.ts) ignore the declared tools entirely and always
+        // return a canned roll_dice call, regardless of mode — including
+        // from test-gm-turn-brakes.ts, which deliberately drives them
+        // through mode "rules" as a cheap, journal-free surface. Without
+        // this gate, that would dispatch a REAL roll_dice against a rules
+        // turn's nonexistent dice pool and mis-fire dice_violation instead
+        // of the looped/capped status the brake test expects.
+        const handler = mode === "play" ? TOOL_REGISTRY[tc.name] : undefined;
+        let content: string;
+        if (!handler) {
+          content = `unknown tool: ${tc.name}`;
+        } else {
+          try {
+            content = await handler(tc.args, toolCtx);
+          } catch (e) {
+            if (e instanceof DiceViolation) {
+              diceViolation = e.message;
+              content = e.message;
+            } else {
+              content = `error: ${(e as Error).message?.slice(0, 300) ?? "tool failed"}`;
+            }
+          }
+        }
+        messages.push({ role: "tool", tool_call_id: tc.id, content });
+        // Stop dispatching the rest of this batch the moment one call
+        // proves the pool was violated — no point drawing further dice
+        // from a pool already flagged as compromised this turn.
+        if (diceViolation) break;
+      }
+      // Brake 4 — the GM dice pool is a closed system by design (0018):
+      // any failure consuming it aborts the turn outright rather than
+      // feeding an error back for a retry, same severity as the other
+      // three brakes.
+      if (diceViolation) {
+        status = "dice_violation";
+        errMsg = diceViolation;
+        break;
       }
     }
   } catch (e) {
@@ -408,13 +487,18 @@ Deno.serve(async (req: Request) => {
   }
 
   await record(supabase, campaignId, sessionId, status, requests, {
-    inTok, outTok, transcript, errMsg, contextStats, mode,
+    inTok, outTok, transcript, errMsg, contextStats, mode, inventions,
   });
 
   return reply({
     status,
     mode,
-    message: text || messageFor(status),
+    // Brake/error statuses always get their fixed message, even if a
+    // round captured some partial narration before things went wrong —
+    // that partial text was never meant to reach the player as the
+    // reply (see the loop's own comment on why `text` is now captured
+    // on every round rather than only a clean final one).
+    message: status === "ok" ? (text || messageFor(status)) : messageFor(status),
     requestCount: requests,
     providerMode,
     budget: {
@@ -422,16 +506,22 @@ Deno.serve(async (req: Request) => {
       yours: yours + requests, yourLimit: PLAYER_CAP,
     },
     context: contextStats,
+    // Slice 17: true when the GM logged its own narration via
+    // log_journal_entry this turn. The client's pre-slice-17 fallback
+    // (auto-logging `message` as a journal entry) should run only when
+    // this is false — otherwise the same narration lands twice.
+    loggedByTool: narrationLoggedByTool,
   });
 });
 
 function messageFor(status: string): string {
   switch (status) {
-    case "capped":  return "The GM went round in circles and was stopped.";
-    case "looped":  return "The GM repeated itself and was stopped.";
-    case "timeout": return "The GM took too long and was stopped.";
-    case "error":   return "The GM hit an error. Your journal is unaffected.";
-    default:        return "";
+    case "capped":         return "The GM went round in circles and was stopped.";
+    case "looped":         return "The GM repeated itself and was stopped.";
+    case "timeout":        return "The GM took too long and was stopped.";
+    case "dice_violation": return "The GM's dice pool was violated and the turn was stopped. Your journal is unaffected.";
+    case "error":          return "The GM hit an error. Your journal is unaffected.";
+    default:               return "";
   }
 }
 
@@ -443,7 +533,7 @@ async function record(
   requests: number,
   extra: {
     inTok?: number; outTok?: number; transcript?: unknown[]; errMsg?: string | null;
-    contextStats?: unknown; mode?: string;
+    contextStats?: unknown; mode?: string; inventions?: { name: string; detail: string }[];
   } | null,
 ) {
   // Telemetry is best-effort: a failure here must never fail the turn.
@@ -461,7 +551,9 @@ async function record(
       p_transcript: extra?.transcript
         ? { turns: extra.transcript, context: extra?.contextStats ?? null }
         : null,
-      p_inventions: null,
+      // Slice 17: gm_turns.inventions has existed since migration 0010
+      // and been passed null on every turn until now.
+      p_inventions: extra?.inventions && extra.inventions.length ? extra.inventions : null,
       p_error: extra?.errMsg ?? null,
       p_mode: extra?.mode ?? "play",
     });

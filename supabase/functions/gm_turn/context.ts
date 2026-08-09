@@ -51,7 +51,7 @@ export async function buildContext(
   includeJournal = true,
 ): Promise<BuiltContext> {
   // Parallel: these are independent reads and the turn is latency-bound.
-  const [campaignRes, sessionRes, charRes, questRes, npcRes, factionRes, treasureRes, entryRes] =
+  const [campaignRes, sessionRes, charRes, questRes, npcRes, factionRes, treasureRes, entryRes, checksRes] =
     await Promise.all([
       supabase.from("campaigns").select("name, system, canon").eq("id", campaignId).maybeSingle(),
       supabase.from("sessions").select("number, title, started_at")
@@ -76,6 +76,12 @@ export async function buildContext(
           .eq("campaign_id", campaignId).order("created_at", { ascending: false })
           .limit(JOURNAL_MAX_ENTRIES)
         : Promise.resolve({ data: [] }),
+      // Slice 17: gm_list_checks never returns `bands` (sealed — see
+      // 0017's migration comment), so this is safe to hand straight to
+      // the model. Rules mode skips it along with the rest of play state.
+      includeJournal
+        ? supabase.rpc("gm_list_checks", { p_campaign_id: campaignId })
+        : Promise.resolve({ data: [] }),
     ]);
 
   const campaign = campaignRes.data as { name?: string; system?: string; canon?: string | null } | null;
@@ -86,6 +92,11 @@ export async function buildContext(
   const factions = (factionRes.data ?? []) as Record<string, unknown>[];
   const treasure = (treasureRes.data ?? []) as Record<string, unknown>[];
   const allEntries = ((entryRes.data ?? []) as Record<string, unknown>[]).slice().reverse();
+  // At most one — gm_create_check auto-abandons any prior pending check
+  // for the campaign (0017: "one live check at a time"), so filtering for
+  // 'pending' here can never surface more than a single row in practice.
+  const pendingChecks = ((checksRes.data ?? []) as Record<string, unknown>[])
+    .filter((c) => c.status === "pending");
 
   // Trim the journal from the OLD end until it fits. Budgeting by
   // characters rather than entry count matters because entries vary
@@ -149,6 +160,18 @@ ${treasure.length === 0 ? "(none)" : treasure.map((t) =>
   ${t.notes}`).join("\n")}`);
 
   if (includeJournal) {
+    // Slice 17: so the GM never proposes a second check on top of one
+    // it's already waiting on — bands themselves are never in this text,
+    // only what a player already sees on the pending check card.
+    parts.push(`## Pending check
+${pendingChecks.length === 0
+  ? "(none — call propose_check when a check is warranted)"
+  : pendingChecks.map((c) =>
+    `Already awaiting a roll: ${c.ability} DC ${c.dc}${c.advantage ? ` (${c.advantage})` : ""}${
+      c.stakes ? ` — ${c.stakes}` : ""}. Do not call propose_check again for this — a new one would ` +
+    `abandon it. Narrate around it, or wait, until it resolves.`,
+  ).join("\n")}`);
+
     parts.push(`## Recent journal${truncated ? " (older entries omitted — this is not the whole campaign)" : ""}
 ${rendered.length === 0 ? "(empty)" : rendered.join("\n")}`);
   }

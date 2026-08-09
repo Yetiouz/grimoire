@@ -8,6 +8,17 @@ export type ToolCall = { id: string; name: string; args: unknown };
 export type Completion = {
   text: string;
   toolCalls: ToolCall[];
+  /** The tool_calls array EXACTLY as the provider sent it (id/type/
+   * function.name/function.arguments-as-a-string), for echoing straight
+   * back into the next request's assistant message. `toolCalls` above is
+   * a parsed convenience shape for index.ts's own logic — it is NOT
+   * valid to send back as a message's `tool_calls` field, and until
+   * slice 17 nothing ever did (TOOL_SCHEMAS was empty, so a real model
+   * never legitimately produced tool_calls here — see prompt.ts's
+   * 2026-08-09 fix). Slice 17 is what makes this path load-bearing for
+   * the first time; index.ts now uses this field, not `raw`, when it
+   * re-adds the assistant's turn to the conversation. */
+  rawToolCalls: unknown[];
   inputTokens: number | null;
   outputTokens: number | null;
   /** The provider's own finish_reason, when it gives one — e.g. "stop",
@@ -43,19 +54,20 @@ async function stubComplete(messages: Message[], signal: AbortSignal): Promise<C
     return {
       text: "",
       toolCalls: [{ id: "stub", name: "roll_dice", args: { die: "d20" } }],
+      rawToolCalls: [{ id: "stub", type: "function",
+        function: { name: "roll_dice", arguments: JSON.stringify({ die: "d20" }) } }],
       inputTokens: 10, outputTokens: 5, finishReason: "tool_calls", raw: { stub: "loop" },
     };
   }
 
   if (last.includes("__vary")) {
     // Different arguments each time → brake 1 (round-trip cap).
+    const nonce = crypto.randomUUID();
     return {
       text: "",
-      toolCalls: [{
-        id: "stub",
-        name: "roll_dice",
-        args: { die: "d20", nonce: crypto.randomUUID() },
-      }],
+      toolCalls: [{ id: "stub", name: "roll_dice", args: { die: "d20", nonce } }],
+      rawToolCalls: [{ id: "stub", type: "function",
+        function: { name: "roll_dice", arguments: JSON.stringify({ die: "d20", nonce }) } }],
       inputTokens: 10, outputTokens: 5, finishReason: "tool_calls", raw: { stub: "vary" },
     };
   }
@@ -80,6 +92,7 @@ async function stubComplete(messages: Message[], signal: AbortSignal): Promise<C
   return {
     text: "[stub GM] The plumbing works. Phase 1 is alive.",
     toolCalls: [],
+    rawToolCalls: [],
     inputTokens: 10, outputTokens: 12, finishReason: "stop", raw: { stub: "text" },
   };
 }
@@ -134,6 +147,7 @@ async function liveComplete(
       name: t.function?.name,
       args: safeParse(t.function?.arguments),
     })),
+    rawToolCalls: message.tool_calls ?? [],
     inputTokens: body.usage?.prompt_tokens ?? null,
     outputTokens: body.usage?.completion_tokens ?? null,
     finishReason: choice.finish_reason ?? null,
