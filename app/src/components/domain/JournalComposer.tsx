@@ -136,12 +136,23 @@ export function JournalComposer({
 
   return (
     <div className={cx('flex flex-col gap-2', className)}>
-      <div className="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="What is this message?">
+      <div className="flex items-center gap-2">
+        {/* One line, always (owner: no two-line wrap on mobile). The chip
+          * strip scrolls horizontally where it doesn't fit — scrollbar
+          * hidden, chips `shrink-0` so they never compress — while the
+          * budget meter sits OUTSIDE the scroller, pinned at the right
+          * and always visible regardless of scroll position. On desktop
+          * the strip fits and this renders identically to a plain row. */}
+        <div
+          className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="radiogroup"
+          aria-label="What is this message?"
+        >
         {visibleChoices.map((c) => {
           const isOn = choice === c.id
           const askLocked = c.ai && outOfBudget
           return (
-            <span key={c.id} className="flex items-center gap-1.5">
+            <span key={c.id} className="flex shrink-0 items-center gap-1.5">
               {/* Thin divider between "goes in the journal" and "asks the
                 * AI" — the one distinction worth keeping from the old
                 * two-row layout, at one-pixel cost. */}
@@ -156,7 +167,7 @@ export function JournalComposer({
                   // Compact-pill exception to the 44px touch-target rule —
                   // decided by the owner for this dense chip-row shape;
                   // same precedent as the header filter chips.
-                  'inline-flex items-center justify-center rounded-full border px-3 py-1 uppercase',
+                  'inline-flex items-center justify-center whitespace-nowrap rounded-full border px-3 py-1 uppercase',
                   text.caption,
                   isOn ? c.on : 'border-line-soft bg-panel2 text-ink-dim hover:border-line-hover',
                   !sessionOpen && 'pointer-events-none opacity-40',
@@ -168,8 +179,9 @@ export function JournalComposer({
             </span>
           )
         })}
+        </div>
         {gmAvailable && remaining !== null && (
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             {/* A bar as well as a number: the number answers "how many
               * have I got", the bar answers "should I be worried yet"
               * at a glance, mid-scene, without reading. */}

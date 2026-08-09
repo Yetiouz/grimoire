@@ -52,7 +52,11 @@ export function JournalFilterBar({ active, onToggle, showRules = true, compact =
 
   return (
     <div
-      className={cx('flex items-center', compact ? 'shrink-0 gap-1' : 'flex-wrap gap-2', className)}
+      // Full-size (mobile) spreads the chips edge-to-edge with
+      // `justify-between` — owner: the row should sit "the same space on
+      // one side as it is on the other", not left-packed with a ragged
+      // gap at the right. Compact (desktop header) keeps natural widths.
+      className={cx('flex items-center', compact ? 'shrink-0 gap-1' : 'w-full justify-between gap-1', className)}
       role="group"
       aria-label="Filter journal entries"
     >
