@@ -51,10 +51,10 @@ export function useJournalFeed(
 
   useEffect(() => {
     if (!gmEnabled) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRulesMessages([])
       return
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refetchRules()
   }, [gmEnabled, refetchRules])
 

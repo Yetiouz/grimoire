@@ -1,12 +1,6 @@
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
-import type { LogEntryKind } from '../ui/LogEntryRow'
-
-/** Every filterable kind — `system` has no chip (auto-generated, rare,
- * always shown) and isn't part of this set. */
-export type FilterKind = Exclude<LogEntryKind, 'system'>
-
-export const ALL_FILTER_KINDS: FilterKind[] = ['narration', 'action', 'roll', 'note', 'rules']
+import type { FilterKind } from '../../lib/journalFilters'
 
 interface FilterChip {
   kind: FilterKind

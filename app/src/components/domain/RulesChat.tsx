@@ -35,6 +35,7 @@ export function RulesChat({ open, campaignId, onClose }: RulesChatProps) {
   useEffect(() => {
     if (!open) return
     let cancelled = false
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMessages(null)
     setError(null)
     listRulesChat(campaignId)
