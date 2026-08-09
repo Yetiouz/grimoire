@@ -100,11 +100,12 @@ const chipClass = (active: boolean) =>
  * our style, the layout and ideas are good"): the Mode control is now
  * one segmented three-way control instead of three individually
  * bordered chips (matching the mockup's pill), and a session-local
- * "Recent rolls" list appears once at least one roll has happened this
- * time the sheet is open. Deliberately NOT adopted from that mockup:
- * weapon selection, a Target AC field, and Hit/Miss/Crit resolution —
- * this tool has no weapon/attack data model to draw those from, and
- * adding one is new scope, not a restyle.
+ * "Recent rolls" log becomes reachable — via its own button, opening as
+ * a second overlay window rather than sitting inline — once at least one
+ * roll has happened this time the sheet is open. Deliberately NOT
+ * adopted from that mockup: weapon selection, a Target AC field, and
+ * Hit/Miss/Crit resolution — this tool has no weapon/attack data model
+ * to draw those from, and adding one is new scope, not a restyle.
  */
 export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRollerProps) {
   const [die, setDie] = useState<DieType>('d20')
@@ -125,6 +126,11 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
   /** Monotonic id source for RecentRolls' React keys — see that file's
    * own header comment for why index-based keys would be wrong here. */
   const nextRollId = useRef(0)
+  /** Whether the Recent Rolls window (its own nested `Overlay`, opened
+   * from a button rather than living inline) is open — owner's fourth
+   * round: "put the recent rolls behind a button so you hit recent
+   * rolls and it pulls it up in its own window." */
+  const [recentRollsOpen, setRecentRollsOpen] = useState(false)
 
   const abilities = character ? readCharacterAbilities(character.abilities) : {}
 
@@ -143,6 +149,19 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
   }
 
   function handleClose() {
+    // This is the outer sheet's Overlay's own onClose — fired by both
+    // Escape and an outer-backdrop click. `Overlay` has no notion of
+    // "topmost" overlay (each instance's Escape listener is a plain
+    // `document` keydown handler, independent of nesting), so with the
+    // Recent Rolls window open on top, an unguarded Escape would fire
+    // both handlers at once and close the entire sheet out from under
+    // it instead of just stepping back one level. Closing the nested
+    // window first — and stopping there — makes Escape/backdrop behave
+    // the way a stacked modal should: one layer at a time.
+    if (recentRollsOpen) {
+      setRecentRollsOpen(false)
+      return
+    }
     clearResult()
     // Recent rolls deliberately does NOT reset here — see this
     // component's own header comment: it's a "what did I just roll"
@@ -225,10 +244,7 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
        * left-aligned). The fixed-width custom-modifier input needs its
        * own `mx-auto` for the same reason: a block element with an
        * explicit width doesn't self-center just because its container
-       * does. `RecentRolls` opts back OUT of centering itself (its own
-       * `text-left` class) — a list of rows reads naturally left-
-       * aligned, matching the reference mockup, unlike every other
-       * block on this sheet. */}
+       * does. */}
       <div className="flex flex-col items-center gap-4 text-center">
         {/* `w-full`: the result card reads as a full-bleed card, not a
          * shrunk box, now that the column centers its children (shrink-
@@ -401,8 +417,18 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
           )}
         </div>
 
-        <RecentRolls rolls={recentRolls} className="w-full" />
+        {/* Trigger only exists once there's something to show — same
+         * "no dead affordance" call the card version made when it
+         * rendered nothing on an empty list, just as a button instead
+         * of a whole card now. */}
+        {recentRolls.length > 0 && (
+          <Button variant="ghost" onClick={() => setRecentRollsOpen(true)} className="w-full">
+            Recent Rolls · {recentRolls.length}
+          </Button>
+        )}
       </div>
+
+      <RecentRolls open={recentRollsOpen} onClose={() => setRecentRollsOpen(false)} rolls={recentRolls} />
     </Overlay>
   )
 }

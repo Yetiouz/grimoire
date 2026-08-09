@@ -1,5 +1,6 @@
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
+import { Overlay } from '../ui/Overlay'
 import { DieIcon } from '../ui/DieIcon'
 import type { DiceRollResult, RollModifier } from '../../lib/dice'
 
@@ -14,8 +15,9 @@ export interface RecentRoll {
 }
 
 interface RecentRollsProps {
+  open: boolean
+  onClose: () => void
   rolls: RecentRoll[]
-  className?: string
 }
 
 const MAX_SHOWN = 5
@@ -52,45 +54,48 @@ function describeRoll(result: DiceRollResult, modifier?: RollModifier): string {
  * (tap-to-reapply is pure client state; surviving a reload is genuine
  * new schema), not something to guess at here.
  *
- * One bordered/padded card (owner's third round of feedback: "the
- * recent rolls should be on its own card ... you can scroll through if
- * you need to"), matching `RollResult`'s own card treatment rather than
- * a label floating above a separate box. The "Recent rolls" label lives
- * inside that same card, above the scrollable region, so it's always
- * visible and never scrolls away with the rows; only the row list itself
- * scrolls, still capped at roughly 3 rows' worth of height with its own
- * `overflow-y-auto` — `overscroll-contain` stops a scroll that hits this
- * list's own top/bottom edge from bleeding into the sheet's outer scroll
- * the way nested scroll areas otherwise do by default. Per-row
- * horizontal padding was dropped in the same pass since the outer card
- * now supplies it.
+ * Its own overlay window now (owner's fourth round of feedback: "put the
+ * recent rolls behind a button so you hit recent rolls and it pulls it
+ * up in its own window") rather than a card living inline in the roll
+ * sheet's own column — `DiceRoller` renders a "Recent Rolls" button that
+ * flips `open`, and this component is the reused `Overlay` primitive
+ * (same one `DiceRoller` itself, `CharacterSheet`, and `RulesChat` all
+ * sit in) rather than a bespoke bordered box, so it gets the same
+ * header/close-button/backdrop/Escape handling as every other window in
+ * the app for free instead of reimplementing a smaller version of it.
+ * `DiceRoller`'s own `handleClose` closes this window first if it's
+ * open, rather than closing both windows at once — see that function's
+ * comment for why an unguarded Escape would otherwise skip a level.
+ *
+ * `Overlay`'s body already scrolls on its own (`min-h-0 flex-1
+ * overflow-y-auto`), so this component no longer needs its own nested
+ * scroll region — `MAX_SHOWN` stays as a defensive display cap, but in
+ * practice `DiceRoller`'s own `MAX_RECENT_ROLLS` already trims the state
+ * to the same number before it ever reaches here.
  */
-export function RecentRolls({ rolls, className }: RecentRollsProps) {
-  if (rolls.length === 0) return null
+export function RecentRolls({ open, onClose, rolls }: RecentRollsProps) {
   const shown = rolls.slice(0, MAX_SHOWN)
 
   return (
-    <div
-      className={cx(
-        'flex w-full flex-col gap-3 rounded-card border border-line-soft bg-panel2 px-4 py-4 text-left',
-        className,
+    <Overlay open={open} onClose={onClose} width="narrow" variant="sheet" header={<h2 className={text.h2}>Recent Rolls</h2>}>
+      {shown.length === 0 ? (
+        <p className={cx(text.bodySecondary, 'text-ink-faint')}>No rolls yet.</p>
+      ) : (
+        <div className="flex flex-col divide-y divide-line-soft">
+          {shown.map((roll) => {
+            const total = roll.result.total + (roll.modifier?.value ?? 0)
+            return (
+              <div key={roll.id} className="flex items-center gap-3 py-3">
+                <DieIcon die={roll.result.die} className="h-5 w-5 shrink-0 text-ink-faint" />
+                <span className={cx(text.bodySecondary, 'flex-1 truncate')}>
+                  {describeRoll(roll.result, roll.modifier)}
+                </span>
+                <span className={cx(text.numeric, 'shrink-0')}>{total}</span>
+              </div>
+            )
+          })}
+        </div>
       )}
-    >
-      <p className={text.label}>Recent rolls</p>
-      <div className="flex max-h-[150px] flex-col divide-y divide-line-soft overflow-y-auto overscroll-contain">
-        {shown.map((roll) => {
-          const total = roll.result.total + (roll.modifier?.value ?? 0)
-          return (
-            <div key={roll.id} className="flex items-center gap-3 py-2">
-              <DieIcon die={roll.result.die} className="h-5 w-5 shrink-0 text-ink-faint" />
-              <span className={cx(text.bodySecondary, 'flex-1 truncate')}>
-                {describeRoll(roll.result, roll.modifier)}
-              </span>
-              <span className={cx(text.numeric, 'shrink-0')}>{total}</span>
-            </div>
-          )
-        })}
-      </div>
-    </div>
+    </Overlay>
   )
 }
