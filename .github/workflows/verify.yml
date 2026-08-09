@@ -36,3 +36,44 @@ jobs:
           # load. Real values live in Vercel, never in this repo.
           VITE_SUPABASE_URL: http://ci-dummy.invalid
           VITE_SUPABASE_ANON_KEY: ci-dummy-anon-key
+
+  verify-db:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: supabase/tests
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGURL_ADMIN: postgresql://postgres:postgres@localhost:5432/postgres
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/grimoire_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: supabase/tests/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # No lockfile here yet either — same stopgap as app/.
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build the command-layer test database from the real migrations
+        run: pnpm db:setup
+
+      - name: Run command-layer tests
+        run: pnpm test
