@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { Overlay } from '../ui/Overlay'
@@ -7,6 +7,8 @@ import { TextInput } from '../ui/TextInput'
 import { Stepper } from '../ui/Stepper'
 import { DieSelector } from './DieSelector'
 import { RollResult } from './RollResult'
+import { RecentRolls } from './RecentRolls'
+import type { RecentRoll } from './RecentRolls'
 import { readCharacterAbilities } from '../../lib/characters'
 import type { Character, CharacterAbilities } from '../../lib/characters'
 import { formatRollText } from '../../lib/dice'
@@ -18,15 +20,19 @@ const MAX_COUNT = 10
  * faster — otherwise RollResult's tumble animation would sometimes
  * flash for a single frame instead of reading as an actual roll. */
 const MIN_ROLL_MS = 650
+/** RecentRolls itself caps what it displays, but there's no reason for
+ * this component to keep accumulating unbounded state behind that
+ * window across a long session — trimmed here, at the source. */
+const MAX_RECENT_ROLLS = 5
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 const MODE_OPTIONS: Array<{ mode: RollMode; label: string }> = [
+  { mode: 'disadvantage', label: 'Disadvantage' },
   { mode: 'normal', label: 'Normal' },
   { mode: 'advantage', label: 'Advantage' },
-  { mode: 'disadvantage', label: 'Disadvantage' },
 ]
 
 const ABILITY_ORDER: Array<{ key: keyof CharacterAbilities; label: string }> = [
@@ -79,7 +85,18 @@ const chipClass = (active: boolean) =>
  * die-shape chip row) and `RollResult.tsx` (the roll preview card, also
  * BUILD_PLAN.md's own named `RollResult` domain component) each own
  * their rendering; this file keeps the controls (count/mode/modifier)
- * and all the roll/log orchestration.
+ * and all the roll/log orchestration. `RecentRolls.tsx` was split out
+ * the same way rather than grown here, for the same reason.
+ *
+ * Reference pass (owner pointed at a mobile attack-roll mockup — "keep
+ * our style, the layout and ideas are good"): the Mode control is now
+ * one segmented three-way control instead of three individually
+ * bordered chips (matching the mockup's pill), and a session-local
+ * "Recent rolls" list appears once at least one roll has happened this
+ * time the sheet is open. Deliberately NOT adopted from that mockup:
+ * weapon selection, a Target AC field, and Hit/Miss/Crit resolution —
+ * this tool has no weapon/attack data model to draw those from, and
+ * adding one is new scope, not a restyle.
  */
 export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRollerProps) {
   const [die, setDie] = useState<DieType>('d20')
@@ -96,6 +113,10 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
    * gets logged; the real total always comes from `result`, which is
    * server-authoritative. */
   const [flickerTotal, setFlickerTotal] = useState<number | null>(null)
+  const [recentRolls, setRecentRolls] = useState<RecentRoll[]>([])
+  /** Monotonic id source for RecentRolls' React keys — see that file's
+   * own header comment for why index-based keys would be wrong here. */
+  const nextRollId = useRef(0)
 
   const abilities = character ? readCharacterAbilities(character.abilities) : {}
 
@@ -115,6 +136,11 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
 
   function handleClose() {
     clearResult()
+    // Recent rolls deliberately does NOT reset here — see this
+    // component's own header comment: it's a "what did I just roll"
+    // scoreboard for the sheet being open, not tied to any one result,
+    // so closing and reopening the sheet without a page reload still
+    // shows it. It only ever grows from `handleRoll`.
     onClose()
   }
 
@@ -131,6 +157,10 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
     try {
       const [rolled] = await Promise.all([onRoll(die, count, mode), sleep(MIN_ROLL_MS)])
       setResult(rolled)
+      setRecentRolls((prev) => [
+        { id: nextRollId.current++, result: rolled, modifier: activeModifier },
+        ...prev,
+      ].slice(0, MAX_RECENT_ROLLS))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not roll.')
     } finally {
@@ -159,8 +189,8 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
       {/* gap-6 (retroactive-review fix: was gap-5, 20px, not on the
        * closed 4/8/12/16/24/32/48/64 spacing scale — 24px is the
        * scale's "separated" slot, which is exactly what this is: the
-       * distinct Die/Count/Mode/Modifier/Result/Buttons blocks on one
-       * screen).
+       * distinct Die/Count/Mode/Modifier/Result/Buttons/Recent blocks on
+       * one screen).
        *
        * `items-center text-center` (owner's centering pass, round two —
        * the first round only centered `RollResult`, but every control
@@ -168,17 +198,20 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
        * Making the column itself center its children collapses each
        * section `<div>` to its own content width so it sits centered as
        * a block, but that alone doesn't touch alignment *inside* each
-       * section — `DieSelector`/`Stepper`'s own rows, and the Mode/
-       * Modifier chip rows here, default to left-packed content within
-       * whatever box they end up with, so each of those also gets an
-       * explicit `justify-center` (chip rows) or centered `className`
+       * section — `DieSelector`/`Stepper`'s own rows, and the Modifier
+       * chip row here, default to left-packed content within whatever
+       * box they end up with, so each of those also gets an explicit
+       * `justify-center` (chip rows) or centered `className`
        * (DieSelector/Stepper, via their existing `className` prop
        * rather than baking centering into either shared component —
        * both are generic controls other screens could still want
        * left-aligned). The fixed-width custom-modifier input needs its
        * own `mx-auto` for the same reason: a block element with an
        * explicit width doesn't self-center just because its container
-       * does. */}
+       * does. `RecentRolls` opts back OUT of centering itself (its own
+       * `text-left` class) — a list of rows reads naturally left-
+       * aligned, matching the reference mockup, unlike every other
+       * block on this sheet. */}
       <div className="flex flex-col items-center gap-6 text-center">
         <div>
           <p className={cx(text.label, 'mb-2')}>Die</p>
@@ -208,7 +241,18 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
 
         <div>
           <p className={cx(text.label, 'mb-2')}>Mode</p>
-          <div className="flex flex-wrap justify-center gap-2" role="radiogroup" aria-label="Mode">
+          {/* One bordered pill, internally divided — replaces three
+           * separately bordered chips (reference mockup: a single
+           * segmented Disadvantage/Normal/Advantage control, not three
+           * standalone buttons). One shared `border` on the outer pill
+           * plus `p-1` padding means the segments themselves need no
+           * border of their own, so there's no seam to manage between
+           * them. */}
+          <div
+            className="inline-flex rounded-button border border-line-soft bg-panel2 p-1"
+            role="radiogroup"
+            aria-label="Mode"
+          >
             {MODE_OPTIONS.map((option) => (
               <button
                 key={option.mode}
@@ -219,7 +263,11 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
                   setMode(option.mode)
                   clearResult()
                 }}
-                className={chipClass(mode === option.mode)}
+                className={cx(
+                  'rounded-button px-3 py-2 uppercase transition-colors',
+                  text.caption,
+                  mode === option.mode ? 'bg-purple text-white' : 'text-ink-dim hover:text-ink',
+                )}
               >
                 {option.label}
               </button>
@@ -306,6 +354,8 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
             </Button>
           )}
         </div>
+
+        <RecentRolls rolls={recentRolls} className="w-full" />
       </div>
     </Overlay>
   )
