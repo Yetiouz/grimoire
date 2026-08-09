@@ -423,15 +423,22 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
           </Button>
         </div>
 
-        {/* Trigger only exists once there's something to show — same
-         * "no dead affordance" call the card version made when it
-         * rendered nothing on an empty list, just as a button instead
-         * of a whole card now. */}
-        {recentRolls.length > 0 && (
-          <Button variant="ghost" onClick={() => setRecentRollsOpen(true)} className="w-full">
-            Recent Rolls · {recentRolls.length}
-          </Button>
-        )}
+        {/* Always rendered, disabled until there's something to show —
+         * owner's sixth round: "leave the recent rolls button there all
+         * the time. I don't like this shifting in sizes all the time."
+         * The original "no dead affordance" call (skip the button
+         * entirely on an empty list) was the same instinct that made
+         * the Log button disappear/reappear each roll, which got fixed
+         * the same way above — disabled beats absent whenever mounting
+         * conditionally would shift the column's height. */}
+        <Button
+          variant="ghost"
+          onClick={() => setRecentRollsOpen(true)}
+          disabled={recentRolls.length === 0}
+          className="w-full"
+        >
+          {recentRolls.length > 0 ? `Recent Rolls · ${recentRolls.length}` : 'Recent Rolls'}
+        </Button>
       </div>
 
       <RecentRolls open={recentRollsOpen} onClose={() => setRecentRollsOpen(false)} rolls={recentRolls} />
