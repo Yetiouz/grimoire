@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { cx } from '../../lib/cx'
+import { speakText } from '../../lib/speech'
 import { text } from '../../lib/typography'
 import { Icon } from './Icon'
 import { Markdown } from './Markdown'
@@ -83,7 +84,10 @@ export function LogEntryRow({
   // prop from the caller) since, unlike "save as note," nothing above
   // this component needs to know playback happened. Feature-detected so
   // the button simply doesn't render on a browser without support
-  // rather than rendering a control that does nothing.
+  // rather than rendering a control that does nothing. Voice selection
+  // (picking something that doesn't sound like a default robotic
+  // voice) lives in `lib/speech.ts`, not here — this component just
+  // asks it to speak.
   const canSpeak = kind === 'narration' && typeof window !== 'undefined' && 'speechSynthesis' in window
   const [speaking, setSpeaking] = useState(false)
 
@@ -98,7 +102,7 @@ export function LogEntryRow({
     }
   }, [speaking])
 
-  function handleSpeak() {
+  async function handleSpeak() {
     if (speaking) {
       window.speechSynthesis.cancel()
       setSpeaking(false)
@@ -108,10 +112,14 @@ export function LogEntryRow({
     // anything) the browser was mid-utterance on before starting this
     // one.
     window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(message)
+    const utterance = await speakText(message)
     utterance.onend = () => setSpeaking(false)
     utterance.onerror = () => setSpeaking(false)
-    window.speechSynthesis.speak(utterance)
+    // Set only once the utterance is actually queued/speaking, not
+    // before `speakText`'s await — clicking the button again during
+    // that (first-load-only) voice-list wait should be able to cancel
+    // cleanly rather than racing a "Stop" state that isn't playing
+    // anything yet.
     setSpeaking(true)
   }
 
