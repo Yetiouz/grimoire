@@ -93,7 +93,7 @@ export async function startSpeaking(text: string): Promise<SpeechHandle> {
     // voice is the answer to all of them.
   }
 
-  const handle = await speakWithBrowser(text)
+  const handle = speakWithBrowser(text)
   current = handle
   return handle
 }
@@ -205,8 +205,7 @@ function scoreVoice(voice: SpeechSynthesisVoice): number {
   return score
 }
 
-async function pickVoice(): Promise<SpeechSynthesisVoice | null> {
-  const voices = await loadVoices()
+function pickVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
   if (voices.length === 0) return null
   return [...voices].sort((a, b) => scoreVoice(b) - scoreVoice(a))[0]
 }
@@ -217,27 +216,54 @@ export function browserSpeechAvailable(): boolean {
   return typeof window !== 'undefined' && 'speechSynthesis' in window
 }
 
-async function speakWithBrowser(text: string): Promise<SpeechHandle> {
+/** Safari GC guard: Safari garbage-collects a SpeechSynthesisUtterance
+ * that nothing references and cuts the speech off mid-sentence when it
+ * does. A module-level reference to the active utterance is the
+ * documented workaround. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- write-only by design: existing is the point
+let keepAlive: SpeechSynthesisUtterance | null = null
+
+/** Deliberately SYNCHRONOUS, no awaits before `speak()` — Safari only
+ * allows speech started inside the user's click; the old version's
+ * voice-list wait (up to 500ms) pushed `speak()` outside that window
+ * and Safari silently dropped it ("Chrome works, Safari does not").
+ * The cost: the very first click of a session, if the voice list isn't
+ * loaded yet, speaks with the browser default and warms the cache; the
+ * next click gets the premium voice. Every browser that loads voices
+ * synchronously (Safari itself does) never hits that case at all. */
+function speakWithBrowser(text: string): SpeechHandle {
   if (!browserSpeechAvailable()) {
     return { source: 'browser', stop: () => {}, done: Promise.resolve() }
   }
-  window.speechSynthesis.cancel()
+  const synth = window.speechSynthesis
+  synth.cancel()
   const utterance = new SpeechSynthesisUtterance(text)
   utterance.rate = 0.95
-  const voice = await pickVoice()
-  if (voice) utterance.voice = voice
+  const voices = (cachedVoices && cachedVoices.length > 0) ? cachedVoices : synth.getVoices()
+  if (voices.length > 0) {
+    cachedVoices = voices
+    const voice = pickVoice(voices)
+    if (voice) utterance.voice = voice
+  } else {
+    // Warm the async list for the next click; this one speaks default.
+    void loadVoices()
+  }
   let settle: () => void = () => {}
   const done = new Promise<void>((resolve) => {
     settle = resolve
   })
   utterance.onend = () => settle()
   utterance.onerror = () => settle()
-  window.speechSynthesis.speak(utterance)
+  keepAlive = utterance
+  synth.speak(utterance)
+  // Safari sometimes leaves the engine in a paused state from a prior
+  // cancel; resume() is a no-op everywhere it isn't needed.
+  synth.resume()
   return {
     source: 'browser',
     done,
     stop: () => {
-      window.speechSynthesis.cancel()
+      synth.cancel()
       settle()
     },
   }
