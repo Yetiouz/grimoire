@@ -50,12 +50,38 @@ export interface SpeechHandle {
 
 let current: SpeechHandle | null = null
 
+/** One shared <audio> element for all AI playback, primed inside the
+ * click gesture. iOS Safari refuses `audio.play()` that happens several
+ * seconds after the tap (which is exactly when synthesis finishes), but
+ * it allows later plays on an element that already played *something*
+ * during a real user gesture — so `startSpeaking`'s synchronous prefix
+ * plays a 44-byte silent WAV on this element before the first await,
+ * and the real narration reuses the unlocked element afterwards.
+ * Without this the phone experience is a button that does nothing. */
+let player: HTMLAudioElement | null = null
+const SILENT_WAV =
+  'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA='
+
+function primePlayer() {
+  if (!player) player = new Audio()
+  player.src = SILENT_WAV
+  void player.play().catch(() => {
+    /* a rejected silent play is fine — priming is best-effort */
+  })
+}
+
 /** Speaks `text`, preferring the GM's real voice, falling back to the
- * browser's. Stops any other playback first. Never rejects. */
+ * browser's. Stops any other playback first. Never rejects.
+ *
+ * MUST be called directly from a user-gesture handler (a click) — the
+ * synchronous prefix below is what unlocks mobile audio; wrapping this
+ * in a setTimeout or awaiting something first breaks phones. */
 export async function startSpeaking(text: string): Promise<SpeechHandle> {
   current?.stop()
 
   if (aiCampaignId) {
+    // Synchronous, inside the gesture — see `primePlayer`.
+    primePlayer()
     const cached = audioCache.get(text)
     const url = cached ?? (await fetchAiAudio(aiCampaignId, text))
     if (url) {
@@ -88,7 +114,10 @@ async function fetchAiAudio(campaignId: string, text: string): Promise<string | 
 }
 
 function playUrl(url: string): SpeechHandle {
-  const audio = new Audio(url)
+  // Reuses the gesture-primed singleton, NOT a fresh Audio element — a
+  // fresh one has no gesture attached and iOS would refuse it.
+  const audio = player ?? (player = new Audio())
+  audio.src = url
   let settle: () => void = () => {}
   const done = new Promise<void>((resolve) => {
     settle = resolve

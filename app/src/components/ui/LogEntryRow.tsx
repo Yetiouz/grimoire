@@ -89,6 +89,11 @@ export function LogEntryRow({
   // speechSynthesis alone would hide a working button.
   const canSpeak = kind === 'narration' && (browserSpeechAvailable() || typeof window !== 'undefined')
   const [speaking, setSpeaking] = useState(false)
+  /** True from click until audio actually starts — the AI voice takes
+   * several seconds to synthesize, and with no visible change in that
+   * window the button reads as broken ("you click and nothing
+   * happens"). Drives a pulse on the icon. */
+  const [loading, setLoading] = useState(false)
   const handleRef = useRef<SpeechHandle | null>(null)
 
   // Stops this row's own playback if it unmounts mid-read (e.g. the
@@ -111,6 +116,7 @@ export function LogEntryRow({
       handleRef.current?.stop()
       handleRef.current = null
       setSpeaking(false)
+      setLoading(false)
       return
     }
     // `startSpeaking` itself stops any other row's playback — the
@@ -119,7 +125,9 @@ export function LogEntryRow({
     // button reads as "stop" (and can cancel) during that wait.
     const gen = ++genRef.current
     setSpeaking(true)
+    setLoading(true)
     const handle = await startSpeaking(message)
+    setLoading(false)
     if (genRef.current !== gen) {
       handle.stop()
       return
@@ -201,8 +209,11 @@ export function LogEntryRow({
               type="button"
               onClick={handleSpeak}
               aria-label={speaking ? 'Stop reading aloud' : 'Read aloud'}
-              title={speaking ? 'Stop reading aloud' : 'Read aloud'}
-              className="shrink-0 rounded p-1 text-ink-faint transition-colors hover:text-ink"
+              title={loading ? 'The GM is clearing his throat…' : speaking ? 'Stop reading aloud' : 'Read aloud'}
+              className={cx(
+                'shrink-0 rounded p-1 text-ink-faint transition-colors hover:text-ink',
+                loading && 'animate-pulse text-cyan',
+              )}
             >
               <Icon name="speak" state={speaking ? 'active' : 'default'} />
             </button>
