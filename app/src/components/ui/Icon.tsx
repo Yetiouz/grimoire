@@ -19,6 +19,7 @@ import {
   Sparkles,
   StickyNote,
   Users,
+  Volume2,
   X,
 } from 'lucide-react'
 import { cx } from '../../lib/cx'
@@ -60,6 +61,13 @@ import { cx } from '../../lib/cx'
  * means the scene log as a whole) so a per-entry "copy this into a
  * note" control reads as its own thing rather than a second way to
  * open the log.
+ *
+ * `speak` added for the read-aloud quick action on narration entries
+ * (2026-08-09) — one glyph doing double duty as both the "read this
+ * aloud" and "stop reading" control (LogEntryRow toggles `state` to
+ * `active` while speech is in progress rather than swapping to a
+ * second icon, so the button never jumps between two different shapes
+ * for what is, to the player, one control with two states).
  */
 const icons = {
   hp: Heart,
@@ -83,6 +91,7 @@ const icons = {
   quest: Flag,
   world: Globe,
   saveNote: StickyNote,
+  speak: Volume2,
 } as const
 
 export type IconName = keyof typeof icons

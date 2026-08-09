@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { Icon } from './Icon'
@@ -75,6 +76,45 @@ export function LogEntryRow({
   const nameColor = muted ? 'var(--color-ink-dim)' : senderColor
   const tag = tagLabel[kind]
 
+  // Read-aloud (2026-08-09) — narration only (GM voice, whether AI- or
+  // hand-typed; see senderColor's note above on the two sources sharing
+  // this kind), using the browser's own speech synthesis rather than a
+  // paid API: no backend involved, works offline. Self-contained (no
+  // prop from the caller) since, unlike "save as note," nothing above
+  // this component needs to know playback happened. Feature-detected so
+  // the button simply doesn't render on a browser without support
+  // rather than rendering a control that does nothing.
+  const canSpeak = kind === 'narration' && typeof window !== 'undefined' && 'speechSynthesis' in window
+  const [speaking, setSpeaking] = useState(false)
+
+  // Stops this row's own speech if it unmounts mid-read (e.g. the
+  // player switches campaigns while narration is still playing) —
+  // guarded on `speaking` so it's a no-op cleanup on every render where
+  // this row was never the one talking.
+  useEffect(() => {
+    if (!speaking) return
+    return () => {
+      window.speechSynthesis.cancel()
+    }
+  }, [speaking])
+
+  function handleSpeak() {
+    if (speaking) {
+      window.speechSynthesis.cancel()
+      setSpeaking(false)
+      return
+    }
+    // Only one entry reads at a time — cancel whatever else (if
+    // anything) the browser was mid-utterance on before starting this
+    // one.
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(message)
+    utterance.onend = () => setSpeaking(false)
+    utterance.onerror = () => setSpeaking(false)
+    window.speechSynthesis.speak(utterance)
+    setSpeaking(true)
+  }
+
   return (
     <div
       className={cx(
@@ -111,6 +151,17 @@ export function LogEntryRow({
          * spirit (a low-emphasis inline utility control, not a primary
          * action). Flagged rather than assumed settled — worth
          * revisiting if it proves fiddly to tap on a phone. */}
+        {canSpeak && (
+          <button
+            type="button"
+            onClick={handleSpeak}
+            aria-label={speaking ? 'Stop reading aloud' : 'Read aloud'}
+            title={speaking ? 'Stop reading aloud' : 'Read aloud'}
+            className="shrink-0 rounded p-1 text-ink-faint transition-colors hover:text-ink"
+          >
+            <Icon name="speak" state={speaking ? 'active' : 'default'} />
+          </button>
+        )}
         {onSaveAsNote && (
           <button
             type="button"
