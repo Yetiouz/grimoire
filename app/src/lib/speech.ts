@@ -216,6 +216,15 @@ export function browserSpeechAvailable(): boolean {
   return typeof window !== 'undefined' && 'speechSynthesis' in window
 }
 
+// Warm the voice list the moment this module loads, not at first click.
+// Chrome delivers voices asynchronously, and a click that lands before
+// they arrive used to speak through Chrome's fallback voice (observed
+// live as "some novelty voice" — Albert). By first-click time this has
+// long since resolved. No-op on browsers with synchronous voice lists.
+if (browserSpeechAvailable()) {
+  setTimeout(() => void loadVoices(), 0)
+}
+
 /** Safari GC guard: Safari garbage-collects a SpeechSynthesisUtterance
  * that nothing references and cuts the speech off mid-sentence when it
  * does. A module-level reference to the active utterance is the
@@ -239,30 +248,52 @@ function speakWithBrowser(text: string): SpeechHandle {
   synth.cancel()
   const utterance = new SpeechSynthesisUtterance(text)
   utterance.rate = 0.95
-  const voices = (cachedVoices && cachedVoices.length > 0) ? cachedVoices : synth.getVoices()
-  if (voices.length > 0) {
-    cachedVoices = voices
-    const voice = pickVoice(voices)
-    if (voice) utterance.voice = voice
-  } else {
-    // Warm the async list for the next click; this one speaks default.
-    void loadVoices()
-  }
+  let stopped = false
   let settle: () => void = () => {}
   const done = new Promise<void>((resolve) => {
     settle = resolve
   })
   utterance.onend = () => settle()
   utterance.onerror = () => settle()
-  keepAlive = utterance
-  synth.speak(utterance)
-  // Safari sometimes leaves the engine in a paused state from a prior
-  // cancel; resume() is a no-op everywhere it isn't needed.
-  synth.resume()
+
+  const speakNow = () => {
+    keepAlive = utterance
+    synth.speak(utterance)
+    // Safari sometimes leaves the engine in a paused state from a
+    // prior cancel; resume() is a no-op everywhere it isn't needed.
+    synth.resume()
+  }
+
+  const voices = (cachedVoices && cachedVoices.length > 0) ? cachedVoices : synth.getVoices()
+  if (voices.length > 0) {
+    // The normal path — synchronous, inside the click gesture, which is
+    // what Safari requires. Safari's voice list is itself synchronous,
+    // so Safari always lands here.
+    cachedVoices = voices
+    const voice = pickVoice(voices)
+    if (voice) utterance.voice = voice
+    speakNow()
+  } else {
+    // Cold start on an async-list browser (Chrome, pre-warm racing the
+    // click). Chrome does NOT require in-gesture speech, so waiting for
+    // the real list and speaking with the right voice beats speaking
+    // instantly with the novelty fallback.
+    void loadVoices().then((loaded) => {
+      if (stopped) {
+        settle()
+        return
+      }
+      const voice = pickVoice(loaded)
+      if (voice) utterance.voice = voice
+      speakNow()
+    })
+  }
+
   return {
     source: 'browser',
     done,
     stop: () => {
+      stopped = true
       synth.cancel()
       settle()
     },
