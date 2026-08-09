@@ -6,12 +6,12 @@ interface ColumnCardProps {
   headerLeft: ReactNode
   headerRight?: ReactNode
   /** Pinned, non-scrolling strip between the ColumnHeader and the
-   * scrolling body — the journal card's filter bar is the only user
-   * today. Exists because anything rendered as the body's first child
-   * scrolls away with the feed (that's how the filter bar shipped
-   * broken: present in the DOM, thousands of pixels above the scroll
-   * viewport on a long campaign). Mirrors `footer` exactly, border on
-   * the opposite edge. */
+   * scrolling body. Currently unused — the journal filter bar lived
+   * here for one commit before the owner moved it into the header
+   * itself (`headerRight`) — but kept as a primitive: it's the only
+   * slot that pins content below the header without it scrolling away
+   * with the body, which is exactly the mistake that shipped the
+   * filter bar invisible in the first place. */
   subheader?: ReactNode
   /** Pinned, non-scrolling footer — the journal card's composer is the
    * only user today. Omit for cards with no footer (Party, Tools,

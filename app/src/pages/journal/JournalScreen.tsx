@@ -349,22 +349,23 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
 
         {/* CENTER: the journal card — sticky header, internally
           * scrolling feed, composer pinned to the card's foot.
-          * BOB_queue task 1 + audit fix: JournalFilterBar rides
-          * ColumnCard's pinned `subheader` slot, NOT the scrolling body.
-          * It shipped as the body's first child, which on a campaign
-          * with real history put it thousands of pixels above the
-          * scroll viewport — rendered, never visible. Mobile already
-          * pins it (MobileJournalView); this is the desktop
-          * equivalent. Gated on the same loaded state as the feed so
-          * an empty strip doesn't flash during the skeleton. */}
+          * BOB_queue task 1, final placement (owner: "make the filters
+          * smaller and put it in the header"): JournalFilterBar rides
+          * ColumnHeader's right slot as compact chips. It briefly held
+          * a pinned subheader strip of its own — and before that
+          * shipped invisible inside the scrolling body — but the
+          * header slot kills the extra row AND the visual "same chips
+          * twice" confusion with the composer's kind pickers in one
+          * move. Gated on the same loaded state as the feed so chips
+          * don't render over the skeleton. */}
         <ColumnCard
           headerLeft={journalColumnLabel}
-          bodyClassName="gap-3"
-          subheader={
+          headerRight={
             sessions !== null && entries !== null ? (
-              <JournalFilterBar active={activeFilters} onToggle={toggleFilter} showRules={gmEnabled} />
+              <JournalFilterBar compact active={activeFilters} onToggle={toggleFilter} showRules={gmEnabled} />
             ) : undefined
           }
+          bodyClassName="gap-3"
           footer={
             <JournalComposer
               onLog={(kind, body) => handleLog(kind, body)}

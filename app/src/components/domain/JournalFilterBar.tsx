@@ -24,30 +24,38 @@ interface JournalFilterBarProps {
    * ever populate it, and it'd point at an "Ask Rules" mode that isn't
    * rendered anywhere either. */
   showRules?: boolean
+  /** Header-sized chips (owner request: "make the filters smaller and
+   * put it in the header") — tighter padding, smaller type, no wrap,
+   * for living inside ColumnHeader's fixed 38px row on desktop. Mobile
+   * keeps the default full-size chips: same component, same behaviour,
+   * touch-friendly sizing where touch is the input. */
+  compact?: boolean
   className?: string
 }
 
 /**
- * BOB_queue task 1: "chips for Narration, Action, Rolls, Notes, Rules,
- * all lit by default, tap to mute. Reuse the composer's kind-chip
- * pattern exactly — same pill, same sizing, same compact-pill
- * exception." Pulled directly from `JournalComposer.tsx`'s
- * `KIND_CHIPS` styling (`inline-flex items-center justify-center
- * rounded-full border px-3 py-1 uppercase` + `text.caption`) — same
- * already-approved exception to CLAUDE.md's 44px touch-target minimum
- * for this dense chip-row shape, not a new one.
+ * BOB_queue task 1's filter chips: Narration, Action, Rolls, Notes,
+ * Rules — all lit by default, tap to mute. Multi-toggle, so each chip
+ * is `aria-pressed` rather than part of a radiogroup (the composer's
+ * kind chips are the single-select `role="radio"` cousins).
  *
- * The one real difference from the composer's version: that's a
- * `role="radio"` single-select (pick one kind to log as this entry as).
- * This is a multi-toggle — every chip independently on/off, not
- * mutually exclusive — so each chip is `aria-pressed`, not part of a
- * radiogroup.
+ * The lit style is deliberately NOT the composer's solid-purple pill
+ * anymore (owner: "maybe change the light style", after pointing out
+ * the two rows read as duplicates). A lit filter is a soft purple
+ * tint — purple text on a translucent purple wash — and a muted one is
+ * a dim ghost. View-toggles now look like view-toggles; the solid
+ * purple chip means "what you're logging" and only ever appears in the
+ * composer.
  */
-export function JournalFilterBar({ active, onToggle, showRules = true, className }: JournalFilterBarProps) {
+export function JournalFilterBar({ active, onToggle, showRules = true, compact = false, className }: JournalFilterBarProps) {
   const chips = showRules ? FILTER_CHIPS : FILTER_CHIPS.filter((chip) => chip.kind !== 'rules')
 
   return (
-    <div className={cx('flex flex-wrap gap-2', className)} role="group" aria-label="Filter journal entries">
+    <div
+      className={cx('flex items-center', compact ? 'shrink-0 gap-1' : 'flex-wrap gap-2', className)}
+      role="group"
+      aria-label="Filter journal entries"
+    >
       {chips.map((chip) => {
         const isActive = active.has(chip.kind)
         return (
@@ -57,11 +65,11 @@ export function JournalFilterBar({ active, onToggle, showRules = true, className
             aria-pressed={isActive}
             onClick={() => onToggle(chip.kind)}
             className={cx(
-              'inline-flex items-center justify-center rounded-full border px-3 py-1 uppercase',
-              text.caption,
+              'inline-flex items-center justify-center rounded-full border uppercase',
+              compact ? 'px-2 py-0.5 text-[10px] leading-none tracking-wide' : cx(text.caption, 'px-3 py-1'),
               isActive
-                ? 'border-purple bg-purple text-white'
-                : 'border-line-soft bg-panel2 text-ink-dim hover:border-line-hover',
+                ? 'border-purple/40 bg-purple/15 text-purple'
+                : 'border-line-soft bg-transparent text-ink-faint hover:border-line-hover hover:text-ink-dim',
             )}
           >
             {chip.label}
