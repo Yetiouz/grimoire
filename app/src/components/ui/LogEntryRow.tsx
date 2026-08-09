@@ -1,5 +1,6 @@
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
+import { Icon } from './Icon'
 import { Markdown } from './Markdown'
 
 export type LogEntryKind = 'narration' | 'action' | 'roll' | 'note' | 'system' | 'rules'
@@ -21,6 +22,14 @@ interface LogEntryRowProps {
   message: string
   timestamp?: string
   kind?: LogEntryKind
+  /** "Save as note" quick action (2026-08-09) — a small control at the
+   * far right of the header row that hands this entry's text back to
+   * the caller (`JournalFeed`), which seeds the composer with it rather
+   * than creating anything itself; this component stays a dumb renderer
+   * and doesn't know what happens after the click. Omit to render no
+   * button at all — `JournalFeed` already withholds it for entries
+   * where it wouldn't make sense (a note saved from a note). */
+  onSaveAsNote?: () => void
   className?: string
 }
 
@@ -58,6 +67,7 @@ export function LogEntryRow({
   message,
   timestamp,
   kind = 'action',
+  onSaveAsNote,
   className,
 }: LogEntryRowProps) {
   const muted = kind === 'system'
@@ -93,6 +103,25 @@ export function LogEntryRow({
           {timestamp && <span className={cx(text.caption, 'text-ink-faint')}>{timestamp}</span>}
           {tag && <span className={cx(text.label, 'rounded-full border border-line px-2 py-1')}>{tag}</span>}
         </div>
+        {/* Compact-control exception, same call as the composer's mode
+         * pill and the header filter chips — this sits in a dense
+         * per-entry row repeated many times down the feed, so a full
+         * 44px touch target on every single one would add real bulk. A
+         * small ghost icon button, matching `GmReply`'s dismiss "×" in
+         * spirit (a low-emphasis inline utility control, not a primary
+         * action). Flagged rather than assumed settled — worth
+         * revisiting if it proves fiddly to tap on a phone. */}
+        {onSaveAsNote && (
+          <button
+            type="button"
+            onClick={onSaveAsNote}
+            aria-label="Save as note"
+            title="Save as note"
+            className="shrink-0 rounded p-1 text-ink-faint transition-colors hover:text-ink"
+          >
+            <Icon name="saveNote" />
+          </button>
+        )}
       </div>
       {/* `pl-6` (24px) re-creates the indent the old flex layout gave
        * the message for free (it used to share a column with the name

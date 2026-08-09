@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { ColumnCard } from '../ui/ColumnCard'
 import { ErrorBanner } from '../ui/ErrorBanner'
 import { Skeleton, SkeletonGroup } from '../ui/Skeleton'
@@ -82,6 +83,12 @@ export function JournalDesktopLayout({
   onAskRules,
   campaignId,
 }: JournalDesktopLayoutProps) {
+  // "Save as note" quick action (2026-08-09): local to this layout, not
+  // lifted to JournalScreen — JournalDesktopLayout and MobileJournalView
+  // are both always-mounted siblings (Tailwind's `xl:` classes just
+  // toggle which one is visible), so each keeps its own independent
+  // seed state rather than sharing one the other could stomp.
+  const [noteSeed, setNoteSeed] = useState<{ body: string } | null>(null)
   return (
     <div className="hidden flex-1 grid-cols-1 gap-3 p-4 xl:grid xl:min-h-0 xl:grid-cols-[16rem_minmax(0,1fr)_20rem]">
       {/* LEFT: Party card + Tools card (v11: members grouped in one
@@ -127,6 +134,7 @@ export function JournalDesktopLayout({
             onAskGm={onAskGm}
             onAskRules={onAskRules}
             campaignId={campaignId}
+            seed={noteSeed}
           />
         }
       >
@@ -141,7 +149,12 @@ export function JournalDesktopLayout({
         )}
 
         {sessions !== null && entries !== null && (
-          <JournalFeed items={feedItems} sessions={sessions} filter={feedFilter} />
+          <JournalFeed
+            items={feedItems}
+            sessions={sessions}
+            filter={feedFilter}
+            onSaveAsNote={openSession ? (item) => setNoteSeed({ body: item.body }) : undefined}
+          />
         )}
       </ColumnCard>
 

@@ -27,6 +27,15 @@ interface JournalFeedProps {
    * composer": the player table, GM dashboard, and session review all
    * instantiate this without one at all. */
   composer?: ReactNode
+  /** "Save as note" quick action (2026-08-09): passed straight through
+   * to each `LogEntryRow` as a per-item callback — `JournalFeed` still
+   * creates nothing itself, it just hands the host layout back the item
+   * that was clicked so it can seed its own composer. Omit to render no
+   * button on any row (the mockup/review-only call sites that pass no
+   * composer at all have nowhere to send a saved note anyway). Withheld
+   * for `'note'` items below regardless of whether this is set — saving
+   * a note from a note is a no-op the button shouldn't even offer. */
+  onSaveAsNote?: (item: FeedItem) => void
   className?: string
 }
 
@@ -48,7 +57,7 @@ function sessionLabel(session: CampaignSession): string {
  * player table, GM dashboard, and session review (twice on one screen
  * once party chat arrives). Page chrome like the campaign header stays
  * with the host screen, not here. */
-export function JournalFeed({ items, sessions, filter, composer, className }: JournalFeedProps) {
+export function JournalFeed({ items, sessions, filter, composer, onSaveAsNote, className }: JournalFeedProps) {
   const visible = filter ? items.filter(filter) : items
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -105,6 +114,9 @@ export function JournalFeed({ items, sessions, filter, composer, className }: Jo
                   minute: '2-digit',
                 })}
                 kind={item.kind}
+                onSaveAsNote={
+                  onSaveAsNote && item.kind !== 'note' ? () => onSaveAsNote(item) : undefined
+                }
               />
             </Fragment>
           )

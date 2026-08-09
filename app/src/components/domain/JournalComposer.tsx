@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { TextInput } from '../ui/TextInput'
@@ -68,6 +68,15 @@ interface JournalComposerProps {
   onAskRules?: (input: string) => Promise<GmTurnResult>
   /** Only needed to read the day's remaining GM turns on mount. */
   campaignId?: string
+  /** "Save as note" quick action (2026-08-09): the host layout hands
+   * back a new object here each time the player taps the action on a
+   * journal entry. Seeding, not submitting — this switches the
+   * composer to Note mode and prefills the field so the player can
+   * edit/trim before sending it, exactly as if they'd typed it
+   * themselves. Compared by object identity (see the effect below), not
+   * by `body` text, so re-tapping the same entry re-seeds/refocuses
+   * rather than being ignored as an unchanged value. */
+  seed?: { body: string } | null
   className?: string
 }
 
@@ -78,6 +87,7 @@ export function JournalComposer({
   onAskGm,
   onAskRules,
   campaignId,
+  seed,
   className,
 }: JournalComposerProps) {
   const [choice, setChoice] = useState<Choice>('action')
@@ -85,6 +95,24 @@ export function JournalComposer({
   const [submitting, setSubmitting] = useState(false)
   const [reply, setReply] = useState<GmTurnResult | null>(null)
   const [budget, setBudget] = useState<GmBudget | null>(null)
+  const bodyInputRef = useRef<HTMLInputElement>(null)
+  // Tracks the last seed object this composer has already consumed, so
+  // the effect below fires once per distinct "save as note" tap (new
+  // object from the host layout) rather than on every re-render, and so
+  // it can still tell "the same entry tapped again" (a new object, same
+  // text) apart from "nothing changed."
+  const consumedSeedRef = useRef<{ body: string } | null>(null)
+
+  // "Save as note": switch to Note mode, prefill, and focus — never
+  // auto-submit. Runs whenever the host hands back a seed object this
+  // composer hasn't already consumed.
+  useEffect(() => {
+    if (!seed || seed === consumedSeedRef.current) return
+    consumedSeedRef.current = seed
+    setChoice('note')
+    setBody(seed.body)
+    bodyInputRef.current?.focus()
+  }, [seed])
 
   const gmAvailable = gmEnabled && Boolean(onAskGm)
   const selected = CHOICES.find((c) => c.id === choice) ?? CHOICES[0]
@@ -239,6 +267,7 @@ export function JournalComposer({
       <div className="flex gap-2">
         <div className="flex-1">
           <TextInput
+            ref={bodyInputRef}
             value={body}
             onChange={(event: { target: { value: string } }) => setBody(event.target.value)}
             onKeyDown={(event: { key: string }) => {

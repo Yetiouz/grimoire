@@ -136,6 +136,10 @@ export function MobileJournalView({
 }: MobileJournalViewProps) {
   const [activeView, setActiveView] = useState<MobileView | null>(null)
   const [activeFilters, setActiveFilters] = useState<Set<FilterKind>>(() => new Set(ALL_FILTER_KINDS))
+  // "Save as note" quick action (2026-08-09): this view's own copy of
+  // the seed state, independent of JournalDesktopLayout's — same
+  // always-mounted-siblings reasoning as that component's copy.
+  const [noteSeed, setNoteSeed] = useState<{ body: string } | null>(null)
 
   function handleSelect(view: MobileView) {
     // Tap the already-open tab again -> home, per the mobile-vision
@@ -211,7 +215,12 @@ export function MobileJournalView({
           </SkeletonGroup>
         ) : activeView === null ? (
           <div className="px-4 py-3">
-            <JournalFeed items={items} sessions={sessions} filter={feedFilter} />
+            <JournalFeed
+              items={items}
+              sessions={sessions}
+              filter={feedFilter}
+              onSaveAsNote={sessionOpen ? (item) => setNoteSeed({ body: item.body }) : undefined}
+            />
           </div>
         ) : activeView === 'party' ? (
           <div className="flex flex-col gap-2 p-4">
@@ -261,6 +270,7 @@ export function MobileJournalView({
             onAskGm={onAskGm}
             onAskRules={onAskRules}
             campaignId={campaignId}
+            seed={noteSeed}
           />
         </div>
       )}

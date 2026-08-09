@@ -17,6 +17,7 @@ import {
   Shield,
   Sparkle,
   Sparkles,
+  StickyNote,
   Users,
   X,
 } from 'lucide-react'
@@ -53,6 +54,12 @@ import { cx } from '../../lib/cx'
  * `settings` (reused for the Campaign tile — a settings glyph already
  * fits "campaign management" without adding a fifth one-off icon for a
  * destination that, like the other three, doesn't exist yet).
+ *
+ * `saveNote` added for the "save as note" quick action on journal
+ * entries (2026-08-09): a distinct glyph from `journal` (which already
+ * means the scene log as a whole) so a per-entry "copy this into a
+ * note" control reads as its own thing rather than a second way to
+ * open the log.
  */
 const icons = {
   hp: Heart,
@@ -75,6 +82,7 @@ const icons = {
   back: ChevronLeft,
   quest: Flag,
   world: Globe,
+  saveNote: StickyNote,
 } as const
 
 export type IconName = keyof typeof icons
