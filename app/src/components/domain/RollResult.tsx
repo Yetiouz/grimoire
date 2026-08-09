@@ -60,18 +60,27 @@ interface RollResultProps {
  * wraps into two centered rows instead of one long line, rather than
  * relying on the card's width alone.
  *
- * The block below the circle (individual dice + formatted text) is now
- * always mounted, at a fixed `min-h`, rather than only existing once
- * `settled` — owner's fifth round: "keep the window the size it is
- * after a roll, no need to bounce back and forth." Unmounting it for
- * idle/rolling was what caused the bounce: the card (and the sheet
- * around it) grew every time a result settled and shrank back every
- * time a control change cleared it, on every single roll. The reserved
- * height is sized for the tallest realistic content — two wrapped rows
- * of individual dice (a 10-die roll) plus the formatted text line below
- * them — so a plain single-die roll leaves quiet blank space here
- * (centered via `justify-center` rather than left stranded at the top)
- * instead of the card resizing down to fit just its one line.
+ * The block below the circle (individual dice + formatted text) is
+ * always mounted, rather than only existing once `settled` — owner's
+ * fifth round: "keep the window the size it is after a roll, no need to
+ * bounce back and forth." Unmounting it for idle/rolling was what caused
+ * the bounce: the card grew every time a result settled and shrank back
+ * every time a control change cleared it, on every single roll.
+ *
+ * First attempt at this reserved a fixed height sized for the tallest
+ * possible content (a 10-die roll's two wrapped chip rows) — technically
+ * bounce-free, but the owner's next round called it out directly: "looks
+ * stupid and its bigger than it was previously," since every single-die
+ * roll (the common case) now sat inside a mostly-empty box far taller
+ * than the one line of text it actually needed. Replaced with an
+ * invisible placeholder line, sized by the browser to match
+ * `bodySecondary`'s own text metrics exactly rather than a guessed
+ * pixel value — this reserves only as much space as the formatted-text
+ * line itself takes, which is what every roll shows regardless of dice
+ * count. A roll whose individual-dice row also renders (count > 1, or
+ * advantage/disadvantage) still grows the card a little beyond that —
+ * an accepted, much smaller trade-off than either the oversized fixed
+ * box or the original full bounce.
  */
 export function RollResult({ rolling, die, result, modifier, flickerTotal, className }: RollResultProps) {
   const settled = !rolling && result !== null
@@ -111,8 +120,8 @@ export function RollResult({ rolling, die, result, modifier, flickerTotal, class
           <span className={cx(text.dataDisplay, 'text-ink-faint')}>—</span>
         )}
       </div>
-      <div className="flex min-h-[92px] w-full flex-col items-center justify-center gap-2">
-        {settled && result && (
+      <div className="flex w-full flex-col items-center gap-2">
+        {settled && result ? (
           <>
             {/* Individual dice, not just the total — shown whenever more
              * than one physical die was actually rolled (any count > 1,
@@ -148,6 +157,16 @@ export function RollResult({ rolling, die, result, modifier, flickerTotal, class
             )}
             <span className={text.bodySecondary}>{formatRollText(result, modifier)}</span>
           </>
+        ) : (
+          // Invisible placeholder, not an empty div: matching
+          // `bodySecondary`'s own classes means the browser reserves
+          // exactly one line of that text's real height rather than a
+          // hand-picked pixel guess, so idle/rolling take up the same
+          // space the common (no dice-chip row) settled case actually
+          // needs.
+          <span className={cx(text.bodySecondary, 'invisible')} aria-hidden="true">
+            placeholder
+          </span>
         )}
       </div>
     </div>
