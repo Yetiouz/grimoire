@@ -195,13 +195,15 @@ function scoreVoice(voice: SpeechSynthesisVoice): number {
   if (QUALITY_PATTERNS.some((pattern) => pattern.test(voice.name))) score += 6
   else if (REMOTE_GOOD.test(voice.name)) score += 5
   else if (NAMED_DECENT.test(voice.name)) score += 3
-  // The user's own OS-level voice choice comes through as `default` —
-  // e.g. picking Jamie (Premium) in macOS accessibility settings marks
-  // exactly that voice. +2 makes their pick win any within-band tie
-  // (and beat the en-US bonus for a non-US choice), while a junk
-  // system default still loses to any real quality voice: 2 < the 3-6
-  // band gaps.
-  if (voice.default) score += 2
+  // The user's own OS-level voice choice comes through as `default`.
+  // +5 outranks the named-decent band and the en-US bonus combined —
+  // necessary because Safari lists system voices WITHOUT the
+  // "(Premium)"/"(Enhanced)" suffix Chrome shows, so a premium system
+  // default can look like a plain-named voice to the quality patterns
+  // and lose to a compact "Samantha" (observed live: Safari playing
+  // the wrong voice while Chrome picked correctly). A junk default
+  // still loses to a recognizably premium voice: 5+2 < 6+2.
+  if (voice.default) score += 5
   return score
 }
 
