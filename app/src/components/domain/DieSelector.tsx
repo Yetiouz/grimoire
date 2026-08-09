@@ -27,7 +27,14 @@ interface DieSelectorProps {
  * Not reordered to put the default (d20) first: on the phone width this
  * was diagnosed against, six of the seven tiles — d4 through d20 —
  * already fit in the initial, unscrolled view, so the default selection
- * is visible without any scrolling; only d100 needs a swipe to reach. */
+ * is visible without any scrolling; only d100 needs a swipe to reach.
+ *
+ * Tiles trimmed a hair further (owner's fifth round: those six tiles
+ * were crowding right up against the sheet's edge with no breathing
+ * room, reading as a hard cutoff rather than an intentional scroll
+ * hint). `px-3 py-2` → `px-2.5 py-1.5` and the icon `h-6 w-6` → `h-5
+ * w-5` shave a few px off every tile without shrinking the tap target
+ * below what the row's own icon-over-label stack already needs. */
 export function DieSelector({ value, onChange, className }: DieSelectorProps) {
   return (
     <div className={cx('flex gap-2 overflow-x-auto', className)} role="radiogroup" aria-label="Die">
@@ -39,13 +46,13 @@ export function DieSelector({ value, onChange, className }: DieSelectorProps) {
           aria-checked={value === option}
           onClick={() => onChange(option)}
           className={cx(
-            'flex shrink-0 flex-col items-center justify-center gap-1 rounded-button border px-3 py-2',
+            'flex shrink-0 flex-col items-center justify-center gap-1 rounded-button border px-2.5 py-1.5',
             value === option
               ? 'border-purple bg-purple text-white'
               : 'border-line-soft bg-panel2 text-ink-dim hover:border-line-hover',
           )}
         >
-          <DieIcon die={option} />
+          <DieIcon die={option} className="h-5 w-5" />
           <span className={cx(text.caption, 'uppercase')}>{option}</span>
         </button>
       ))}

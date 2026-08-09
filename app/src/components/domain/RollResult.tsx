@@ -59,6 +59,19 @@ interface RollResultProps {
  * individual-dice row additionally caps its width so a full 10-die roll
  * wraps into two centered rows instead of one long line, rather than
  * relying on the card's width alone.
+ *
+ * The block below the circle (individual dice + formatted text) is now
+ * always mounted, at a fixed `min-h`, rather than only existing once
+ * `settled` — owner's fifth round: "keep the window the size it is
+ * after a roll, no need to bounce back and forth." Unmounting it for
+ * idle/rolling was what caused the bounce: the card (and the sheet
+ * around it) grew every time a result settled and shrank back every
+ * time a control change cleared it, on every single roll. The reserved
+ * height is sized for the tallest realistic content — two wrapped rows
+ * of individual dice (a 10-die roll) plus the formatted text line below
+ * them — so a plain single-die roll leaves quiet blank space here
+ * (centered via `justify-center` rather than left stranded at the top)
+ * instead of the card resizing down to fit just its one line.
  */
 export function RollResult({ rolling, die, result, modifier, flickerTotal, className }: RollResultProps) {
   const settled = !rolling && result !== null
@@ -98,42 +111,45 @@ export function RollResult({ rolling, die, result, modifier, flickerTotal, class
           <span className={cx(text.dataDisplay, 'text-ink-faint')}>—</span>
         )}
       </div>
-      {settled && result && (
-        <div className="flex w-full flex-col items-center gap-2">
-          {/* Individual dice, not just the total — shown whenever more
-           * than one physical die was actually rolled (any count > 1,
-           * or advantage/disadvantage's two full sets even at count 1).
-           * The kept set gets a purple border; a discarded advantage/
-           * disadvantage set renders dimmed and struck through, so it's
-           * visible which numbers counted without hiding the ones that
-           * didn't. Width-capped so it centers as two rows at the max
-           * 10-die count instead of one long strip. */}
-          {(result.rolls.length > 1 || result.otherRolls) && (
-            <div className="flex max-w-[240px] flex-wrap items-center justify-center gap-1">
-              {result.rolls.map((value, index) => (
-                <span
-                  key={`kept-${index}`}
-                  className={cx(text.caption, 'rounded-md border border-purple bg-panel px-2 py-1 tabular-nums')}
-                >
-                  {value}
-                </span>
-              ))}
-              {result.otherRolls?.map((value, index) => (
-                <span
-                  key={`other-${index}`}
-                  className={cx(
-                    text.caption,
-                    'rounded-md border border-line-soft bg-panel px-2 py-1 tabular-nums text-ink-faint line-through',
-                  )}
-                >
-                  {value}
-                </span>
-              ))}
-            </div>
-          )}
-          <span className={text.bodySecondary}>{formatRollText(result, modifier)}</span>
-        </div>
-      )}
+      <div className="flex min-h-[92px] w-full flex-col items-center justify-center gap-2">
+        {settled && result && (
+          <>
+            {/* Individual dice, not just the total — shown whenever more
+             * than one physical die was actually rolled (any count > 1,
+             * or advantage/disadvantage's two full sets even at count
+             * 1). The kept set gets a purple border; a discarded
+             * advantage/disadvantage set renders dimmed and struck
+             * through, so it's visible which numbers counted without
+             * hiding the ones that didn't. Width-capped so it centers
+             * as two rows at the max 10-die count instead of one long
+             * strip. */}
+            {(result.rolls.length > 1 || result.otherRolls) && (
+              <div className="flex max-w-[240px] flex-wrap items-center justify-center gap-1">
+                {result.rolls.map((value, index) => (
+                  <span
+                    key={`kept-${index}`}
+                    className={cx(text.caption, 'rounded-md border border-purple bg-panel px-2 py-1 tabular-nums')}
+                  >
+                    {value}
+                  </span>
+                ))}
+                {result.otherRolls?.map((value, index) => (
+                  <span
+                    key={`other-${index}`}
+                    className={cx(
+                      text.caption,
+                      'rounded-md border border-line-soft bg-panel px-2 py-1 tabular-nums text-ink-faint line-through',
+                    )}
+                  >
+                    {value}
+                  </span>
+                ))}
+              </div>
+            )}
+            <span className={text.bodySecondary}>{formatRollText(result, modifier)}</span>
+          </>
+        )}
+      </div>
     </div>
   )
 }

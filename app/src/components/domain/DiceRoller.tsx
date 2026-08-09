@@ -405,16 +405,22 @@ export function DiceRoller({ open, onClose, character, onRoll, onLog }: DiceRoll
         {error && <p className={cx(text.caption, 'text-red')}>{error}</p>}
 
         {/* `w-full`: the Roll/Log buttons' own `flex-1` split only means
-         * anything if their row has the full column width to divide. */}
+         * anything if their row has the full column width to divide.
+         * Log now always renders rather than mounting only once
+         * `result` exists — same bounce this round's RollResult change
+         * fixes: any control change clears `result` (see `clearResult`),
+         * so an unmount-on-empty Log button was disappearing and
+         * reappearing on every single roll, shrinking and regrowing
+         * this row each time. Disabled instead of absent keeps the row
+         * one constant height; there's nothing to log until a result
+         * exists either way. */}
         <div className="flex w-full gap-2">
           <Button onClick={() => void handleRoll()} disabled={rolling} className="flex-1">
             {rolling ? 'Rolling…' : result ? 'Roll Again' : 'Roll'}
           </Button>
-          {result && (
-            <Button variant="ghost" onClick={() => void handleLog()} disabled={logging} className="flex-1">
-              {logging ? 'Logging…' : 'Log'}
-            </Button>
-          )}
+          <Button variant="ghost" onClick={() => void handleLog()} disabled={!result || logging} className="flex-1">
+            {logging ? 'Logging…' : 'Log'}
+          </Button>
         </div>
 
         {/* Trigger only exists once there's something to show — same
