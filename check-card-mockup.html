@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grimoire — Slice 17: Check Card + GM Tool Lines (mockup)</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Pirata+One&family=Instrument+Sans:wght@400;500;600;700&family=Chivo+Mono:wght@400;500;600&family=Bebas+Neue&display=swap');
+
+:root{
+  --bg:#050506; --panel:#101013; --panel2:#17171b;
+  --line:#232329; --line-soft:#1c1c22; --line-hover:#33333c;
+  --ink:#f4f4f6; --ink-dim:#a5a5ae; --ink-faint:#66666f;
+  --purple:#9b5cff; --purple-hover:#ab74ff;
+  --green:#39ff8f; --red:#ff3b52; --yellow:#ffd23f; --orange:#ff8a3d; --pink:#ff3fd6; --cyan:#35f0ff;
+  --radius-card:16px; --radius-button:8px;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:'Instrument Sans',-apple-system,sans-serif; -webkit-font-smoothing:antialiased;
+  padding-bottom:120px;
+}
+h1,h2,h3{font-family:'Bebas Neue',sans-serif; text-transform:uppercase; margin:0}
+.mono{font-family:'Chivo Mono',monospace}
+.label{font-family:'Chivo Mono',monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-faint)}
+
+/* ===== Page chrome (mockup framing, not product) ===== */
+.pagehead{
+  max-width:1080px; margin:0 auto; padding:32px 24px 20px; border-bottom:1px solid var(--line);
+}
+.pagehead .brand{font-family:'Pirata One',serif; font-size:17px; color:var(--ink-dim); margin-bottom:10px}
+.pagehead h1{font-size:32px; letter-spacing:0.01em}
+.pagehead p{color:var(--ink-dim); font-size:15px; line-height:1.6; max-width:70ch; margin:10px 0 0}
+.pagehead .contract{color:var(--ink-faint); font-size:13px; margin-top:6px}
+
+.controls{
+  position:sticky; top:0; z-index:40; background:rgba(5,5,6,0.94); backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line); padding:12px 24px; display:flex; gap:20px; flex-wrap:wrap; align-items:center;
+}
+.controls .group{display:flex; align-items:center; gap:8px}
+.controls .group .label{margin-right:2px}
+.pill-switch{display:inline-flex; gap:6px; padding:4px; background:var(--panel2); border:1px solid var(--line-soft); border-radius:999px}
+.pill-switch button{
+  font-family:'Chivo Mono',monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase;
+  color:var(--ink-dim); background:transparent; border:none; border-radius:999px; padding:7px 14px; cursor:pointer;
+}
+.pill-switch button.on{background:var(--purple); color:#fff}
+
+section.block{max-width:1080px; margin:0 auto; padding:40px 24px; border-bottom:1px solid var(--line)}
+section.block:last-of-type{border-bottom:none}
+section.block h2{font-size:24px; letter-spacing:0.02em; margin-bottom:4px}
+section.block .sub{color:var(--ink-faint); font-size:13px; margin-bottom:24px; max-width:70ch; line-height:1.6}
+
+.variant-row{display:flex; flex-direction:column; gap:12px; margin-bottom:36px}
+.variant-row:last-child{margin-bottom:0}
+.variant-label{display:flex; align-items:baseline; gap:10px; margin-bottom:4px}
+.variant-label .tag{
+  font-family:'Chivo Mono',monospace; font-size:10px; letter-spacing:0.08em; text-transform:uppercase;
+  color:#fff; background:var(--purple); border-radius:6px; padding:3px 8px;
+}
+.variant-label .name{font-size:15px; font-weight:600}
+.variant-label .desc{color:var(--ink-faint); font-size:12.5px}
+
+.feed{max-width:680px; background:#08080a; border:1px solid var(--line-soft); border-radius:14px; padding:16px}
+.entry{display:flex; gap:11px; padding:10px 10px; border-radius:12px; margin-bottom:2px}
+.entry .dot{width:8px; height:8px; border-radius:99px; margin-top:6px; flex-shrink:0; background:var(--c,var(--ink-faint))}
+.entry .headrow{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap}
+.entry .who{font-weight:600; font-size:13.5px; color:var(--c,var(--ink-dim))}
+.entry .when{font-size:11px; color:var(--ink-faint); font-family:'Chivo Mono',monospace}
+.entry .text{font-size:14.5px; line-height:1.6; color:var(--ink-dim); margin-top:2px; max-width:60ch}
+.entry.narration{background:var(--panel); border:1px solid var(--line-soft)}
+.entry.system{opacity:0.85}
+.entry.system .text{color:var(--ink-faint); font-size:13px}
+.entry.hidden{display:none}
+
+/* ===== Check card shared bits ===== */
+.checkwrap{margin:2px 0 8px}
+.badge-check{
+  font-family:'Chivo Mono',monospace; font-size:10px; letter-spacing:0.08em; text-transform:uppercase;
+  color:var(--purple); border:1px solid rgba(155,92,255,0.35); background:rgba(155,92,255,0.08);
+  border-radius:999px; padding:2px 9px; display:inline-flex; align-items:center; gap:5px;
+}
+.stakes-text{font-size:13.5px; line-height:1.55; color:var(--ink-dim); margin-top:4px}
+.btn{
+  font-family:'Chivo Mono',monospace; font-size:11.5px; letter-spacing:0.04em; text-transform:uppercase; font-weight:600;
+  border-radius:var(--radius-button); min-height:40px; padding:0 18px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  transition:background-color .15s, border-color .15s, opacity .15s;
+}
+.btn-primary{background:var(--purple); color:#fff; border:none; box-shadow:0 0 0 1px rgba(155,92,255,.25),0 8px 20px -8px rgba(155,92,255,.55)}
+.btn-primary:hover{background:var(--purple-hover)}
+.btn-ghost{background:transparent; color:var(--ink); border:1px solid var(--line)}
+.btn-ghost:hover{border-color:var(--line-hover); background:var(--panel2)}
+.btn[disabled]{opacity:0.4; pointer-events:none}
+.num-input{
+  font-family:'Instrument Sans',sans-serif; font-size:15px; color:var(--ink); background:var(--panel2);
+  border:1px solid var(--line); border-radius:var(--radius-button); padding:0 12px; height:40px; width:84px;
+}
+.num-input::placeholder{color:var(--ink-faint)}
+.or-sep{font-family:'Chivo Mono',monospace; font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-faint)}
+.spinner{
+  width:14px; height:14px; border-radius:50%; border:2px solid rgba(255,255,255,0.35); border-top-color:#fff;
+  animation:spin .7s linear infinite; display:inline-block;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* state visibility helper: each state block only shows for its own data-state */
+[data-only]{display:none}
+.checkcard[data-state="pending"] [data-only="pending"],
+.checkcard[data-state="rolling"] [data-only="rolling"],
+.checkcard[data-state="resolved"] [data-only="resolved"],
+.checkcard[data-state="abandoned"] [data-only="abandoned"]{display:block}
+.checkcard[data-state="pending"] [data-only="pending"].inline,
+.checkcard[data-state="rolling"] [data-only="rolling"].inline,
+.checkcard[data-state="resolved"] [data-only="resolved"].inline,
+.checkcard[data-state="abandoned"] [data-only="abandoned"].inline{display:inline-flex}
+
+/* ===== Variant A — feed-native, quiet accent bar ===== */
+.checkcard.a{
+  background:var(--panel); border:1px solid var(--line-soft); border-left:3px solid var(--purple);
+  border-radius:16px; padding:12px 14px;
+}
+.checkcard.a[data-state="abandoned"]{border-left-color:var(--line-hover); opacity:0.55}
+.checkcard.a .top{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.checkcard.a .meta{font-family:'Chivo Mono',monospace; font-size:12px; color:var(--ink-dim)}
+.checkcard.a .body{margin-top:10px; display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+.checkcard.a .resolved-line{font-size:13.5px; color:var(--ink-dim); display:flex; align-items:center; gap:8px}
+.checkcard.a .resolved-line .check-ic{color:var(--green); font-size:14px}
+.checkcard.a .abandoned-line{font-size:13px; color:var(--ink-faint); font-style:italic}
+
+/* ===== Variant B — elevated hero card ===== */
+.checkcard.b{
+  background:var(--panel2); border:1px solid var(--line-soft); border-radius:16px; padding:20px; text-align:center;
+}
+.checkcard.b[data-state="abandoned"]{opacity:0.5}
+.checkcard.b h3{font-size:19px; letter-spacing:0.02em; color:var(--ink)}
+.checkcard.b .sub-meta{font-family:'Chivo Mono',monospace; font-size:11px; color:var(--ink-faint); margin-top:2px}
+.checkcard.b .stakes-text{max-width:44ch; margin:8px auto 0}
+.checkcard.b .badge-circle{
+  width:88px; height:88px; border-radius:50%; border:2px solid var(--line); background:var(--panel);
+  display:flex; align-items:center; justify-content:center; margin:16px auto 14px; font-family:'Chivo Mono',monospace;
+}
+.checkcard.b[data-state="resolved"] .badge-circle{border-color:var(--purple)}
+.checkcard.b .badge-circle .glyph{font-size:26px; color:var(--ink-faint)}
+.checkcard.b .badge-circle .total{font-size:28px; font-weight:700; color:var(--ink)}
+.checkcard.b .actions{display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap; margin-top:4px}
+.checkcard.b .method-note{font-family:'Chivo Mono',monospace; font-size:11px; color:var(--ink-faint); margin-top:10px}
+.checkcard.b .abandoned-line{font-size:13px; color:var(--ink-faint); font-style:italic; margin-top:4px}
+
+/* ===== Variant C — compact chip row ===== */
+.checkcard.c{
+  background:var(--panel); border:1px solid var(--line-soft); border-radius:12px; padding:9px 12px;
+}
+.checkcard.c[data-state="abandoned"]{opacity:0.5}
+.checkcard.c .row1{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.checkcard.c .chip{
+  font-family:'Chivo Mono',monospace; font-size:11px; letter-spacing:0.04em; color:var(--ink);
+  background:var(--panel2); border:1px solid var(--line-soft); border-radius:999px; padding:4px 11px;
+  display:inline-flex; align-items:center; gap:6px; white-space:nowrap;
+}
+.checkcard.c .chip .dot{width:7px; height:7px; border-radius:99px; background:var(--purple)}
+.checkcard.c[data-state="abandoned"] .chip .dot{background:var(--ink-faint)}
+.checkcard.c[data-state="abandoned"] .chip{text-decoration:line-through; color:var(--ink-faint)}
+.checkcard.c .row1 .stakes-inline{font-size:12.5px; color:var(--ink-faint); flex:1; min-width:160px}
+.checkcard.c .row2{display:flex; align-items:center; gap:8px; margin-top:8px; flex-wrap:wrap}
+.checkcard.c .btn-compact{min-height:32px; padding:0 12px; font-size:10.5px}
+.checkcard.c .num-input-compact{height:32px; width:64px; font-size:13px; padding:0 8px}
+.checkcard.c .resolved-inline{font-size:12.5px; color:var(--ink-dim)}
+.checkcard.c .resolved-inline .check-ic{color:var(--green)}
+.checkcard.c .abandoned-inline{font-size:12px; color:var(--ink-faint); font-style:italic}
+
+/* ===== Mobile phone frame ===== */
+.phones{display:flex; gap:20px; flex-wrap:wrap}
+.phone{
+  width:360px; background:var(--bg); border:1px solid #26262c; border-radius:30px; overflow:hidden;
+  box-shadow:0 20px 60px -25px rgba(0,0,0,0.85);
+}
+.phone .pbar{padding:12px 14px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:between}
+.phone .pbar .name{font-family:'Bebas Neue',sans-serif; font-size:17px}
+.phone .pscroll{padding:12px 14px 20px}
+.phone .entry .text{font-size:14px}
+.phone .variant-label{padding:0 0 8px}
+
+/* ===== GM tool system-lines section ===== */
+.tool-note{
+  border:1px dashed var(--line); border-radius:12px; padding:14px 16px; margin-top:20px; color:var(--ink-faint); font-size:13px; line-height:1.6;
+}
+.tool-note b{color:var(--ink-dim)}
+
+footer{max-width:1080px; margin:0 auto; padding:32px 24px; color:var(--ink-faint); font-size:12px}
+</style>
+</head>
+<body data-state="pending">
+
+<div class="pagehead">
+  <div class="brand">Grimoire</div>
+  <h1>Slice 17 — Check Card &amp; GM Tool Lines</h1>
+  <p>Three chrome variants for the same check card (pending / rolling / resolved / abandoned), plus how the GM's tool calls
+     already render as system lines in the existing feed. Content, tokens and copy are real — pick a variant (or call out what
+     to graft from another) and client build starts from that pick, per SESSION_RULES rule 1.</p>
+  <p class="contract">Scenario used throughout: Bjorn, DEX check, DC 13, advantage, leaping a collapsing floor panel — same
+     campaign/characters as journal-mockup.html for continuity. Roll button and physical-total entry are both shown as
+     first-class, per SLICE_17_SPEC.md.</p>
+</div>
+
+<div class="controls">
+  <div class="group">
+    <span class="label">State</span>
+    <div class="pill-switch" id="stateSwitch">
+      <button data-state="pending" class="on">Pending</button>
+      <button data-state="rolling">Rolling</button>
+      <button data-state="resolved">Resolved</button>
+      <button data-state="abandoned">Abandoned</button>
+    </div>
+  </div>
+</div>
+
+<section class="block">
+  <h2>Desktop — in the feed</h2>
+  <p class="sub">Each card sits where it actually will: after the player's action line, inline in the scene log at the
+     journal's 680px column width. Toggle State above to see all three variants move together.</p>
+
+  <div class="variant-row">
+    <div class="variant-label">
+      <span class="tag">A</span>
+      <span class="name">Feed-native</span>
+      <span class="desc">— same visual weight as a narration entry; a purple accent bar is the only thing marking it as an action, not prose.</span>
+    </div>
+    <div class="feed">
+      <div class="entry" style="--c:var(--purple)">
+        <div class="dot"></div>
+        <div style="min-width:0">
+          <div class="headrow"><span class="who">Bjorn</span><span class="when">9:19 pm</span></div>
+          <div class="text">I try to leap the gap before the panel gives way completely.</div>
+        </div>
+      </div>
+
+      <div class="checkwrap">
+        <div class="checkcard a" data-state="pending">
+          <div class="top">
+            <span class="badge-check">Check</span>
+            <span class="meta">DEX · DC 13 · Advantage</span>
+          </div>
+          <div class="stakes-text">Leaping the gap before the floor gives way.</div>
+          <div class="body">
+            <div data-only="pending" class="inline" style="display:inline-flex; align-items:center; gap:12px">
+              <button class="btn btn-primary">Roll d20</button>
+              <span class="or-sep">or</span>
+              <input class="num-input" type="number" placeholder="Total" aria-label="Enter physical roll total">
+              <button class="btn btn-ghost">Log</button>
+            </div>
+            <div data-only="rolling" style="display:none">
+              <button class="btn btn-primary" disabled><span class="spinner"></span> Rolling…</button>
+            </div>
+            <div data-only="resolved" style="display:none">
+              <div class="resolved-line"><span class="check-ic">✓</span> Rolled 16 (server) vs DC 13 — resolved. Narration below.</div>
+            </div>
+            <div data-only="abandoned" style="display:none">
+              <div class="abandoned-line">Superseded by a later check — never rolled.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="entry narration" style="--c:var(--cyan)" data-resolved-only>
+        <div class="dot"></div>
+        <div style="min-width:0">
+          <div class="headrow"><span class="who">GM</span><span class="when">9:19 pm</span></div>
+          <div class="text">You clear the gap and roll to a stop on solid stone, the panel crashing into the dark below.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant-row">
+    <div class="variant-label">
+      <span class="tag">B</span>
+      <span class="name">Elevated hero card</span>
+      <span class="desc">— RollResult's circular-badge language, borrowed for the moment the table is actually waiting on. Hardest to miss, most interruptive.</span>
+    </div>
+    <div class="feed">
+      <div class="entry" style="--c:var(--purple)">
+        <div class="dot"></div>
+        <div style="min-width:0">
+          <div class="headrow"><span class="who">Bjorn</span><span class="when">9:19 pm</span></div>
+          <div class="text">I try to leap the gap before the panel gives way completely.</div>
+        </div>
+      </div>
+
+      <div class="checkwrap">
+        <div class="checkcard b" data-state="pending">
+          <h3>DEX Check · DC 13</h3>
+          <div class="sub-meta">ADVANTAGE</div>
+          <div class="stakes-text">Leaping the gap before the floor gives way.</div>
+          <div class="badge-circle">
+            <span data-only="pending" class="glyph inline">d20</span>
+            <span data-only="rolling" class="glyph" style="display:none"><span class="spinner" style="width:20px;height:20px;border-width:3px"></span></span>
+            <span data-only="resolved" class="total" style="display:none">16</span>
+            <span data-only="abandoned" class="glyph" style="display:none;color:var(--ink-faint)">—</span>
+          </div>
+          <div data-only="pending" class="inline actions" style="display:inline-flex">
+            <button class="btn btn-primary">Roll d20</button>
+            <span class="or-sep">or</span>
+            <input class="num-input" type="number" placeholder="Total" aria-label="Enter physical roll total">
+            <button class="btn btn-ghost">Log</button>
+          </div>
+          <div data-only="rolling" style="display:none" class="actions"><button class="btn btn-primary" disabled><span class="spinner"></span> Rolling…</button></div>
+          <div data-only="resolved" style="display:none" class="method-note">Resolved via server roll — see the GM's reply below.</div>
+          <div data-only="abandoned" style="display:none" class="abandoned-line">Abandoned — replaced by a later check.</div>
+        </div>
+      </div>
+
+      <div class="entry narration" style="--c:var(--cyan)" data-resolved-only>
+        <div class="dot"></div>
+        <div style="min-width:0">
+          <div class="headrow"><span class="who">GM</span><span class="when">9:19 pm</span></div>
+          <div class="text">You clear the gap and roll to a stop on solid stone, the panel crashing into the dark below.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant-row">
+    <div class="variant-label">
+      <span class="tag">C</span>
+      <span class="name">Compact chip row</span>
+      <span class="desc">— reads like a denser system line; ability/DC/advantage collapse into one chip so the card barely taller than a normal entry.</span>
+    </div>
+    <div class="feed">
+      <div class="entry" style="--c:var(--purple)">
+        <div class="dot"></div>
+        <div style="min-width:0">
+          <div class="headrow"><span class="who">Bjorn</span><span class="when">9:19 pm</span></div>
+          <div class="text">I try to leap the gap before the panel gives way completely.</div>
+        </div>
+      </div>
+
+      <div class="checkwrap">
+        <div class="checkcard c" data-state="pending">
+          <div class="row1">
+            <span class="chip"><span class="dot"></span> DEX · DC 13 · ADV</span>
+            <span class="stakes-inline">Leaping the gap before the floor gives way.</span>
+          </div>
+          <div data-only="pending" class="inline row2" style="display:inline-flex">
+            <button class="btn btn-primary btn-compact">Roll</button>
+            <span class="or-sep">or</span>
+            <input class="num-input num-input-compact" type="number" placeholder="Total" aria-label="Enter physical roll total">
+            <button class="btn btn-ghost btn-compact">Log</button>
+          </div>
+          <div data-only="rolling" style="display:none" class="row2"><button class="btn btn-primary btn-compact" disabled><span class="spinner"></span> Rolling…</button></div>
+          <div data-only="resolved" style="display:none" class="row2 resolved-inline"><span class="check-ic">✓</span> Total 16 (server) — resolved</div>
+          <div data-only="abandoned" style="display:none" class="row2 abandoned-inline">Superseded — never rolled</div>
+        </div>
+      </div>
+
+      <div class="entry narration" style="--c:var(--cyan)" data-resolved-only>
+        <div class="dot"></div>
+        <div style="min-width:0">
+          <div class="headrow"><span class="who">GM</span><span class="when">9:19 pm</span></div>
+          <div class="text">You clear the gap and roll to a stop on solid stone, the panel crashing into the dark below.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <h2>Mobile — in the feed</h2>
+  <p class="sub">Same three variants at a 360px phone width, same shared state switcher above. B's centered layout is the one
+     most likely to feel heavy on a phone — worth weighing against A/C's flatter footprint.</p>
+  <div class="phones">
+    <div class="phone">
+      <div class="pbar"><span class="name">The Lost Citadel</span></div>
+      <div class="pscroll">
+        <div class="variant-label"><span class="tag">A</span></div>
+        <div class="entry" style="--c:var(--purple)">
+          <div class="dot"></div>
+          <div style="min-width:0">
+            <div class="headrow"><span class="who">Bjorn</span><span class="when">9:19 pm</span></div>
+            <div class="text">I try to leap the gap before the panel gives way completely.</div>
+          </div>
+        </div>
+        <div class="checkwrap">
+          <div class="checkcard a" data-state="pending">
+            <div class="top"><span class="badge-check">Check</span><span class="meta">DEX · DC 13 · Adv</span></div>
+            <div class="stakes-text">Leaping the gap before the floor gives way.</div>
+            <div class="body">
+              <div data-only="pending" class="inline" style="display:inline-flex; flex-wrap:wrap; gap:8px">
+                <button class="btn btn-primary">Roll d20</button>
+                <input class="num-input" style="width:70px" type="number" placeholder="Total">
+                <button class="btn btn-ghost">Log</button>
+              </div>
+              <div data-only="rolling" style="display:none"><button class="btn btn-primary" disabled><span class="spinner"></span> Rolling…</button></div>
+              <div data-only="resolved" style="display:none"><div class="resolved-line"><span class="check-ic">✓</span> Rolled 16 — resolved</div></div>
+              <div data-only="abandoned" style="display:none"><div class="abandoned-line">Superseded — never rolled.</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="entry narration" style="--c:var(--cyan)" data-resolved-only>
+          <div class="dot"></div>
+          <div style="min-width:0">
+            <div class="headrow"><span class="who">GM</span><span class="when">9:19 pm</span></div>
+            <div class="text">You clear the gap and roll to a stop on solid stone.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phone">
+      <div class="pbar"><span class="name">The Lost Citadel</span></div>
+      <div class="pscroll">
+        <div class="variant-label"><span class="tag">B</span></div>
+        <div class="entry" style="--c:var(--purple)">
+          <div class="dot"></div>
+          <div style="min-width:0">
+            <div class="headrow"><span class="who">Bjorn</span><span class="when">9:19 pm</span></div>
+            <div class="text">I try to leap the gap before the panel gives way completely.</div>
+          </div>
+        </div>
+        <div class="checkwrap">
+          <div class="checkcard b" data-state="pending">
+            <h3 style="font-size:17px">DEX Check · DC 13</h3>
+            <div class="sub-meta">ADVANTAGE</div>
+            <div class="stakes-text" style="max-width:none">Leaping the gap before the floor gives way.</div>
+            <div class="badge-circle" style="width:76px;height:76px">
+              <span data-only="pending" class="glyph inline" style="font-size:22px">d20</span>
+              <span data-only="rolling" class="glyph" style="display:none"><span class="spinner" style="width:18px;height:18px;border-width:3px"></span></span>
+              <span data-only="resolved" class="total" style="display:none;font-size:24px">16</span>
+              <span data-only="abandoned" class="glyph" style="display:none;color:var(--ink-faint)">—</span>
+            </div>
+            <div data-only="pending" class="inline actions" style="display:inline-flex; flex-wrap:wrap; gap:8px">
+              <button class="btn btn-primary">Roll d20</button>
+              <input class="num-input" style="width:70px" type="number" placeholder="Total">
+              <button class="btn btn-ghost">Log</button>
+            </div>
+            <div data-only="rolling" style="display:none" class="actions"><button class="btn btn-primary" disabled><span class="spinner"></span> Rolling…</button></div>
+            <div data-only="resolved" style="display:none" class="method-note">Resolved via server roll.</div>
+            <div data-only="abandoned" style="display:none" class="abandoned-line">Abandoned.</div>
+          </div>
+        </div>
+        <div class="entry narration" style="--c:var(--cyan)" data-resolved-only>
+          <div class="dot"></div>
+          <div style="min-width:0">
+            <div class="headrow"><span class="who">GM</span><span class="when">9:19 pm</span></div>
+            <div class="text">You clear the gap and roll to a stop on solid stone.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phone">
+      <div class="pbar"><span class="name">The Lost Citadel</span></div>
+      <div class="pscroll">
+        <div class="variant-label"><span class="tag">C</span></div>
+        <div class="entry" style="--c:var(--purple)">
+          <div class="dot"></div>
+          <div style="min-width:0">
+            <div class="headrow"><span class="who">Bjorn</span><span class="when">9:19 pm</span></div>
+            <div class="text">I try to leap the gap before the panel gives way completely.</div>
+          </div>
+        </div>
+        <div class="checkwrap">
+          <div class="checkcard c" data-state="pending">
+            <div class="row1"><span class="chip"><span class="dot"></span> DEX · DC 13 · ADV</span></div>
+            <div class="stakes-inline" style="margin-top:6px; display:block">Leaping the gap before the floor gives way.</div>
+            <div data-only="pending" class="inline row2" style="display:inline-flex; flex-wrap:wrap; gap:8px">
+              <button class="btn btn-primary btn-compact">Roll</button>
+              <input class="num-input num-input-compact" type="number" placeholder="Total">
+              <button class="btn btn-ghost btn-compact">Log</button>
+            </div>
+            <div data-only="rolling" style="display:none" class="row2"><button class="btn btn-primary btn-compact" disabled><span class="spinner"></span> Rolling…</button></div>
+            <div data-only="resolved" style="display:none" class="row2 resolved-inline"><span class="check-ic">✓</span> Total 16 — resolved</div>
+            <div data-only="abandoned" style="display:none" class="row2 abandoned-inline">Superseded</div>
+          </div>
+        </div>
+        <div class="entry narration" style="--c:var(--cyan)" data-resolved-only>
+          <div class="dot"></div>
+          <div style="min-width:0">
+            <div class="headrow"><span class="who">GM</span><span class="when">9:19 pm</span></div>
+            <div class="text">You clear the gap and roll to a stop on solid stone.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <h2>GM tool system-lines</h2>
+  <p class="sub">Not a new component — <code class="mono">log_journal_entry</code>'s <code class="mono">kind: "system"</code>
+     already renders muted regardless of who logged it (LogEntryRow forces ink-faint on system kind, ignoring actor color),
+     so <code class="mono">roll_dice</code> and <code class="mono">adjust_character_hp</code>'s auto-logged lines fall
+     straight into that existing style with zero new CSS. Shown here in context so it's confirmed, not assumed.</p>
+  <div class="feed" style="max-width:520px">
+    <div class="entry system">
+      <div class="dot"></div>
+      <div style="min-width:0">
+        <div class="headrow"><span class="who">GM</span><span class="when">9:24 pm</span></div>
+        <div class="text">GM rolls d6 (bandit's attack roll): 4</div>
+      </div>
+    </div>
+    <div class="entry system">
+      <div class="dot"></div>
+      <div style="min-width:0">
+        <div class="headrow"><span class="who">GM</span><span class="when">9:25 pm</span></div>
+        <div class="text">Bjorn takes 3 (dart trap graze) — 7/10 HP</div>
+      </div>
+    </div>
+    <div class="entry system">
+      <div class="dot"></div>
+      <div style="min-width:0">
+        <div class="headrow"><span class="who">GM</span><span class="when">9:27 pm</span></div>
+        <div class="text">Elowen heals 4 (potion of clarity) — 9/10 HP</div>
+      </div>
+    </div>
+  </div>
+  <div class="tool-note">
+    <b>Open question, not decided here:</b> should a damage line (HP loss) get a whisper of red and a heal line a whisper
+    of green, the way the stat bar's HP tile already tints red at low HP? Right now every system line is uniformly muted —
+    that's existing shared behavior in <code class="mono">LogEntryRow</code>, out of scope for this slice to change unilaterally
+    since it would affect every system line in the app, not just Slice 17's three tools. Flagging for the owner's call rather
+    than deciding it inside a check-card mockup.
+  </div>
+</section>
+
+<footer>
+  Slice 17 mockup — tokens pulled live from app/src/index.css (Tailwind v4 <code class="mono">@theme</code>), components
+  cross-checked against LogEntryRow, RollResult, Panel, Button, TextInput, Badge, StatusChip, DiceControls. No client code
+  has been written yet — this file is the gate, per SESSION_RULES rule 1.
+</footer>
+
+<script>
+  const switchEl = document.getElementById('stateSwitch');
+  switchEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-state]');
+    if (!btn) return;
+    const state = btn.dataset.state;
+    document.body.dataset.state = state;
+    switchEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === btn));
+    document.querySelectorAll('.checkcard').forEach(c => c.dataset.state = state);
+    document.querySelectorAll('[data-resolved-only]').forEach(el => {
+      el.classList.toggle('hidden', state !== 'resolved');
+    });
+    // toggle each state-only block's display within every card
+    document.querySelectorAll('.checkcard').forEach(card => {
+      card.querySelectorAll('[data-only]').forEach(block => {
+        const show = block.dataset.only === state;
+        block.style.display = show ? (block.classList.contains('inline') ? 'inline-flex' : 'block') : 'none';
+      });
+    });
+  });
+  // initialize resolved-only entries hidden at load (default state = pending)
+  document.querySelectorAll('[data-resolved-only]').forEach(el => el.classList.add('hidden'));
+</script>
+<style>[data-resolved-only].hidden{display:none}</style>
+
+</body>
+</html>
