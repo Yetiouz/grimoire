@@ -349,15 +349,22 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
 
         {/* CENTER: the journal card — sticky header, internally
           * scrolling feed, composer pinned to the card's foot.
-          * BOB_queue task 1: JournalFilterBar sits above the feed,
-          * inside the same scrolling body — ColumnCard has no separate
-          * pinned sub-header slot, so it scrolls away with the rest of
-          * the content rather than staying fixed; a pinned treatment
-          * would need a new ColumnCard slot, which felt like more scope
-          * than this task asked for. */}
+          * BOB_queue task 1 + audit fix: JournalFilterBar rides
+          * ColumnCard's pinned `subheader` slot, NOT the scrolling body.
+          * It shipped as the body's first child, which on a campaign
+          * with real history put it thousands of pixels above the
+          * scroll viewport — rendered, never visible. Mobile already
+          * pins it (MobileJournalView); this is the desktop
+          * equivalent. Gated on the same loaded state as the feed so
+          * an empty strip doesn't flash during the skeleton. */}
         <ColumnCard
           headerLeft={journalColumnLabel}
           bodyClassName="gap-3"
+          subheader={
+            sessions !== null && entries !== null ? (
+              <JournalFilterBar active={activeFilters} onToggle={toggleFilter} showRules={gmEnabled} />
+            ) : undefined
+          }
           footer={
             <JournalComposer
               onLog={(kind, body) => handleLog(kind, body)}
@@ -380,10 +387,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
           )}
 
           {sessions !== null && entries !== null && (
-            <>
-              <JournalFilterBar active={activeFilters} onToggle={toggleFilter} showRules={gmEnabled} />
-              <JournalFeed items={feedItems} sessions={sessions} filter={feedFilter} />
-            </>
+            <JournalFeed items={feedItems} sessions={sessions} filter={feedFilter} />
           )}
         </ColumnCard>
 
