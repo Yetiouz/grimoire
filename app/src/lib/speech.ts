@@ -137,19 +137,15 @@ function playUrl(url: string): SpeechHandle {
 
 // ── tier 2: the browser voice (the original picker, scoring fixed) ──
 
-const PREFERRED_NAME_PATTERNS: RegExp[] = [
-  /premium/i,
-  /enhanced/i,
-  /natural/i,
-  /neural/i,
-  // Chrome's own remote voices — on desktop Chrome these sound far
-  // better than the compact local system voices the browser exposes,
-  // which is why they get their own entry here (the original scoring
-  // preferred local voices and reliably picked a robotic one).
-  /google (us|uk) english/i,
-  // Common higher-quality named voices across macOS/iOS and Edge.
-  /\b(samantha|ava|zoe|allison|nathan|evan|tom)\b/i,
-]
+/** Downloaded high-quality system voices — the real prize. */
+const QUALITY_PATTERNS: RegExp[] = [/premium/i, /enhanced/i, /natural/i, /neural/i]
+/** Chrome's own remote voices — on desktop Chrome these sound far
+ * better than the compact local system voices it exposes (the original
+ * scoring preferred local voices and reliably picked a robotic one). */
+const REMOTE_GOOD = /google (us|uk) english/i
+/** Decent-but-compact named voices across macOS/iOS and Edge — better
+ * than nothing, worse than everything above. */
+const NAMED_DECENT = /\b(samantha|ava|zoe|allison|nathan|evan|tom)\b/i
 
 let cachedVoices: SpeechSynthesisVoice[] | null = null
 
@@ -191,11 +187,21 @@ function scoreVoice(voice: SpeechSynthesisVoice): number {
   const lang = voice.lang?.toLowerCase() ?? ''
   if (lang.startsWith('en')) score += 1
   if (lang === 'en-us') score += 1
-  // Scoring fix (the "toaster voice" bug): a named quality match now
-  // outranks everything, and `localService` is no longer a positive
-  // signal — in Chrome the best-sounding voices are Google's remote
-  // ones, and the local voices it exposes are the compact robotic set.
-  if (PREFERRED_NAME_PATTERNS.some((pattern) => pattern.test(voice.name))) score += 5
+  // Tiered, mutually exclusive quality bands — a Premium/Enhanced
+  // system voice always beats Google's remote voices, which always
+  // beat merely-decent compact names. `localService` is deliberately
+  // not a signal in any band: in Chrome the compact local set is the
+  // robotic one.
+  if (QUALITY_PATTERNS.some((pattern) => pattern.test(voice.name))) score += 6
+  else if (REMOTE_GOOD.test(voice.name)) score += 5
+  else if (NAMED_DECENT.test(voice.name)) score += 3
+  // The user's own OS-level voice choice comes through as `default` —
+  // e.g. picking Jamie (Premium) in macOS accessibility settings marks
+  // exactly that voice. +2 makes their pick win any within-band tie
+  // (and beat the en-US bonus for a non-US choice), while a junk
+  // system default still loses to any real quality voice: 2 < the 3-6
+  // band gaps.
+  if (voice.default) score += 2
   return score
 }
 
