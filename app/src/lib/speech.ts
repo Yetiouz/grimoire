@@ -158,7 +158,15 @@ let cachedVoices: SpeechSynthesisVoice[] | null = null
  * a page's lifetime — so this waits for the `voiceschanged` event, with
  * a short timeout fallback for browsers that never fire it. */
 function loadVoices(): Promise<SpeechSynthesisVoice[]> {
-  if (cachedVoices) return Promise.resolve(cachedVoices)
+  // `.length` guard, not just truthiness: an EMPTY array must never be
+  // cached. The original version cached whatever the 500ms timeout saw
+  // — and on the first click of a session that was often still [],
+  // which then stuck forever and sent every single read to the
+  // browser's default robot voice even on a machine with premium
+  // voices installed. (The observed "it defaults to the bad voice"
+  // bug, verified live: the scorer itself picks Ava (Premium) fine
+  // once it's actually given the list.)
+  if (cachedVoices && cachedVoices.length > 0) return Promise.resolve(cachedVoices)
   const synth = window.speechSynthesis
   const existing = synth.getVoices()
   if (existing.length > 0) {
@@ -167,8 +175,11 @@ function loadVoices(): Promise<SpeechSynthesisVoice[]> {
   }
   return new Promise((resolve) => {
     const finish = () => {
-      cachedVoices = synth.getVoices()
-      resolve(cachedVoices)
+      const voices = synth.getVoices()
+      // Cache only a real list; an empty one stays uncached so the
+      // next click retries instead of inheriting this one's bad luck.
+      if (voices.length > 0) cachedVoices = voices
+      resolve(voices)
     }
     synth.addEventListener('voiceschanged', finish, { once: true })
     setTimeout(finish, 500)
