@@ -32,6 +32,11 @@ type Choice = LogEntryKind | 'gm' | 'rules'
 interface ChoiceSpec {
   id: Choice
   label: string
+  /** Mobile label (below xl:) — owner's pick for keeping all six
+   * choices on one line on a phone: abbreviate rather than scroll,
+   * stack, or hide behind a picker. Color + position carry the rest of
+   * the meaning at that size. */
+  short: string
   ai: boolean
   hex: string
   /** Selected-state chip classes — variant B's soft tint. */
@@ -40,12 +45,12 @@ interface ChoiceSpec {
 }
 
 const CHOICES: ChoiceSpec[] = [
-  { id: 'action', label: 'Action', ai: false, hex: '#9b5cff', on: 'border-purple/45 bg-purple/15 text-purple', placeholder: 'Add to the journal…' },
-  { id: 'narration', label: 'Narration', ai: false, hex: '#ff3fd6', on: 'border-pink/45 bg-pink/15 text-pink', placeholder: 'Narrate the scene…' },
-  { id: 'roll', label: 'Roll', ai: false, hex: '#39ff8f', on: 'border-green/45 bg-green/15 text-green', placeholder: 'Record a roll…' },
-  { id: 'note', label: 'Note', ai: false, hex: '#ffd23f', on: 'border-yellow/45 bg-yellow/15 text-yellow', placeholder: 'Jot a note…' },
-  { id: 'gm', label: 'Ask GM', ai: true, hex: '#35f0ff', on: 'border-cyan/45 bg-cyan/15 text-cyan', placeholder: 'Tell the GM what you do…' },
-  { id: 'rules', label: 'Ask Rules', ai: true, hex: '#ff8a3d', on: 'border-orange/45 bg-orange/15 text-orange', placeholder: 'Ask a rules question…' },
+  { id: 'action', label: 'Action', short: 'Act', ai: false, hex: '#9b5cff', on: 'border-purple/45 bg-purple/15 text-purple', placeholder: 'Add to the journal…' },
+  { id: 'narration', label: 'Narration', short: 'Nar', ai: false, hex: '#ff3fd6', on: 'border-pink/45 bg-pink/15 text-pink', placeholder: 'Narrate the scene…' },
+  { id: 'roll', label: 'Roll', short: 'Roll', ai: false, hex: '#39ff8f', on: 'border-green/45 bg-green/15 text-green', placeholder: 'Record a roll…' },
+  { id: 'note', label: 'Note', short: 'Note', ai: false, hex: '#ffd23f', on: 'border-yellow/45 bg-yellow/15 text-yellow', placeholder: 'Jot a note…' },
+  { id: 'gm', label: 'Ask GM', short: 'GM', ai: true, hex: '#35f0ff', on: 'border-cyan/45 bg-cyan/15 text-cyan', placeholder: 'Tell the GM what you do…' },
+  { id: 'rules', label: 'Ask Rules', short: 'Rules', ai: true, hex: '#ff8a3d', on: 'border-orange/45 bg-orange/15 text-orange', placeholder: 'Ask a rules question…' },
 ]
 
 interface JournalComposerProps {
@@ -167,14 +172,17 @@ export function JournalComposer({
                   // Compact-pill exception to the 44px touch-target rule —
                   // decided by the owner for this dense chip-row shape;
                   // same precedent as the header filter chips.
-                  'inline-flex items-center justify-center whitespace-nowrap rounded-full border px-3 py-1 uppercase',
+                  // px-2 below xl:, where the abbreviated labels keep all
+                  // six chips + the bar on one 390px line with no scroll.
+                  'inline-flex items-center justify-center whitespace-nowrap rounded-full border px-2 py-1 uppercase xl:px-3',
                   text.caption,
                   isOn ? c.on : 'border-line-soft bg-panel2 text-ink-dim hover:border-line-hover',
                   !sessionOpen && 'pointer-events-none opacity-40',
                   askLocked && 'pointer-events-none opacity-35',
                 )}
               >
-                {c.label}
+                <span className="xl:hidden">{c.short}</span>
+                <span className="hidden xl:inline">{c.label}</span>
               </button>
             </span>
           )
@@ -201,7 +209,10 @@ export function JournalComposer({
             <span
               className={cx(
                 text.label,
-                'tabular-nums',
+                // Bar-only on mobile — the count costs ~70px the one-line
+                // row can't spare; the bar still answers "should I be
+                // worried" and the full number lives on desktop.
+                'hidden tabular-nums xl:inline',
                 usedFraction >= 1 ? 'text-red' : usedFraction >= 0.8 ? 'text-yellow' : undefined,
               )}
               title={`${budget?.used} of ${budget?.limit} requests used today. A simple turn costs one.`}
