@@ -4,6 +4,7 @@ import { text } from '../../lib/typography'
 import { Button } from '../ui/Button'
 import { TextInput } from '../ui/TextInput'
 import { EmptyState } from '../ui/EmptyState'
+import { Overlay } from '../ui/Overlay'
 import { MapImageViewer } from './MapImageViewer'
 import { MapPin, markerColor } from './MapPin'
 import { DeleteMapButton } from './DeleteMapButton'
@@ -24,10 +25,14 @@ interface MapsSiteTabProps {
  * ~300-line cap). Simpler than Region: one illustrated location (e.g.
  * Dreg's Ford), no pin/travel state — just the image, zoom/pan, markers,
  * and its label. Shares `MapImageViewer`/`MapPin`/`DeleteMapButton`/
- * `MapMarkerEditRow` with `MapsRegionTab` rather than duplicating them;
- * the same "+Marker" click-to-place toggle is used here too even though
- * Site has no party pin to disambiguate against, so the two tabs read as
- * one consistent interaction language rather than two different ones. */
+ * `MapMarkerEditRow` with `MapsRegionTab` rather than duplicating them,
+ * including the same two-column desktop layout (map | sidebar,
+ * collapsing to one column below `xl:`) and the marker editor opening as
+ * its own `Overlay` dialog instead of an inline row — see
+ * `MapsRegionTab`'s doc comment for why. The "+Marker" click-to-place
+ * toggle is used here too even though Site has no party pin to
+ * disambiguate against, so the two tabs read as one consistent
+ * interaction language rather than two different ones. */
 export function MapsSiteTab({ campaignId, map, imageUrl, onMapUploaded, onMapCleared, onError }: MapsSiteTabProps) {
   const [label, setLabel] = useState(map?.label ?? '')
   const [uploading, setUploading] = useState(false)
@@ -117,53 +122,57 @@ export function MapsSiteTab({ campaignId, map, imageUrl, onMapUploaded, onMapCle
 
   return (
     <div className="flex flex-col gap-3">
-      {map && imageUrl ? (
-        <>
-          <MapImageViewer src={imageUrl} alt={map.label} onImageClick={(x, y) => void handleMapClick(x, y)}>
-            {markers.map((marker) => (
-              <MapPin
-                key={marker.id}
-                x={marker.x}
-                y={marker.y}
-                color={markerColor(marker.marker_kind)}
-                label={marker.label}
-                onClick={() => setSelectedMarkerId(marker.id)}
-              />
-            ))}
-          </MapImageViewer>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h4 className={text.body}>{map.label}</h4>
-            <button type="button" onClick={() => setPlacingMarker((v) => !v)} className={text.label} style={placingMarker ? { color: 'var(--color-purple)' } : undefined}>
-              {placingMarker ? 'Click the map to drop a marker' : '+ Marker'}
-            </button>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_280px] xl:items-start">
+        <div className="flex flex-col gap-2">
+          {map && imageUrl ? (
+            <>
+              <MapImageViewer src={imageUrl} alt={map.label} onImageClick={(x, y) => void handleMapClick(x, y)}>
+                {markers.map((marker) => (
+                  <MapPin
+                    key={marker.id}
+                    x={marker.x}
+                    y={marker.y}
+                    color={markerColor(marker.marker_kind)}
+                    label={marker.label}
+                    onClick={() => setSelectedMarkerId(marker.id)}
+                  />
+                ))}
+              </MapImageViewer>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h4 className={text.body}>{map.label}</h4>
+                <button type="button" onClick={() => setPlacingMarker((v) => !v)} className={text.label} style={placingMarker ? { color: 'var(--color-purple)' } : undefined}>
+                  {placingMarker ? 'Click the map to drop a marker' : '+ Marker'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <EmptyState icon="map" title="No site map yet" description="Upload an illustrated location (e.g. Dreg's Ford) to show it here." />
+          )}
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
+            <TextInput label="Map label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Dreg's Ford" className="w-full" />
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+            <Button variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+              {uploading ? 'Uploading…' : map ? 'Replace map' : 'Upload map'}
+            </Button>
           </div>
-        </>
-      ) : (
-        <EmptyState icon="map" title="No site map yet" description="Upload an illustrated location (e.g. Dreg's Ford) below." />
-      )}
+
+          {map && <DeleteMapButton onConfirm={handleDeleteMap} />}
+        </div>
+      </div>
 
       {selectedMarker && (
-        <MapMarkerEditRow
-          marker={selectedMarker}
-          saving={markerSaving}
-          onSave={(update) => void handleSaveMarker(selectedMarker.id, update)}
-          onDelete={() => void handleDeleteMarker(selectedMarker.id)}
-          onClose={() => setSelectedMarkerId(null)}
-        />
+        <Overlay open onClose={() => setSelectedMarkerId(null)} header={<h3 className={text.h3}>Marker</h3>} width="narrow">
+          <MapMarkerEditRow
+            marker={selectedMarker}
+            saving={markerSaving}
+            onSave={(update) => void handleSaveMarker(selectedMarker.id, update)}
+            onDelete={() => void handleDeleteMarker(selectedMarker.id)}
+          />
+        </Overlay>
       )}
-
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="min-w-[10rem] flex-1">
-            <TextInput label="Map label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Dreg's Ford" className="w-full" />
-          </div>
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-          <Button variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-            {uploading ? 'Uploading…' : map ? 'Replace map' : 'Upload map'}
-          </Button>
-        </div>
-        {map && <DeleteMapButton onConfirm={handleDeleteMap} />}
-      </div>
     </div>
   )
 }

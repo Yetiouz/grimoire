@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
-import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { Button } from '../ui/Button'
 import { TextInput } from '../ui/TextInput'
 import { EmptyState } from '../ui/EmptyState'
+import { Overlay } from '../ui/Overlay'
 import { MapImageViewer } from './MapImageViewer'
 import { MapPin, markerColor } from './MapPin'
 import { DeleteMapButton } from './DeleteMapButton'
 import { MapMarkerEditRow } from './MapMarkerEditRow'
+import { MapPositionSidebar } from './MapPositionSidebar'
+import type { MapPositionUpdate } from './MapPositionSidebar'
 import {
   addMapMarker,
   clearCampaignMap,
@@ -32,13 +34,23 @@ interface MapsRegionTabProps {
 }
 
 /** Split out of `MapsPanel.tsx` (CLAUDE.md's ~300-line component cap) —
- * the Region tab's own image+pin, travel chips, edit row, markers, and
- * upload/replace/delete-map controls. Owns its own interaction state
- * (edit-row open/closed, in-flight saves, marker selection) since none
- * of it is shared with Site or Scene; results get lifted to `MapsPanel`
- * via `onPositionUpdate`/`onMapUploaded`/`onMapCleared` so the tab bar's
- * badge state and the Site tab's own data stay independent copies, not
- * one shared blob.
+ * the Region tab's own image+pin, markers, and upload/replace/delete-map
+ * controls; travel-position state lives in `MapPositionSidebar`. Owns
+ * its own interaction state (in-flight saves, marker selection) since
+ * none of it is shared with Site or Scene; results get lifted to
+ * `MapsPanel` via `onPositionUpdate`/`onMapUploaded`/`onMapCleared` so
+ * the tab bar's badge state and the Site tab's own data stay independent
+ * copies, not one shared blob.
+ *
+ * Layout (2026-08-10, desktop-scroll follow-up): a two-column grid at
+ * `xl:` — map on the left, everything else (position sidebar, upload,
+ * delete) in a fixed-width column on the right — collapsing to one
+ * stacked column below `xl:` for the mobile "Maps" tab, same breakpoint
+ * `Overlay.tsx` already uses for its own dialog/sheet split. The marker
+ * editor is no longer inline content at all; it opens as its own
+ * `Overlay` dialog (per the user's "add marker should open its own
+ * window" feedback), which also trims a chunk of permanent vertical
+ * stacking that was forcing the desktop scroll in the first place.
  *
  * Markers are fetched here rather than in `MapsPanel` — unlike
  * `maps`/`position`, they're only ever read by the tab that owns their
@@ -52,11 +64,6 @@ interface MapsRegionTabProps {
  * know about, since it only ever reports "the map was clicked here."
  */
 export function MapsRegionTab({ campaignId, map, imageUrl, position, onPositionUpdate, onMapUploaded, onMapCleared, onError }: MapsRegionTabProps) {
-  const [editing, setEditing] = useState(false)
-  const [locationInput, setLocationInput] = useState('')
-  const [paceInput, setPaceInput] = useState('')
-  const [hexesInput, setHexesInput] = useState('')
-  const [saving, setSaving] = useState(false)
   const [movingPin, setMovingPin] = useState(false)
 
   const [label, setLabel] = useState(map?.label ?? '')
@@ -67,12 +74,6 @@ export function MapsRegionTab({ campaignId, map, imageUrl, position, onPositionU
   const [placingMarker, setPlacingMarker] = useState(false)
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null)
   const [markerSaving, setMarkerSaving] = useState(false)
-
-  useEffect(() => {
-    setLocationInput(position?.location_label ?? '')
-    setPaceInput(position?.travel_pace ?? '')
-    setHexesInput(position?.hexes_remaining != null ? String(position.hexes_remaining) : '')
-  }, [position])
 
   useEffect(() => {
     setLabel(map?.label ?? '')
@@ -121,14 +122,22 @@ export function MapsRegionTab({ campaignId, map, imageUrl, position, onPositionU
     }
   }
 
+  // Rethrows on failure (after reporting it) — see `MapPositionSidebar`'s
+  // doc comment for why: it's what tells the sidebar to leave its edit
+  // row open for a retry instead of closing as if the save succeeded.
+  async function handleSavePosition(update: MapPositionUpdate) {
+    try {
+      onPositionUpdate(await setPartyPosition(campaignId, update))
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Could not save the party position.')
+      throw err
+    }
+  }
+
   async function handleSaveMarker(markerId: string, update: { label: string; markerKind: MarkerKind; notes: string }) {
     setMarkerSaving(true)
     try {
-      const updated = await updateMapMarker(markerId, {
-        label: update.label,
-        markerKind: update.markerKind,
-        notes: update.notes || undefined,
-      })
+      const updated = await updateMapMarker(markerId, { label: update.label, markerKind: update.markerKind, notes: update.notes || undefined })
       setMarkers((prev) => prev.map((m) => (m.id === updated.id ? updated : m)))
       setSelectedMarkerId(null)
     } catch (err) {
@@ -159,29 +168,6 @@ export function MapsRegionTab({ campaignId, map, imageUrl, position, onPositionU
     }
   }
 
-  // Blank fields are omitted, not sent as `null`: `set_party_position`
-  // coalesces a null argument to "leave the stored value alone" (a
-  // partial update — bumping just hexesRemaining — shouldn't require
-  // resending location/pace too). That means this form can't clear a
-  // field to empty via Save; only the pin's x/y has real clear
-  // semantics (the "Clear pin" button below).
-  async function handleSavePosition() {
-    setSaving(true)
-    try {
-      const updated = await setPartyPosition(campaignId, {
-        locationLabel: locationInput.trim() || undefined,
-        travelPace: paceInput.trim() || undefined,
-        hexesRemaining: hexesInput.trim() === '' ? undefined : Number(hexesInput),
-      })
-      onPositionUpdate(updated)
-      setEditing(false)
-    } catch (err) {
-      onError(err instanceof Error ? err.message : 'Could not save the party position.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -198,98 +184,67 @@ export function MapsRegionTab({ campaignId, map, imageUrl, position, onPositionU
 
   return (
     <div className="flex flex-col gap-3">
-      {map && imageUrl ? (
-        <>
-          <MapImageViewer src={imageUrl} alt={map.label} onImageClick={(x, y) => void handleMapClick(x, y)}>
-            {position?.x != null && position?.y != null && (
-              <MapPin x={position.x} y={position.y} color="var(--color-purple)" pulsing label="Party position" />
-            )}
-            {markers.map((marker) => (
-              <MapPin
-                key={marker.id}
-                x={marker.x}
-                y={marker.y}
-                color={markerColor(marker.marker_kind)}
-                label={marker.label}
-                onClick={() => setSelectedMarkerId(marker.id)}
-              />
-            ))}
-          </MapImageViewer>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className={text.label}>{placingMarker ? 'Click the map to drop a marker.' : movingPin ? 'Moving pin…' : 'Click the map to move the party pin.'}</p>
-            <div className="flex items-center gap-3">
-              <button type="button" onClick={() => setPlacingMarker((v) => !v)} className={text.label} style={placingMarker ? { color: 'var(--color-purple)' } : undefined}>
-                {placingMarker ? 'Cancel marker' : '+ Marker'}
-              </button>
-              <button type="button" onClick={() => void handleClearPin()} className={text.label}>
-                Clear pin
-              </button>
-            </div>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_280px] xl:items-start">
+        <div className="flex flex-col gap-2">
+          {map && imageUrl ? (
+            <>
+              <MapImageViewer src={imageUrl} alt={map.label} onImageClick={(x, y) => void handleMapClick(x, y)}>
+                {position?.x != null && position?.y != null && (
+                  <MapPin x={position.x} y={position.y} color="var(--color-purple)" pulsing label="Party position" />
+                )}
+                {markers.map((marker) => (
+                  <MapPin
+                    key={marker.id}
+                    x={marker.x}
+                    y={marker.y}
+                    color={markerColor(marker.marker_kind)}
+                    label={marker.label}
+                    onClick={() => setSelectedMarkerId(marker.id)}
+                  />
+                ))}
+              </MapImageViewer>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className={text.label}>{placingMarker ? 'Click the map to drop a marker.' : movingPin ? 'Moving pin…' : 'Click the map to move the party pin.'}</p>
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={() => setPlacingMarker((v) => !v)} className={text.label} style={placingMarker ? { color: 'var(--color-purple)' } : undefined}>
+                    {placingMarker ? 'Cancel marker' : '+ Marker'}
+                  </button>
+                  <button type="button" onClick={() => void handleClearPin()} className={text.label}>
+                    Clear pin
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <EmptyState icon="map" title="No region map yet" description="Upload a hex map to show the party's position and travel state here." />
+          )}
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <MapPositionSidebar position={position} onSave={handleSavePosition} />
+
+          <div className="flex flex-col gap-2">
+            <TextInput label="Map label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. The Gloaming" className="w-full" />
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+            <Button variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+              {uploading ? 'Uploading…' : map ? 'Replace map' : 'Upload map'}
+            </Button>
           </div>
-        </>
-      ) : (
-        <EmptyState icon="map" title="No region map yet" description="Upload a hex map below to show the party's position and travel state here." />
-      )}
+
+          {map && <DeleteMapButton onConfirm={handleDeleteMap} />}
+        </div>
+      </div>
 
       {selectedMarker && (
-        <MapMarkerEditRow
-          marker={selectedMarker}
-          saving={markerSaving}
-          onSave={(update) => void handleSaveMarker(selectedMarker.id, update)}
-          onDelete={() => void handleDeleteMarker(selectedMarker.id)}
-          onClose={() => setSelectedMarkerId(null)}
-        />
+        <Overlay open onClose={() => setSelectedMarkerId(null)} header={<h3 className={text.h3}>Marker</h3>} width="narrow">
+          <MapMarkerEditRow
+            marker={selectedMarker}
+            saving={markerSaving}
+            onSave={(update) => void handleSaveMarker(selectedMarker.id, update)}
+            onDelete={() => void handleDeleteMarker(selectedMarker.id)}
+          />
+        </Overlay>
       )}
-
-      <div className="flex flex-wrap items-center gap-2 rounded-card border border-line-soft bg-panel px-3 py-2.5">
-        {position?.location_label ? (
-          <span className={cx(text.caption, 'inline-flex items-center gap-1.5 rounded-full border border-line-soft bg-panel2 px-3 py-1 text-ink')}>
-            <span className="h-1.5 w-1.5 rounded-full bg-purple" aria-hidden="true" />
-            <span className="font-semibold">{position.location_label}</span>
-          </span>
-        ) : (
-          <span className={text.bodySecondary}>No location set yet.</span>
-        )}
-        {position?.travel_pace && <span className={cx(text.caption, 'rounded-full border border-line-soft bg-panel2 px-3 py-1 text-ink-dim')}>{position.travel_pace}</span>}
-        {position?.hexes_remaining != null && (
-          <span className={cx(text.caption, 'rounded-full border border-line-soft bg-panel2 px-3 py-1 text-ink-dim')}>
-            {position.hexes_remaining} {position.hexes_remaining === 1 ? 'hex' : 'hexes'} remaining
-          </span>
-        )}
-        <button type="button" onClick={() => setEditing((v) => !v)} className={cx(text.label, 'ml-auto')} style={{ color: 'var(--color-purple)' }}>
-          {editing ? 'Close' : 'Edit'}
-        </button>
-      </div>
-
-      {editing && (
-        <div className="flex flex-wrap items-end gap-3 rounded-card border border-line-soft bg-panel px-3 py-3">
-          <div className="min-w-[10rem] flex-1">
-            <TextInput label="Location" value={locationInput} onChange={(e) => setLocationInput(e.target.value)} className="w-full" />
-          </div>
-          <div className="min-w-[10rem] flex-1">
-            <TextInput label="Pace" value={paceInput} onChange={(e) => setPaceInput(e.target.value)} placeholder="e.g. Walking, normal terrain" className="w-full" />
-          </div>
-          <div className="w-28">
-            <TextInput label="Hexes left" type="number" min={0} value={hexesInput} onChange={(e) => setHexesInput(e.target.value)} className="w-full" />
-          </div>
-          <Button variant="primary" onClick={() => void handleSavePosition()} disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
-          </Button>
-        </div>
-      )}
-
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="min-w-[10rem] flex-1">
-            <TextInput label="Map label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. The Gloaming" className="w-full" />
-          </div>
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-          <Button variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-            {uploading ? 'Uploading…' : map ? 'Replace map' : 'Upload map'}
-          </Button>
-        </div>
-        {map && <DeleteMapButton onConfirm={handleDeleteMap} />}
-      </div>
     </div>
   )
 }
