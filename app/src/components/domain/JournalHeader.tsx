@@ -34,20 +34,26 @@ interface JournalHeaderProps {
  * stubs for now, but the structure ships") — neither has a real target
  * yet (no search index, no nav menu), so both render disabled.
  *
- * Campaign bar: name + the session action grouped on the left (the
- * mockup's campbar has no action control at all — its session-meta line
- * is read-only text — but Journal needs a real Start/End Session
- * trigger somewhere, and grouping it with the name it belongs to reads
- * better than inventing a third bar for one button); session meta
- * right-aligned, matching the mockup exactly.
+ * Campaign bar: name stacked above session meta on the left, session
+ * action pinned to the right (2026-08-10 rewrite — owner reported the
+ * mobile header "messed up": the previous shape put name and meta+
+ * action side by side in one `flex-wrap` row, which read fine on
+ * desktop but on a narrow phone had nowhere to wrap the overflowing
+ * meta+action group EXCEPT down to a new line starting at the left
+ * edge — dropping the session buttons out from under the title instead
+ * of keeping them at the right where SPEC always intended them. Naming
+ * `min-w-0`+`truncate` on the left block and no `flex-wrap` on the row
+ * itself means the buttons now stay pinned right at every width; a
+ * very long campaign name truncates instead of pushing them off, same
+ * `PlayerCard` truncation convention used elsewhere in this app.
  *
- * (2026-08-10: this right-hand group briefly also carried a GM budget
- * meter, then an AI-voice on/off toggle, in the gap between the meta
- * text and the session action — both since moved out: the toggle to a
- * per-message pill on `LogEntryRow`, the budget meter down into
- * `JournalComposer`, which already has the two bars needed and reads
- * more naturally right where the Ask GM/Ask Rules chips that spend the
- * budget live. Owner: "we don't need these in the header now.")
+ * (2026-08-10, earlier the same day: this right-hand group briefly also
+ * carried a GM budget meter, then an AI-voice on/off toggle — both
+ * since moved out: the toggle to a per-message pill on `LogEntryRow`,
+ * the budget meter down into `JournalComposer`. Neither is why the
+ * layout broke — this row's original side-by-side shape was already
+ * fragile on mobile before either was added — but both leaving is why
+ * this rewrite has only the session action left to place.)
  */
 export function JournalHeader({ campaignName, sessionMeta, sessionAction, onBack }: JournalHeaderProps) {
   return (
@@ -80,16 +86,16 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, onBack
           </button>
         </div>
       </div>
-      {/* v11: campaign name holds the left rail; the session control
-        * group holds the right — meta text sits immediately LEFT of the
-        * colored session buttons (SessionAction), which are the
-        * far-right element per the owner's design note. */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2">
-        <h1 className={text.h3}>{campaignName}</h1>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className={text.label}>{sessionMeta}</span>
-          {sessionAction}
+      {/* v11: campaign name + session meta stack on the left rail; the
+        * session control group (SessionAction) pins to the right — no
+        * `flex-wrap` here, so the buttons never drop out from under the
+        * title on a narrow phone (see the component doc comment). */}
+      <div className="flex items-center justify-between gap-3 px-4 py-2">
+        <div className="min-w-0">
+          <h1 className={cx(text.h3, 'truncate')}>{campaignName}</h1>
+          <p className={cx(text.label, 'mt-0.5 truncate')}>{sessionMeta}</p>
         </div>
+        <div className="shrink-0">{sessionAction}</div>
       </div>
     </header>
   )
