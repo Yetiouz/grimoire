@@ -226,12 +226,13 @@ export function MapsRegionTab({ campaignId, map, imageUrl, position, onPositionU
           <div className="flex flex-col gap-2">
             <TextInput label="Map label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. The Gloaming" className="w-full" />
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-            <Button variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-              {uploading ? 'Uploading…' : map ? 'Replace map' : 'Upload map'}
-            </Button>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                {uploading ? 'Uploading…' : map ? 'Replace map' : 'Upload map'}
+              </Button>
+              {map && <DeleteMapButton onConfirm={handleDeleteMap} />}
+            </div>
           </div>
-
-          {map && <DeleteMapButton onConfirm={handleDeleteMap} />}
         </div>
       </div>
 
