@@ -4,7 +4,6 @@ import { JournalDesktopLayout } from '../../components/domain/JournalDesktopLayo
 import { ALL_FILTER_KINDS } from '../../lib/journalFilters'
 import type { FilterKind } from '../../lib/journalFilters'
 import { JournalHeader } from '../../components/domain/JournalHeader'
-import { GmBudgetBar } from '../../components/domain/GmBudgetBar'
 import { CharacterSheet } from '../../components/domain/CharacterSheet'
 import { DiceRoller } from '../../components/domain/DiceRoller'
 import { MapsOverlay } from '../../components/domain/MapsOverlay'
@@ -16,8 +15,6 @@ import { useJournalFeed } from '../../hooks/useJournalFeed'
 import { useJournalScreenData } from '../../hooks/useJournalScreenData'
 import { useGmJournalHandlers } from '../../hooks/useGmJournalHandlers'
 import { useAiVoicePreference } from '../../hooks/useAiVoicePreference'
-import { useGmBudget } from '../../hooks/useGmBudget'
-import { useGmBudgetByMode } from '../../hooks/useGmBudgetByMode'
 import { endSession, logJournalEntry, startSession } from '../../lib/campaigns'
 import type { Campaign } from '../../lib/campaigns'
 import type { Character } from '../../lib/characters'
@@ -141,21 +138,6 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   // that switches away from 'ai' should keep showing its history, only
   // stop offering new asks.
   const aiGmActive = gmEnabled && campaign.gm_mode === 'ai'
-
-  // Header budget meter (2026-08-10, GmBudgetBar.tsx; split into two
-  // bars same day per owner feedback — "I want a progress bar for both
-  // AI's I have with a status," then "track them truly separately").
-  // Gated on `aiGmActive || ttsAvailable`, broader than either bar's
-  // own gate below: either AI existing in this build/campaign is
-  // enough reason to poll, even before the first read tells us which
-  // one (if either) has actually been used today. `useGmBudget` still
-  // owns the one real ceiling (`gmBudgetValue.limit`) — only the edge
-  // function knows `GM_DAILY_REQUEST_BUDGET` — while `useGmBudgetByMode`
-  // owns the per-mode USED split, read directly off `gm_turns` via RPC.
-  // Two independent polls, recombined below into `gmBudget`'s two bars.
-  const budgetMeterEnabled = aiGmActive || ttsAvailable
-  const { budget: gmBudgetValue } = useGmBudget(campaign.id, budgetMeterEnabled)
-  const gmBudgetByMode = useGmBudgetByMode(campaign.id, budgetMeterEnabled)
 
   // Header meta line ("<mode> · Session N"): the game-mode word used to
   // be a hardcoded "Solo" (no such field existed yet) — now sourced from
@@ -286,28 +268,6 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     />
   )
 
-  // Each bar renders only once both halves it needs are in: the shared
-  // limit (from useGmBudget) and this AI's own USED count (from
-  // useGmBudgetByMode) — and only when that AI actually exists in this
-  // build/campaign (`aiGmActive` for GM turns, `ttsAvailable` for voice
-  // reads). Nothing renders in a slot whose AI is off or still loading,
-  // rather than a bar stuck at 0%.
-  const gmTextBudget =
-    aiGmActive && gmBudgetValue && gmBudgetByMode ? (
-      <GmBudgetBar label="GM" used={gmBudgetByMode.textUsed} limit={gmBudgetValue.limit} />
-    ) : null
-  const gmVoiceBudget =
-    ttsAvailable && gmBudgetValue && gmBudgetByMode ? (
-      <GmBudgetBar label="Voice" used={gmBudgetByMode.voiceUsed} limit={gmBudgetValue.limit} />
-    ) : null
-  const gmBudget =
-    gmTextBudget || gmVoiceBudget ? (
-      <div className="flex flex-wrap items-center gap-3">
-        {gmTextBudget}
-        {gmVoiceBudget}
-      </div>
-    ) : null
-
   return (
     // v11 shell (SPEC decision log, Aug 4): fixed-height app frame — the
     // PAGE never scrolls; each column card scrolls itself. `dvh`, not
@@ -319,7 +279,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     // each desktop `ColumnCard` own their own internal scroll, matching
     // `Overlay`'s slide-up variant, which already used `100dvh`.
     <div className="flex h-dvh flex-col overflow-hidden">
-      <JournalHeader campaignName={campaign.name} sessionMeta={sessionMeta} sessionAction={sessionAction} gmBudget={gmBudget} onBack={onBack} />
+      <JournalHeader campaignName={campaign.name} sessionMeta={sessionMeta} sessionAction={sessionAction} onBack={onBack} />
 
       {/* DESKTOP: unchanged three-column grid, xl: and up only — see
         * JournalDesktopLayout.tsx. */}

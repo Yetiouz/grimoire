@@ -11,20 +11,6 @@ interface JournalHeaderProps {
    * action, header owns the layout" split PageHeader's `titleAction`
    * already uses. */
   sessionAction: ReactNode
-  /** The GM budget meter (GmBudgetBar.tsx), same "host owns the action,
-   * header owns the layout" split as `sessionAction` above. Undefined/
-   * null when the AI voice tier doesn't exist in this build
-   * (`VITE_GM_TTS` off) or the day's first budget read hasn't resolved
-   * yet — JournalScreen decides both, not this component, and nothing
-   * renders in its place either way.
-   *
-   * (2026-08-10: this slot briefly held an AI-voice on/off toggle
-   * instead — moved down into each `LogEntryRow` as a pill next to its
-   * own speak button per owner feedback, "right before the speaker
-   * after each message." This slot was repurposed for the budget meter
-   * rather than left empty, since a header control was still the right
-   * home for something campaign-wide rather than per-message.) */
-  gmBudget?: ReactNode
   onBack: () => void
 }
 
@@ -53,12 +39,17 @@ interface JournalHeaderProps {
  * is read-only text — but Journal needs a real Start/End Session
  * trigger somewhere, and grouping it with the name it belongs to reads
  * better than inventing a third bar for one button); session meta
- * right-aligned, matching the mockup exactly. `gmBudget` (2026-08-10)
- * sits between the meta text and the session action — same right-hand
- * group, added without disturbing the mockup's session-meta/session-
- * action pairing.
+ * right-aligned, matching the mockup exactly.
+ *
+ * (2026-08-10: this right-hand group briefly also carried a GM budget
+ * meter, then an AI-voice on/off toggle, in the gap between the meta
+ * text and the session action — both since moved out: the toggle to a
+ * per-message pill on `LogEntryRow`, the budget meter down into
+ * `JournalComposer`, which already has the two bars needed and reads
+ * more naturally right where the Ask GM/Ask Rules chips that spend the
+ * budget live. Owner: "we don't need these in the header now.")
  */
-export function JournalHeader({ campaignName, sessionMeta, sessionAction, gmBudget, onBack }: JournalHeaderProps) {
+export function JournalHeader({ campaignName, sessionMeta, sessionAction, onBack }: JournalHeaderProps) {
   return (
     <header className="border-b border-line">
       <div className="flex items-center justify-between gap-4 border-b border-line-soft px-4 py-2">
@@ -97,7 +88,6 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, gmBudg
         <h1 className={text.h3}>{campaignName}</h1>
         <div className="flex flex-wrap items-center gap-3">
           <span className={text.label}>{sessionMeta}</span>
-          {gmBudget}
           {sessionAction}
         </div>
       </div>
