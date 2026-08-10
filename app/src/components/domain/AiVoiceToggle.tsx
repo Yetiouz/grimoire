@@ -1,5 +1,5 @@
 import { cx } from '../../lib/cx'
-import { Icon } from '../ui/Icon'
+import { text } from '../../lib/typography'
 
 interface AiVoiceToggleProps {
   on: boolean
@@ -7,28 +7,27 @@ interface AiVoiceToggleProps {
 }
 
 /**
- * Journal header control (2026-08-10): lets a player switch the GM's
- * read-aloud between its two tiers without touching Vercel — Fish
- * Audio's real narrator voice when on, the browser's built-in voice
- * when off. `lib/speech.ts`'s `startSpeaking` already falls back to the
- * browser tier for every OTHER way the AI tier can be unavailable
- * (budget spent, network down, no audio returned); this is just one
- * more path into that same fallback, driven by the player's own choice
- * via `configureAiSpeech(null)` rather than a failure.
+ * Per-entry pill (2026-08-10, moved here after owner feedback on the
+ * first pass — "it need to be a toggle pill right before the speaker
+ * after each message"; this used to live as an icon button in the
+ * journal header instead). `JournalFeed` renders one of these into
+ * every narration `LogEntryRow`, immediately before that row's own
+ * read-aloud button — see `LogEntryRow`'s `voiceToggle` slot — so the
+ * choice is made right where it's acted on rather than in a header
+ * control easy to miss.
  *
- * JournalScreen only renders this at all when the AI tier actually
- * exists in this build (`VITE_GM_TTS` + `gmEnabled` both true) — with
- * either off, there's nothing to switch between and the browser voice
- * is simply always what plays, same as before this control existed.
- * The choice itself persists per-device via `useAiVoicePreference`, not
- * per-campaign.
+ * The choice itself is global and per-device (`useAiVoicePreference`),
+ * NOT per-message: every row's pill reflects and controls the same one
+ * preference, the same way every row's speak button already draws from
+ * `lib/speech.ts`'s one shared playback singleton rather than each
+ * having its own player.
  *
- * Same pill-button shape as the header's other icon-only controls
- * (the top bar's disabled menu button) — h-11 w-11, rounded-button,
- * border — sized to match rather than inventing a new control style
- * for one button. Active state borrows SessionAction's tint pattern
- * (color/45 border, color/10 bg) rather than a solid fill, per the
- * style guide's "color lives in accents" rule.
+ * Pill, not icon-button: matches the ROLL/NOTE tag pill `LogEntryRow`
+ * already renders in this exact row, rather than the 44px icon-button
+ * shape the header's OTHER controls use — a dense, per-entry control
+ * repeated down the whole feed calls for the same compact treatment
+ * `LogEntryRow`'s own doc comment already argues for on the speak/
+ * save-note buttons sitting right beside this one.
  */
 export function AiVoiceToggle({ on, onToggle }: AiVoiceToggleProps) {
   return (
@@ -37,15 +36,15 @@ export function AiVoiceToggle({ on, onToggle }: AiVoiceToggleProps) {
       onClick={onToggle}
       aria-pressed={on}
       title={on ? "GM voice: Fish Audio — click to use your browser's voice instead" : "GM voice: browser — click to use the GM's real voice"}
-      aria-label={on ? "Turn off the GM's AI voice" : "Turn on the GM's AI voice"}
       className={cx(
-        'inline-flex h-11 w-11 items-center justify-center rounded-button border',
-        'transition-[background-color,border-color,opacity] duration-150',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
-        on ? 'border-purple/45 bg-purple/10' : 'border-line bg-panel',
+        'shrink-0 whitespace-nowrap rounded-full border px-2 py-1 uppercase transition-colors',
+        text.label,
+        on
+          ? 'border-purple/45 bg-purple/15 text-purple'
+          : 'border-line-soft bg-panel2 text-ink-dim hover:border-line-hover',
       )}
     >
-      <Icon name={on ? 'speak' : 'voiceOff'} state={on ? 'active' : 'default'} label={on ? 'AI voice on' : 'AI voice off'} />
+      {on ? 'AI Voice' : 'Browser Voice'}
     </button>
   )
 }

@@ -53,6 +53,11 @@ interface MobileJournalViewProps {
    * — this component doesn't know or care about that distinction. */
   gmEnabled?: boolean
   onAskGm?: (input: string) => Promise<GmTurnResult>
+  /** AI-voice on/off pill (2026-08-10) — forwarded straight to
+   * `JournalFeed`, see its own doc comment. Both omitted together when
+   * the voice tier doesn't exist in this build. */
+  aiVoiceOn?: boolean
+  onToggleAiVoice?: () => void
   /** BOB_queue task 1 fold-in: this was accepted as a prop already but
    * never declared here or threaded to JournalComposer below, so "Ask
    * Rules" was reachable on mobile but silently fell through to logging
@@ -166,6 +171,8 @@ export function MobileJournalView({
   gmEnabled,
   onAskGm,
   onAskRules,
+  aiVoiceOn,
+  onToggleAiVoice,
   onResolveCheck,
   resolvingCheckId,
   campaignId,
@@ -285,6 +292,8 @@ export function MobileJournalView({
                 sessions={sessions}
                 filter={feedFilter}
                 onSaveAsNote={sessionOpen ? (item) => setNoteSeed({ body: item.body }) : undefined}
+                aiVoiceOn={aiVoiceOn}
+                onToggleAiVoice={onToggleAiVoice}
                 onResolveCheck={onResolveCheck}
                 resolvingCheckId={resolvingCheckId}
               />

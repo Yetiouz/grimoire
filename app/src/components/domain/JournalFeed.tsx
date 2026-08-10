@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { LogEntryRow } from '../ui/LogEntryRow'
 import type { LogEntryKind } from '../ui/LogEntryRow'
+import { AiVoiceToggle } from './AiVoiceToggle'
 import { CheckCard } from './CheckCard'
 import { SceneDivider } from '../ui/SceneDivider'
 import { EmptyState } from '../ui/EmptyState'
@@ -40,6 +41,21 @@ interface JournalFeedProps {
    * for `'note'` items below regardless of whether this is set — saving
    * a note from a note is a no-op the button shouldn't even offer. */
   onSaveAsNote?: (item: FeedItem) => void
+  /** AI-voice on/off pill (2026-08-10) — both omitted together when the
+   * voice tier doesn't exist in this build (`VITE_GM_TTS` off), same
+   * "omit for read-only/unavailable" convention `onSaveAsNote` and
+   * `onResolveCheck` already follow here. When given, every narration
+   * row gets the SAME pill state and the SAME toggle handler — this is
+   * one global, per-device preference (`useAiVoicePreference`, owned by
+   * `JournalScreen`), not a per-row choice, so there is deliberately no
+   * per-item plumbing the way `onSaveAsNote` has (that callback needs
+   * to know WHICH item was clicked; this one doesn't take an item at
+   * all). `JournalFeed` builds the actual `AiVoiceToggle` node itself
+   * (unlike `onSaveAsNote`, which the host layout builds) since every
+   * row's copy is identical — no reason to ask the host to build the
+   * same node repeatedly. */
+  aiVoiceOn?: boolean
+  onToggleAiVoice?: () => void
   /** Slice 17: forwarded straight to whichever `CheckCard` the player
    * acts on. Omit for a read-only feed (same convention as
    * `onSaveAsNote`) — every check then renders with no live controls. */
@@ -74,12 +90,23 @@ export function JournalFeed({
   filter,
   composer,
   onSaveAsNote,
+  aiVoiceOn,
+  onToggleAiVoice,
   onResolveCheck,
   resolvingCheckId,
   className,
 }: JournalFeedProps) {
   const visible = filter ? items.filter(filter) : items
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  // Built once per render, not once per row — every narration row gets
+  // the exact same node (same global preference, same handler; see the
+  // props doc comment above). `LogEntryRow` itself still only renders
+  // it for `kind === 'narration'` rows (via its own `canSpeak` gate),
+  // so handing it to every row here is harmless, not wasteful — no
+  // per-item branching needed on this side either.
+  const voiceToggle =
+    aiVoiceOn !== undefined && onToggleAiVoice ? <AiVoiceToggle on={aiVoiceOn} onToggle={onToggleAiVoice} /> : undefined
 
   // Auto-scroll to the newest entry, just above the composer (the
   // journal screen pins its composer to the viewport bottom — see
@@ -144,6 +171,7 @@ export function JournalFeed({
                   onSaveAsNote={
                     onSaveAsNote && item.kind !== 'note' ? () => onSaveAsNote(item) : undefined
                   }
+                  voiceToggle={voiceToggle}
                 />
               )}
             </Fragment>

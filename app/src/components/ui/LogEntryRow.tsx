@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { cx } from '../../lib/cx'
 import { browserSpeechAvailable, startSpeaking } from '../../lib/speech'
 import type { SpeechHandle } from '../../lib/speech'
@@ -33,6 +34,18 @@ interface LogEntryRowProps {
    * button at all — `JournalFeed` already withholds it for entries
    * where it wouldn't make sense (a note saved from a note). */
   onSaveAsNote?: () => void
+  /** AI-voice on/off pill (2026-08-10, `AiVoiceToggle.tsx`), rendered
+   * immediately before this row's own read-aloud button when given —
+   * "host owns the action, header owns the layout" split, same
+   * convention `JournalHeader`'s `sessionAction`/`gmBudget` slots use,
+   * just at row scope instead of page scope. This component builds
+   * nothing itself and doesn't know the preference is global/per-device
+   * rather than per-row — `JournalFeed` decides that and hands back a
+   * ready node, same as it already does for `onSaveAsNote`'s button.
+   * Omit to render no pill at all (unavailable in this build, or this
+   * row can't speak anyway — see `canSpeak` below, which already gates
+   * whether this ever shows regardless of what's passed here). */
+  voiceToggle?: ReactNode
   className?: string
 }
 
@@ -71,6 +84,7 @@ export function LogEntryRow({
   timestamp,
   kind = 'action',
   onSaveAsNote,
+  voiceToggle,
   className,
 }: LogEntryRowProps) {
   const muted = kind === 'system'
@@ -204,6 +218,7 @@ export function LogEntryRow({
        * revisiting if it proves fiddly to tap on a phone. */}
       {(canSpeak || onSaveAsNote) && (
         <div className="flex items-center gap-1 pl-6 pt-1">
+          {canSpeak && voiceToggle}
           {canSpeak && (
             <button
               type="button"

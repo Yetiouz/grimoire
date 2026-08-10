@@ -4,7 +4,7 @@ import { JournalDesktopLayout } from '../../components/domain/JournalDesktopLayo
 import { ALL_FILTER_KINDS } from '../../lib/journalFilters'
 import type { FilterKind } from '../../lib/journalFilters'
 import { JournalHeader } from '../../components/domain/JournalHeader'
-import { AiVoiceToggle } from '../../components/domain/AiVoiceToggle'
+import { GmBudgetBar } from '../../components/domain/GmBudgetBar'
 import { CharacterSheet } from '../../components/domain/CharacterSheet'
 import { DiceRoller } from '../../components/domain/DiceRoller'
 import { MapsOverlay } from '../../components/domain/MapsOverlay'
@@ -16,6 +16,7 @@ import { useJournalFeed } from '../../hooks/useJournalFeed'
 import { useJournalScreenData } from '../../hooks/useJournalScreenData'
 import { useGmJournalHandlers } from '../../hooks/useGmJournalHandlers'
 import { useAiVoicePreference } from '../../hooks/useAiVoicePreference'
+import { useGmBudget } from '../../hooks/useGmBudget'
 import { endSession, logJournalEntry, startSession } from '../../lib/campaigns'
 import type { Campaign } from '../../lib/campaigns'
 import type { Character } from '../../lib/characters'
@@ -103,12 +104,14 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   // it to stay off, so VITE_GM_TTS is now on in Vercel.
   //
   // `aiVoiceOn` is a second, independent gate on top of that: the
-  // player's own choice, via the header's AiVoiceToggle, persisted
-  // per-device by useAiVoicePreference. This is what lets someone
-  // prefer their system voice (still a legitimate taste, not just a
-  // fallback) without anyone touching Vercel — flipping VITE_GM_TTS
-  // back off would be the wrong tool for that now that it's a
-  // one-click, per-player choice instead.
+  // player's own choice, via the AiVoiceToggle pill on each narration
+  // entry (moved there from a header control per owner feedback — see
+  // JournalFeed/LogEntryRow), persisted per-device by
+  // useAiVoicePreference. This is what lets someone prefer their
+  // system voice (still a legitimate taste, not just a fallback)
+  // without anyone touching Vercel — flipping VITE_GM_TTS back off
+  // would be the wrong tool for that now that it's a one-click,
+  // per-player choice instead.
   const ttsAvailable = gmEnabled && import.meta.env.VITE_GM_TTS === 'true'
   const [aiVoiceOn, setAiVoiceOn] = useAiVoicePreference()
 
@@ -116,6 +119,20 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     configureAiSpeech(ttsAvailable && aiVoiceOn ? campaign.id : null)
     return () => configureAiSpeech(null)
   }, [campaign.id, ttsAvailable, aiVoiceOn])
+
+  // Header budget meter (2026-08-10, GmBudgetBar.tsx): polls the same
+  // shared daily pool play turns, rules turns, and voice reads all draw
+  // from (see useGmBudget's own doc comment for why this needs its own
+  // poll rather than piggybacking on JournalComposer's mount-plus-
+  // after-every-ask refresh). Gated on `ttsAvailable`, not `aiGmActive`
+  // — this is specifically here to cover the campaigns where read-aloud
+  // is the ONLY thing spending the budget (solo/human-GM'd campaigns
+  // have no Ask GM chips at all, so JournalComposer's own meter never
+  // renders there). Showing both this and the composer's meter at once
+  // in an AI-GM campaign is accepted overlap, not a bug — see
+  // GmBudgetBar's own doc comment.
+  const { remaining: gmBudgetRemaining, usedFraction: gmBudgetUsedFraction, budget: gmBudgetValue } =
+    useGmBudget(campaign.id, ttsAvailable)
 
   // Solo v1 has exactly one in-play PC (Kimbo) — using the single
   // `active` character's color is correct for that case without
@@ -267,13 +284,18 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     />
   )
 
-  // Nothing to switch between when the tier doesn't exist in this
-  // build — render no control at all rather than a toggle that can
-  // only ever show "off" (see the effect above for what `ttsAvailable`
-  // gates).
-  const voiceToggle = ttsAvailable ? (
-    <AiVoiceToggle on={aiVoiceOn} onToggle={() => setAiVoiceOn(!aiVoiceOn)} />
-  ) : null
+  // Nothing to meter when the tier doesn't exist in this build, or
+  // before the first poll resolves — render no control at all rather
+  // than a bar stuck at 0%.
+  const gmBudget =
+    ttsAvailable && gmBudgetValue && gmBudgetRemaining !== null ? (
+      <GmBudgetBar
+        remaining={gmBudgetRemaining}
+        usedFraction={gmBudgetUsedFraction}
+        limit={gmBudgetValue.limit}
+        used={gmBudgetValue.used}
+      />
+    ) : null
 
   return (
     // v11 shell (SPEC decision log, Aug 4): fixed-height app frame — the
@@ -286,7 +308,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     // each desktop `ColumnCard` own their own internal scroll, matching
     // `Overlay`'s slide-up variant, which already used `100dvh`.
     <div className="flex h-dvh flex-col overflow-hidden">
-      <JournalHeader campaignName={campaign.name} sessionMeta={sessionMeta} sessionAction={sessionAction} voiceToggle={voiceToggle} onBack={onBack} />
+      <JournalHeader campaignName={campaign.name} sessionMeta={sessionMeta} sessionAction={sessionAction} gmBudget={gmBudget} onBack={onBack} />
 
       {/* DESKTOP: unchanged three-column grid, xl: and up only — see
         * JournalDesktopLayout.tsx. */}
@@ -316,6 +338,8 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
         onLog={(kind, body) => handleLog(kind, body)}
         onAskGm={handleAskGm}
         onAskRules={handleAskRules}
+        aiVoiceOn={ttsAvailable ? aiVoiceOn : undefined}
+        onToggleAiVoice={ttsAvailable ? () => setAiVoiceOn(!aiVoiceOn) : undefined}
         onResolveCheck={(check, source, total) => void handleResolveCheck(check, source, total)}
         resolvingCheckId={resolvingCheckId}
         campaignId={campaign.id}
@@ -359,6 +383,8 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
           gmEnabled={aiGmActive}
           onAskGm={handleAskGm}
           onAskRules={handleAskRules}
+          aiVoiceOn={ttsAvailable ? aiVoiceOn : undefined}
+          onToggleAiVoice={ttsAvailable ? () => setAiVoiceOn(!aiVoiceOn) : undefined}
           onResolveCheck={(check, source, total) => void handleResolveCheck(check, source, total)}
           resolvingCheckId={resolvingCheckId}
           campaignId={campaign.id}
