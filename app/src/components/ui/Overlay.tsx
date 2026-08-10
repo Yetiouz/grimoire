@@ -13,9 +13,21 @@ interface OverlayProps {
   header: ReactNode
   children: ReactNode
   /** `player-view-mockup.html`'s `.sheet` is 880px; `.sheet.narrow`
-   * (used there for the Dice overlay) is 460px. Sheet/Maps content use
-   * the default; a future narrow overlay (e.g. Dice) would pass this. */
-  width?: 'default' | 'narrow'
+   * (used there for the Dice overlay) is 460px. Sheet content uses the
+   * default; a future narrow overlay (e.g. Dice) would pass this.
+   * `'wide'` (1200px) is a slice-8-follow-up addition for Maps: a hex
+   * map image plus its zoom/pan chrome reads cramped at 880px, and the
+   * extra width also gives the stacked marker/position controls below
+   * it more room to wrap onto fewer lines, which is most of what `tall`
+   * (below) needs to make room for. */
+  width?: 'default' | 'narrow' | 'wide'
+  /** Raises the panel's height cap from the standard `88vh` — for
+   * content that's grown taller than one screenful even at a sensible
+   * width (Maps, once markers/zoom/delete-map controls stacked under
+   * the image), rather than every overlay paying for more height it
+   * doesn't need. Defaults to `false`, unchanged behavior for every
+   * existing caller. */
+  tall?: boolean
   /**
    * Panel shape/position (mobile layout slice). `'dialog'` (default) is
    * the original centered-modal treatment, unchanged, and is what every
@@ -67,7 +79,7 @@ interface OverlayProps {
  * is deliberately not built this pass; see the mobile-layout slice's
  * "what this will not build" list.
  */
-export function Overlay({ open, onClose, header, children, width = 'default', variant = 'dialog', className }: OverlayProps) {
+export function Overlay({ open, onClose, header, children, width = 'default', tall = false, variant = 'dialog', className }: OverlayProps) {
   useEffect(() => {
     if (!open) return
     function handleKeyDown(event: KeyboardEvent) {
@@ -79,7 +91,7 @@ export function Overlay({ open, onClose, header, children, width = 'default', va
 
   if (!open) return null
 
-  const widthClass = width === 'narrow' ? 'xl:max-w-[460px]' : 'xl:max-w-[880px]'
+  const widthClass = width === 'narrow' ? 'xl:max-w-[460px]' : width === 'wide' ? 'xl:max-w-[1200px]' : 'xl:max-w-[880px]'
 
   // `'sheet'` centers vertically on mobile rather than sitting on the
   // viewport's bottom edge (owner's call — a bottom-anchored roller
@@ -92,12 +104,14 @@ export function Overlay({ open, onClose, header, children, width = 'default', va
         ? 'items-center justify-center p-4 xl:p-6'
         : 'items-center justify-center p-6'
 
+  const tallMaxHClass = tall ? 'xl:max-h-[94vh]' : 'xl:max-h-[88vh]'
+
   const panelShapeClass =
     variant === 'slideUp'
-      ? cx('h-[100dvh] max-h-[100dvh] rounded-none border-0 xl:h-auto xl:max-h-[88vh] xl:rounded-card xl:border xl:border-line', widthClass)
+      ? cx('h-[100dvh] max-h-[100dvh] rounded-none border-0 xl:h-auto xl:rounded-card xl:border xl:border-line', tallMaxHClass, widthClass)
       : variant === 'sheet'
-        ? cx('max-h-[85vh] rounded-card border border-line xl:max-h-[88vh]', widthClass)
-        : cx('max-h-[88vh] rounded-card border border-line', widthClass)
+        ? cx('max-h-[85vh] rounded-card border border-line', tallMaxHClass, widthClass)
+        : cx(tall ? 'max-h-[94vh]' : 'max-h-[88vh]', 'rounded-card border border-line', widthClass)
 
   return (
     <div
