@@ -7,13 +7,19 @@ import { WorldPreviewRow } from './WorldPreviewRow'
 import { WorldDetailOverlay } from './WorldDetailOverlay'
 import type { WorldSelection } from './WorldDetailOverlay'
 import type { Quest } from '../../lib/quests'
-import type { Npc, Faction, Treasure, NpcStatBlock } from '../../lib/world'
+import type { Npc, Faction, Treasure, Note, NpcStatBlock } from '../../lib/world'
 
 interface WorldTabsProps {
   quests: Quest[]
   npcs: Npc[]
   factions: Faction[]
   treasure: Treasure[]
+  /** `WorldTabs`' 5th tab (2026-08-10, owner's call: "I would consider...
+   * adding notes" — a freeform campaign scratchpad, not a field on any
+   * one of the other four entity types). Newest-first (see
+   * `listCampaignNotes`'s own doc comment for why that's the one list
+   * here that isn't creation-order). */
+  notes: Note[]
   /** Keyed by `npc_id` — build with
    * `new Map(statBlockRows.map(row => [row.npc_id, row]))` from
    * `listNpcStatBlocks`. Empty for a non-owner viewer (RLS-filtered), so
@@ -24,36 +30,44 @@ interface WorldTabsProps {
   className?: string
 }
 
-type WorldTab = 'quests' | 'npcs' | 'factions' | 'treasure'
+type WorldTab = 'quests' | 'npcs' | 'factions' | 'treasure' | 'notes'
 
 /** Mockup-approved labels (`quest-log-tabs-fit-options-mockup.html`,
  * variant C — the owner's pick): short words, no icons, chosen because
  * the four full words ("Quests"/"NPCs"/"Factions"/"Treasure") don't
  * reliably fit the desktop Quest Log column's real width in one row
- * without a horizontal scroll. */
+ * without a horizontal scroll. "People" -> "NPCs" (2026-08-10, owner's
+ * follow-up call) — still short enough to fit alongside the other three
+ * plus the new 5th "Notes" tab; the tab row already scrolls horizontally
+ * (`overflow-x-auto`) if a narrower viewport ever can't fit all five. */
 const TABS: Array<{ key: WorldTab; label: string }> = [
   { key: 'quests', label: 'Quests' },
-  { key: 'npcs', label: 'People' },
+  { key: 'npcs', label: 'NPCs' },
   { key: 'factions', label: 'Factions' },
   { key: 'treasure', label: 'Loot' },
+  { key: 'notes', label: 'Notes' },
 ]
 
 /**
- * BUILD_PLAN.md slice 9, v3 (2026-08-10): two owner redirects layered on
- * top of each other. v2 moved NPCs/Factions/Treasure from a separate
+ * BUILD_PLAN.md slice 9, v4 (2026-08-10): three owner redirects layered
+ * on top of each other. v2 moved NPCs/Factions/Treasure from a separate
  * ToolsDock overlay into tabs on the existing Quest Log panel (see this
  * file's earlier doc comment, still true below for why the tab row and
  * scrolling list are one self-contained flex column rather than split
- * across `ColumnCard`'s slots). v3 is this pass: every tab now renders
- * compact `WorldPreviewRow`s (title + unified status dot + one line of
- * context) instead of the full detail cards directly — clicking a row
- * opens `WorldDetailOverlay` with the complete card
+ * across `ColumnCard`'s slots). v3 made every tab render compact
+ * `WorldPreviewRow`s (title + unified status dot + one line of context)
+ * instead of the full detail cards directly — clicking a row opens
+ * `WorldDetailOverlay` with the complete card
  * (`QuestCard`/`NpcCard`/`FactionCard`/`TreasureRow`), per the owner's
  * "previews... then when you click on it, pop up a screen with all the
- * info." `selection` here is the one piece of new state this needed;
- * `activeTab` is unchanged from v2.
+ * info." v4 is this pass: "People" -> "NPCs" (the label, not the `npcs`
+ * tab key — nothing downstream changed), plus a 5th "Notes" tab backed
+ * by the new `campaign_notes` table (`lib/world.ts`'s
+ * `listCampaignNotes`) for freeform campaign notes that aren't tied to
+ * any one NPC/faction/quest/treasure row. `selection`/`activeTab` are
+ * otherwise unchanged from v3.
  */
-export function WorldTabs({ quests, npcs, factions, treasure, npcStatBlocks, className }: WorldTabsProps) {
+export function WorldTabs({ quests, npcs, factions, treasure, notes, npcStatBlocks, className }: WorldTabsProps) {
   const [activeTab, setActiveTab] = useState<WorldTab>('quests')
   const [selection, setSelection] = useState<WorldSelection | null>(null)
 
@@ -135,6 +149,21 @@ export function WorldTabs({ quests, npcs, factions, treasure, npcStatBlocks, cla
             ))
           ) : (
             <EmptyState icon="gear" title="No treasure yet" description="Treasure logged for this campaign shows up here." />
+          ))}
+
+        {activeTab === 'notes' &&
+          (notes.length > 0 ? (
+            notes.map((note) => (
+              <WorldPreviewRow
+                key={note.id}
+                title={note.title}
+                indicator={null}
+                preview={note.body || null}
+                onClick={() => setSelection({ kind: 'note', item: note })}
+              />
+            ))
+          ) : (
+            <EmptyState icon="journal" title="No notes yet" description="Notes logged for this campaign show up here." />
           ))}
       </div>
 

@@ -4,16 +4,18 @@ import { QuestCard } from './QuestCard'
 import { NpcCard } from './NpcCard'
 import { FactionCard } from './FactionCard'
 import { TreasureRow } from './TreasureRow'
+import { NoteCard } from './NoteCard'
 import type { Quest } from '../../lib/quests'
-import type { Faction, Npc, NpcStatBlock, Treasure } from '../../lib/world'
+import type { Faction, Note, Npc, NpcStatBlock, Treasure } from '../../lib/world'
 
 /** What `WorldPreviewRow`'s `onClick` in `WorldTabs` sets — one resolved
- * entity plus which of the four detail shapes it needs, rather than
- * threading four separate `openX`/`closeX` states through `WorldTabs`
- * the way `JournalScreen` threads one state per overlay (Maps/Rules/
- * Dice/CharacterSheet) — those are four genuinely different, independently
- * openable surfaces; these four are one surface (a Quest Log detail) that
- * happens to render four different card shapes depending on what was
+ * entity plus which of the five detail shapes it needs (`note` added
+ * 2026-08-10 alongside `WorldTabs`' 5th tab), rather than threading five
+ * separate `openX`/`closeX` states through `WorldTabs` the way
+ * `JournalScreen` threads one state per overlay (Maps/Rules/Dice/
+ * CharacterSheet) — those are genuinely different, independently
+ * openable surfaces; these five are one surface (a Quest Log detail)
+ * that happens to render a different card shape depending on what was
  * clicked. `statBlock` only applies to `npc` — same optional-and-often-
  * absent shape `NpcCard` itself already takes. */
 export type WorldSelection =
@@ -21,12 +23,14 @@ export type WorldSelection =
   | { kind: 'npc'; item: Npc; statBlock?: NpcStatBlock }
   | { kind: 'faction'; item: Faction }
   | { kind: 'treasure'; item: Treasure }
+  | { kind: 'note'; item: Note }
 
 const KIND_LABEL: Record<WorldSelection['kind'], string> = {
   quest: 'Quest',
   npc: 'NPC',
   faction: 'Faction',
   treasure: 'Treasure',
+  note: 'Note',
 }
 
 function renderSelection(selection: WorldSelection) {
@@ -39,6 +43,8 @@ function renderSelection(selection: WorldSelection) {
       return <FactionCard faction={selection.item} />
     case 'treasure':
       return <TreasureRow treasure={selection.item} />
+    case 'note':
+      return <NoteCard note={selection.item} />
   }
 }
 
@@ -50,9 +56,11 @@ interface WorldDetailOverlayProps {
 /**
  * The "pop up a screen with all the info" half of the preview/detail
  * split (2026-08-10, owner's call). Wraps the existing full-detail card
- * components (`QuestCard`/`NpcCard`/`FactionCard`/`TreasureRow` — these
- * used to BE the list, before `WorldPreviewRow` took that job over) in
- * `Overlay`, the same dialog primitive Maps/RulesChat/DiceRoller already
+ * components (`QuestCard`/`NpcCard`/`FactionCard`/`TreasureRow`/
+ * `NoteCard` — the first four used to BE the list, before
+ * `WorldPreviewRow` took that job over; `NoteCard` never had a
+ * non-preview form) in `Overlay`, the same dialog primitive
+ * Maps/RulesChat/DiceRoller already
  * use. `width="narrow"` (460px, `Overlay`'s existing narrow tier, built
  * for DiceRoller): a single detail card doesn't need the 880px default,
  * let alone Maps' 1200px `wide`.

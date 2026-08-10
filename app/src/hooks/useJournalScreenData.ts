@@ -5,8 +5,8 @@ import { listCharacters } from '../lib/characters'
 import type { Character } from '../lib/characters'
 import { listQuests } from '../lib/quests'
 import type { Quest } from '../lib/quests'
-import { listFactions, listNpcStatBlocks, listNpcs, listTreasure } from '../lib/world'
-import type { Faction, Npc, NpcStatBlock, Treasure } from '../lib/world'
+import { listCampaignNotes, listFactions, listNpcStatBlocks, listNpcs, listTreasure } from '../lib/world'
+import type { Faction, Note, Npc, NpcStatBlock, Treasure } from '../lib/world'
 
 /**
  * `JournalScreen`'s core data fetch — sessions, entries, characters,
@@ -33,6 +33,9 @@ import type { Faction, Npc, NpcStatBlock, Treasure } from '../lib/world'
  * `npcStatBlocks` is a `Map<npc_id, NpcStatBlock>` built from
  * `listNpcStatBlocks`'s array return — `WorldTabs`/`NpcCard` want O(1)
  * lookup per NPC row, not a linear `.find()` per card.
+ *
+ * `notes` (2026-08-10, `WorldTabs`' 5th tab) follows the same
+ * load-everything-up-front reasoning as the other three.
  */
 export function useJournalScreenData(campaignId: string) {
   const [sessions, setSessions] = useState<CampaignSession[] | null>(null)
@@ -42,21 +45,24 @@ export function useJournalScreenData(campaignId: string) {
   const [npcs, setNpcs] = useState<Npc[] | null>(null)
   const [factions, setFactions] = useState<Faction[] | null>(null)
   const [treasure, setTreasure] = useState<Treasure[] | null>(null)
+  const [notes, setNotes] = useState<Note[] | null>(null)
   const [npcStatBlocks, setNpcStatBlocks] = useState<Map<string, NpcStatBlock>>(new Map())
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
-      const [sessionRows, entryRows, characterRows, questRows, npcRows, factionRows, treasureRows, statBlockRows] = await Promise.all([
-        listSessions(campaignId),
-        listJournalEntries(campaignId),
-        listCharacters(campaignId),
-        listQuests(campaignId),
-        listNpcs(campaignId),
-        listFactions(campaignId),
-        listTreasure(campaignId),
-        listNpcStatBlocks(campaignId),
-      ])
+      const [sessionRows, entryRows, characterRows, questRows, npcRows, factionRows, treasureRows, noteRows, statBlockRows] =
+        await Promise.all([
+          listSessions(campaignId),
+          listJournalEntries(campaignId),
+          listCharacters(campaignId),
+          listQuests(campaignId),
+          listNpcs(campaignId),
+          listFactions(campaignId),
+          listTreasure(campaignId),
+          listCampaignNotes(campaignId),
+          listNpcStatBlocks(campaignId),
+        ])
       setSessions(sessionRows)
       setEntries(entryRows)
       setCharacters(characterRows)
@@ -64,6 +70,7 @@ export function useJournalScreenData(campaignId: string) {
       setNpcs(npcRows)
       setFactions(factionRows)
       setTreasure(treasureRows)
+      setNotes(noteRows)
       setNpcStatBlocks(new Map(statBlockRows.map((row) => [row.npc_id, row])))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong loading the journal.')
@@ -80,7 +87,7 @@ export function useJournalScreenData(campaignId: string) {
     entries, setEntries,
     characters, setCharacters,
     quests, setQuests,
-    npcs, factions, treasure, npcStatBlocks,
+    npcs, factions, treasure, notes, npcStatBlocks,
     error, setError,
     load,
   }

@@ -5,6 +5,7 @@ export type Npc = Tables<'npcs'>
 export type NpcStatBlock = Tables<'npc_stat_blocks'>
 export type Faction = Tables<'factions'>
 export type Treasure = Tables<'treasure'>
+export type Note = Tables<'campaign_notes'>
 
 /** NPCs in a campaign, in creation order — this table has no
  * `sort_order` column (unlike `quests`), so `created_at` is the closest
@@ -86,6 +87,28 @@ export async function listTreasure(campaignId: string): Promise<Treasure[]> {
     .select('*')
     .eq('campaign_id', campaignId)
     .order('created_at', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+/** Campaign notes — the 5th `WorldTabs` tab (2026-08-10, owner's call: a
+ * freeform scratchpad, not tied to any single NPC/faction/quest/treasure
+ * row). `campaign_notes` (migration `campaign_notes`) intentionally
+ * mirrors `factions`/`treasure`'s no-GM-secret RLS shape (one
+ * membership-scoped SELECT policy, no per-row visibility split) —
+ * there's no equivalent of an NPC's GM-only stat block here.
+ *
+ * Ordered NEWEST first, unlike `listNpcs`/`listFactions`/`listTreasure`
+ * (all oldest-first, "creation order"): those three read like a roster
+ * you scan top to bottom, but notes read like a running log — the note
+ * you jotted five minutes ago is the one worth seeing without scrolling
+ * past the whole history first. */
+export async function listCampaignNotes(campaignId: string): Promise<Note[]> {
+  const { data, error } = await supabase
+    .from('campaign_notes')
+    .select('*')
+    .eq('campaign_id', campaignId)
+    .order('created_at', { ascending: false })
   if (error) throw error
   return data
 }

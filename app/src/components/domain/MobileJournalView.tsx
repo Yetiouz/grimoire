@@ -22,7 +22,7 @@ import type { GmCheck, ResolveSource } from '../../lib/checks'
 import type { CampaignSession } from '../../lib/campaigns'
 import type { Character } from '../../lib/characters'
 import type { Quest } from '../../lib/quests'
-import type { Faction, Npc, NpcStatBlock, Treasure } from '../../lib/world'
+import type { Faction, Note, Npc, NpcStatBlock, Treasure } from '../../lib/world'
 
 interface MobileJournalViewProps {
   loading: boolean
@@ -34,6 +34,9 @@ interface MobileJournalViewProps {
   npcs: Npc[]
   factions: Faction[]
   treasure: Treasure[]
+  /** `WorldTabs`' 5th tab (2026-08-10) — same threaded-straight-through
+   * treatment as `npcs`/`factions`/`treasure`. */
+  notes: Note[]
   npcStatBlocks: Map<string, NpcStatBlock>
   sessions: CampaignSession[]
   /** BOB_queue task 1: the already-merged, already-sorted feed — see
@@ -154,6 +157,7 @@ export function MobileJournalView({
   npcs,
   factions,
   treasure,
+  notes,
   npcStatBlocks,
   sessions,
   items,
@@ -261,6 +265,7 @@ export function MobileJournalView({
           npcs={npcs}
           factions={factions}
           treasure={treasure}
+          notes={notes}
           npcStatBlocks={npcStatBlocks}
           className="min-h-0 flex-1 px-4 pb-4 pt-3"
         />

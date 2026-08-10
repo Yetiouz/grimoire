@@ -16,7 +16,7 @@ import type { GmTurnResult } from '../../lib/gm'
 import type { CampaignSession, JournalEntry } from '../../lib/campaigns'
 import type { Character } from '../../lib/characters'
 import type { Quest } from '../../lib/quests'
-import type { Faction, Npc, NpcStatBlock, Treasure } from '../../lib/world'
+import type { Faction, Note, Npc, NpcStatBlock, Treasure } from '../../lib/world'
 
 interface JournalDesktopLayoutProps {
   characters: Character[] | null
@@ -28,6 +28,9 @@ interface JournalDesktopLayoutProps {
   npcs: Npc[] | null
   factions: Faction[] | null
   treasure: Treasure[] | null
+  /** `WorldTabs`' 5th tab (2026-08-10) — same load-up-front treatment as
+   * `npcs`/`factions`/`treasure`. */
+  notes: Note[] | null
   npcStatBlocks: Map<string, NpcStatBlock>
   sessions: CampaignSession[] | null
   entries: JournalEntry[] | null
@@ -90,6 +93,7 @@ export function JournalDesktopLayout({
   npcs,
   factions,
   treasure,
+  notes,
   npcStatBlocks,
   sessions,
   entries,
@@ -211,9 +215,17 @@ export function JournalDesktopLayout({
         * specifically being non-empty like the old quests-only panel
         * was — a campaign with NPCs but no quests yet should still see
         * this card. */}
-      {quests !== null && npcs !== null && factions !== null && treasure !== null && (
+      {quests !== null && npcs !== null && factions !== null && treasure !== null && notes !== null && (
         <ColumnCard headerLeft="Quest Log" bodyClassName="gap-0">
-          <WorldTabs quests={quests} npcs={npcs} factions={factions} treasure={treasure} npcStatBlocks={npcStatBlocks} className="min-h-0 flex-1" />
+          <WorldTabs
+            quests={quests}
+            npcs={npcs}
+            factions={factions}
+            treasure={treasure}
+            notes={notes}
+            npcStatBlocks={npcStatBlocks}
+            className="min-h-0 flex-1"
+          />
         </ColumnCard>
       )}
     </div>

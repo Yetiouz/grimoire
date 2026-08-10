@@ -204,6 +204,38 @@ export type Database = {
           },
         ]
       }
+      campaign_notes: {
+        Row: {
+          body: string
+          campaign_id: string
+          created_at: string
+          id: string
+          title: string
+        }
+        Insert: {
+          body?: string
+          campaign_id: string
+          created_at?: string
+          id?: string
+          title: string
+        }
+        Update: {
+          body?: string
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_notes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           canon: string | null

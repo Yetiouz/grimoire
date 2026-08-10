@@ -70,7 +70,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     entries, setEntries,
     characters, setCharacters,
     quests,
-    npcs, factions, treasure, npcStatBlocks,
+    npcs, factions, treasure, notes, npcStatBlocks,
     error, setError,
     load,
   } = useJournalScreenData(campaign.id)
@@ -278,6 +278,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
         npcs={npcs}
         factions={factions}
         treasure={treasure}
+        notes={notes}
         npcStatBlocks={npcStatBlocks}
         sessions={sessions}
         entries={entries}
@@ -322,7 +323,8 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
             quests === null ||
             npcs === null ||
             factions === null ||
-            treasure === null
+            treasure === null ||
+            notes === null
           }
           activeCharacter={activeCharacter}
           characters={characters ?? []}
@@ -330,6 +332,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
           npcs={npcs ?? []}
           factions={factions ?? []}
           treasure={treasure ?? []}
+          notes={notes ?? []}
           npcStatBlocks={npcStatBlocks}
           sessions={sessions ?? []}
           items={feedItems}
