@@ -70,6 +70,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     entries, setEntries,
     characters, setCharacters,
     quests,
+    npcs, factions, treasure, npcStatBlocks,
     error, setError,
     load,
   } = useJournalScreenData(campaign.id)
@@ -274,6 +275,10 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
       <JournalDesktopLayout
         characters={characters}
         quests={quests}
+        npcs={npcs}
+        factions={factions}
+        treasure={treasure}
+        npcStatBlocks={npcStatBlocks}
         sessions={sessions}
         entries={entries}
         error={error}
@@ -310,10 +315,22 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
           </div>
         )}
         <MobileJournalView
-          loading={sessions === null || entries === null || characters === null || quests === null}
+          loading={
+            sessions === null ||
+            entries === null ||
+            characters === null ||
+            quests === null ||
+            npcs === null ||
+            factions === null ||
+            treasure === null
+          }
           activeCharacter={activeCharacter}
           characters={characters ?? []}
           quests={quests ?? []}
+          npcs={npcs ?? []}
+          factions={factions ?? []}
+          treasure={treasure ?? []}
+          npcStatBlocks={npcStatBlocks}
           sessions={sessions ?? []}
           items={feedItems}
           sessionOpen={Boolean(openSession)}

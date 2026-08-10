@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grimoire — Slice 9 v2: NPCs/Factions/Treasure as Quest Log tabs (mockup)</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Pirata+One&family=Instrument+Sans:wght@400;500;600;700&family=Chivo+Mono:wght@400;500;600&family=Bebas+Neue&display=swap');
+
+:root{
+  --bg:#050506; --panel:#101013; --panel2:#17171b;
+  --line:#232329; --line-soft:#1c1c22; --line-hover:#33333c;
+  --ink:#f4f4f6; --ink-dim:#a5a5ae; --ink-faint:#66666f;
+  --purple:#9b5cff; --purple-hover:#ab74ff;
+  --green:#39ff8f; --red:#ff3b52; --yellow:#ffd23f; --orange:#ff8a3d; --pink:#ff3fd6; --cyan:#35f0ff;
+  --radius-card:16px; --radius-button:8px;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--bg); color:var(--ink); font-family:'Instrument Sans',-apple-system,sans-serif; -webkit-font-smoothing:antialiased; padding-bottom:120px}
+h1,h2,h3{font-family:'Bebas Neue',sans-serif; text-transform:uppercase; margin:0}
+.mono{font-family:'Chivo Mono',monospace}
+.label{font-family:'Chivo Mono',monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-faint)}
+
+.pagehead{max-width:1080px; margin:0 auto; padding:32px 24px 20px; border-bottom:1px solid var(--line)}
+.pagehead .brand{font-family:'Pirata One',serif; font-size:17px; color:var(--ink-dim); margin-bottom:10px}
+.pagehead h1{font-size:30px; letter-spacing:0.01em}
+.pagehead p{color:var(--ink-dim); font-size:15px; line-height:1.6; max-width:76ch; margin:10px 0 0}
+.pagehead .contract{color:var(--ink-faint); font-size:13px; margin-top:6px}
+
+.controls{position:sticky; top:0; z-index:40; background:rgba(5,5,6,0.94); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); padding:12px 24px; display:flex; gap:20px; flex-wrap:wrap; align-items:center}
+.controls .group{display:flex; align-items:center; gap:8px}
+.controls .group .label{margin-right:2px}
+.pill-switch{display:inline-flex; gap:6px; padding:4px; background:var(--panel2); border:1px solid var(--line-soft); border-radius:999px}
+.pill-switch button{font-family:'Chivo Mono',monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-dim); background:transparent; border:none; border-radius:999px; padding:7px 14px; cursor:pointer}
+.pill-switch button.on{background:var(--purple); color:#fff}
+
+section.block{max-width:1200px; margin:0 auto; padding:40px 24px; border-bottom:1px solid var(--line)}
+section.block:last-of-type{border-bottom:none}
+section.block h2{font-size:24px; letter-spacing:0.02em; margin-bottom:4px}
+section.block .sub{color:var(--ink-faint); font-size:13px; margin-bottom:24px; max-width:76ch; line-height:1.6}
+
+/* ===== ColumnCard shell — matches ColumnCard.tsx exactly (38px header, subheader slot, scrolling body) ===== */
+.colcard{display:flex; flex-direction:column; overflow:hidden; border-radius:16px; border:1px solid var(--line); background:var(--panel)}
+.colhead{display:flex; align-items:center; justify-content:space-between; gap:8px; height:38px; padding:0 12px; border-bottom:1px solid var(--line-soft); flex-shrink:0}
+.colhead .left{font-family:'Chivo Mono',monospace; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-dim)}
+.colhead .right{font-family:'Chivo Mono',monospace; font-size:10.5px; color:var(--ink-faint)}
+.colsub{flex-shrink:0; border-bottom:1px solid var(--line-soft); background:var(--panel); padding:10px 10px}
+.colbody{min-height:0; flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px}
+
+/* Quest Log tab row — lives in ColumnCard's `subheader` slot (previously
+   unused; built for exactly this: pinned content that doesn't scroll away
+   with the body, per ColumnCard's own doc comment). Horizontally
+   scrollable rather than wrapping: four tabs (Quests/NPCs/Factions/
+   Treasure) genuinely don't fit a 320px desktop column at comfortable
+   tap-target size, and a wrapped second row would eat into the already
+   -tight vertical space more than a quiet horizontal scroll does. */
+.qltabs{display:flex; gap:4px; overflow-x:auto; scrollbar-width:none}
+.qltabs::-webkit-scrollbar{display:none}
+.qltabs button{
+  flex-shrink:0; font-family:'Chivo Mono',monospace; font-size:10.5px; letter-spacing:0.04em; text-transform:uppercase; font-weight:600;
+  color:var(--ink-dim); background:var(--panel2); border:1px solid var(--line-soft); border-radius:999px; padding:6px 11px; cursor:pointer;
+}
+.qltabs button.on{background:var(--purple); border-color:var(--purple); color:#fff}
+
+[data-panel]{display:none}
+[data-panel].on{display:flex; flex-direction:column; gap:8px}
+
+/* ===== Desktop 3-column context preview (proportions match
+   JournalDesktopLayout.tsx's real grid-cols-[16rem_minmax(0,1fr)_20rem]) ===== */
+.deskgrid{display:grid; grid-template-columns:16rem minmax(0,1fr) 20rem; gap:12px; height:640px}
+.deskgrid .placeholder{display:flex; align-items:center; justify-content:center; border-radius:16px; border:1px dashed var(--line-hover); color:var(--ink-faint); font-family:'Chivo Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.06em}
+.deskgrid .quest-col{display:flex; flex-direction:column}
+
+/* ===== Mobile phone frame ===== */
+.phone{width:375px; background:var(--bg); border:1px solid #26262c; border-radius:30px; overflow:hidden; box-shadow:0 20px 60px -25px rgba(0,0,0,0.85); display:flex; flex-direction:column; height:700px}
+.phone .pbar{padding:12px 14px; border-bottom:1px solid var(--line); font-family:'Bebas Neue',sans-serif; font-size:16px; flex-shrink:0}
+.phone .qlhead{display:flex; align-items:center; justify-content:space-between; height:48px; padding:0 16px; border-bottom:1px solid var(--line-soft); flex-shrink:0}
+.phone .qlhead .t{font-family:'Chivo Mono',monospace; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-dim)}
+.phone .qltabsmobile{padding:10px 12px; border-bottom:1px solid var(--line-soft); flex-shrink:0}
+.phone .qlbody{flex:1; min-height:0; overflow-y:auto; padding:12px 14px}
+.tabbar{display:flex; align-items:flex-end; justify-content:space-around; border-top:1px solid var(--line); background:rgba(16,16,19,0.95); padding:10px 8px 14px; flex-shrink:0}
+.tabbar .tab{display:flex; flex-direction:column; align-items:center; gap:4px; font-family:'Chivo Mono',monospace; font-size:10px; text-transform:uppercase}
+.tabbar .tab.active{color:var(--purple)}
+.tabbar .tab:not(.active){color:var(--ink-faint)}
+.tabbar .fab{width:52px; height:52px; border-radius:50%; background:var(--purple); margin-top:-20px; display:flex; align-items:center; justify-content:center; color:#fff}
+.tabbar svg{width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+
+/* ===== NPC / Faction / Treasure cards — same tokens/shapes as the
+   overlay-version mockup, unchanged; only the container around them
+   changed (a 320px/375px tabbed column instead of a 1200px overlay). ===== */
+.npc-card{background:var(--panel2); border:1px solid var(--line-soft); border-radius:14px; padding:12px}
+.npc-top{display:flex; align-items:baseline; justify-content:space-between; gap:8px; flex-wrap:wrap}
+.npc-name{font-family:'Instrument Sans',sans-serif; font-size:14.5px; font-weight:600; color:var(--ink)}
+.status-chip{font-family:'Chivo Mono',monospace; font-size:9.5px; letter-spacing:0.04em; text-transform:uppercase; display:inline-flex; align-items:center; gap:5px; background:var(--panel); border:1px solid var(--line-soft); border-radius:999px; padding:2px 8px 2px 7px; color:var(--ink-dim); flex-shrink:0}
+.status-chip .dot{width:6px; height:6px; border-radius:99px}
+.status-alive .dot{background:var(--green)}
+.status-deceased .dot{background:var(--ink-faint)}
+.status-captured .dot{background:var(--orange)}
+.npc-role{font-size:12px; color:var(--ink-dim); margin-top:2px}
+.npc-meta-row{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px}
+.meta-chip{font-family:'Chivo Mono',monospace; font-size:9.5px; color:var(--ink-faint); background:var(--panel); border:1px solid var(--line-soft); border-radius:999px; padding:2px 8px}
+.meta-chip.hireling{color:var(--cyan); border-color:rgba(53,240,255,0.3)}
+.npc-summary{font-size:12.5px; line-height:1.6; color:var(--ink-dim); margin-top:8px}
+.gm-block{margin-top:10px; padding:10px 11px; background:var(--panel); border:1px solid rgba(155,92,255,0.25); border-radius:10px}
+.gm-block .gm-label{font-family:'Chivo Mono',monospace; font-size:9.5px; letter-spacing:0.06em; text-transform:uppercase; color:var(--purple); margin-bottom:6px}
+.gm-stats{display:flex; gap:14px; flex-wrap:wrap; font-family:'Chivo Mono',monospace; font-size:11.5px}
+.gm-stats .k{color:var(--ink-faint); margin-right:4px}
+.gm-attacks{margin-top:6px; font-size:11.5px; color:var(--ink-dim)}
+.gm-attacks .k{font-family:'Chivo Mono',monospace; font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-faint); display:block; margin-bottom:2px}
+.gm-notes{margin-top:5px; font-size:11.5px; color:var(--ink-faint); font-style:italic}
+body[data-role="player"] .gm-block{display:none}
+
+.faction-card{background:var(--panel2); border:1px solid var(--line-soft); border-radius:14px; padding:14px}
+.faction-top{display:flex; align-items:baseline; justify-content:space-between; gap:8px; flex-wrap:wrap}
+.faction-name{font-size:16px}
+.disposition-chip{font-family:'Chivo Mono',monospace; font-size:9.5px; letter-spacing:0.04em; text-transform:uppercase; display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:2px 8px 2px 7px; border:1px solid var(--line-soft); background:var(--panel); color:var(--ink-dim)}
+.disposition-chip .dot{width:6px; height:6px; border-radius:99px}
+.disposition-allied .dot{background:var(--green)}
+.disposition-hostile .dot{background:var(--red)}
+.faction-type{font-family:'Chivo Mono',monospace; font-size:10px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.05em; margin-top:3px}
+.faction-fields{display:flex; flex-direction:column; gap:8px; margin-top:10px}
+.faction-fields .field .k{font-family:'Chivo Mono',monospace; font-size:9px; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-faint); margin-bottom:2px}
+.faction-fields .field .v{font-size:12.5px; color:var(--ink-dim); line-height:1.5}
+.faction-notes{margin-top:10px; padding-top:10px; border-top:1px solid var(--line-soft); font-size:12px; color:var(--ink-faint); line-height:1.55}
+
+.treasure-row{border:1px solid var(--line-soft); border-radius:12px; padding:10px 11px; background:var(--panel2)}
+.t-name{font-size:12.5px; font-weight:600; color:var(--ink)}
+.t-category{font-family:'Chivo Mono',monospace; font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.04em; margin-top:2px}
+.t-qty{font-family:'Chivo Mono',monospace; font-size:11.5px; color:var(--ink-dim); margin-top:6px}
+.t-where{font-size:11.5px; color:var(--ink-dim); line-height:1.5; margin-top:2px}
+.t-where .who{color:var(--ink)}
+.tstatus-chip{font-family:'Chivo Mono',monospace; font-size:9.5px; letter-spacing:0.04em; text-transform:uppercase; border-radius:999px; padding:2px 8px; border:1px solid var(--line-soft); background:var(--panel); color:var(--ink-dim); display:inline-block; margin-top:6px}
+.tstatus-held{color:var(--green); border-color:rgba(57,255,143,0.3)}
+.tstatus-pending{color:var(--yellow); border-color:rgba(255,210,63,0.3)}
+.tstatus-lead{color:var(--ink-faint)}
+.tstatus-secured{color:var(--cyan); border-color:rgba(53,240,255,0.3)}
+.tstatus-contained{color:var(--orange); border-color:rgba(255,138,61,0.3)}
+.t-notes{margin-top:6px; font-size:11px; color:var(--ink-faint); line-height:1.5}
+
+.quest-card{background:var(--panel2); border:1px solid var(--line-soft); border-radius:14px; padding:12px}
+.quest-card h3{font-family:'Instrument Sans',sans-serif; text-transform:none; font-size:14.5px; font-weight:600; color:var(--ink)}
+.quest-card .status{font-family:'Chivo Mono',monospace; font-size:11px; color:var(--ink-dim); margin-top:4px}
+.quest-card .goal{font-size:12.5px; color:var(--ink-dim); margin-top:4px; line-height:1.55}
+
+.tool-note{border:1px dashed var(--line); border-radius:12px; padding:14px 16px; margin-top:20px; color:var(--ink-faint); font-size:13px; line-height:1.6}
+.tool-note b{color:var(--ink-dim)}
+footer{max-width:1080px; margin:0 auto; padding:32px 24px; color:var(--ink-faint); font-size:12px}
+</style>
+</head>
+<body data-role="gm">
+
+<div class="pagehead">
+  <div class="brand">Grimoire</div>
+  <h1>Slice 9 v2 — NPCs / Factions / Treasure as Quest Log tabs</h1>
+  <p>Revised per your call: instead of a separate ToolsDock button + modal overlay, NPCs/Factions/Treasure become
+     three more tabs on the existing, always-visible Quest Log panel — a pinned tab row using
+     <code class="mono">ColumnCard</code>'s already-built (and until now unused) <code class="mono">subheader</code>
+     slot, which exists specifically for content that stays put while the body below it scrolls. Quests stays the
+     default tab; the panel keeps its "Quest Log" name and identity, it just now holds more.</p>
+  <p class="contract">Real widths: the desktop right column is a fixed <code class="mono">20rem</code> (320px) —
+     shown in context below at that exact width, not the spacious 1200px the overlay version used. Mobile reuses the
+     existing "Quests" bottom tab; per your call, the dead "World" stub tile in the Tools grid goes away since its
+     destination now lives here.</p>
+</div>
+
+<div class="controls">
+  <div class="group">
+    <span class="label">Viewer</span>
+    <div class="pill-switch" id="roleSwitch">
+      <button data-role="gm" class="on">GM</button>
+      <button data-role="player">Player</button>
+    </div>
+  </div>
+</div>
+
+<section class="block">
+  <h2>Desktop — in the real 3-column grid</h2>
+  <p class="sub">Left/center columns are dimmed placeholders (Party+Tools, the journal feed) — only the right Quest
+     Log column is real content here, at its actual 20rem width. Tab row sits in the pinned subheader slot; only the
+     card list below it scrolls.</p>
+  <div class="deskgrid">
+    <div class="placeholder">Party + Tools<br>(16rem, unchanged)</div>
+    <div class="placeholder">Journal feed<br>(flexible, unchanged)</div>
+    <div class="quest-col">
+      <div class="colcard" style="height:100%">
+        <div class="colhead"><span class="left">Quest Log</span><span class="right" id="deskCount">7 Quests</span></div>
+        <div class="colsub"><div class="qltabs" id="deskTabs">
+          <button data-tab="quests" class="on">Quests</button>
+          <button data-tab="npcs">NPCs</button>
+          <button data-tab="factions">Factions</button>
+          <button data-tab="treasure">Treasure</button>
+        </div></div>
+        <div class="colbody" id="deskBody"><!-- filled by JS, shares markup with mobile --></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <h2>Mobile — the existing Quests tab, now with sub-tabs</h2>
+  <p class="sub">Same bottom tab bar as today (Party / Maps / Roll / Quests / Tools) — Quests opens to this. Tab row
+     pinned below the view header, same subheader treatment as desktop.</p>
+  <div class="phone">
+    <div class="qlhead"><span class="t">Quest Log</span><span style="color:var(--ink-faint)">✕</span></div>
+    <div class="qltabsmobile"><div class="qltabs" id="mobTabs">
+      <button data-tab="quests" class="on">Quests</button>
+      <button data-tab="npcs">NPCs</button>
+      <button data-tab="factions">Factions</button>
+      <button data-tab="treasure">Treasure</button>
+    </div></div>
+    <div class="qlbody" id="mobBody"></div>
+    <div class="tabbar">
+      <div class="tab"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Party</div>
+      <div class="tab"><svg viewBox="0 0 24 24"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/></svg>Maps</div>
+      <div class="fab"><svg viewBox="0 0 24 24" style="stroke:#fff"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1" fill="#fff"/><circle cx="16" cy="16" r="1" fill="#fff"/><circle cx="12" cy="12" r="1" fill="#fff"/></svg></div>
+      <div class="tab active"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 9h16M9 4v16"/></svg>Quests</div>
+      <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Tools</div>
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <h2>Open calls for the owner</h2>
+  <div class="tool-note">
+    <b>1. Tab-row fit at 320px.</b> "Quests · NPCs · Factions · Treasure" doesn't comfortably fit a 320px column at
+    real tap-target size, so the tab row scrolls horizontally (try it above) rather than wrapping to a second row —
+    a wrapped row would eat further into an already-tight vertical budget. Worth confirming that's an acceptable
+    trade before real components; a genuinely narrower label set (e.g. "Quests / People / Factions / Loot") is a
+    cheap alternative if the scroll reads as awkward once it's real.<br><br>
+    <b>2. Column header count.</b> The header's right-side count (currently "N Quests") would need to become
+    tab-aware — showing the active tab's count instead of always Quests' — or just drop the count entirely now that
+    it's a shared header across four different lists. Not decided here.<br><br>
+    <b>3. Still true from the v1 mockup:</b> only <code class="mono">npcs.stat_block</code> got the GM-only table
+    split (Factions/Treasure stay party-visible); NPCs sort by <code class="mono">created_at</code> (no
+    <code class="mono">sort_order</code> column); NpcCard/FactionCard/TreasureRow are still three separate
+    components, not one shared card.
+  </div>
+</section>
+
+<footer>
+  Slice 9 v2 mockup — same real Black Road content as the v1 overlay mockup, restaged inside
+  <code class="mono">ColumnCard</code>'s real shell and real 20rem/375px widths. No client code written yet.
+</footer>
+
+<script>
+const DATA = {
+  quests: [
+    { title: 'Recover Halric\'s sealed message', status: 'Accepted; complete if safely possible', goal: 'Retrieve the gray waxed-cloth packet from the charcoal pit and return it unopened to Reeve Halric Dain.' },
+    { title: 'Recover Mara\'s iron-bound coffer', status: 'Accepted', goal: 'Retrieve the coffer from the charcoal pit and return it to Mara Venn at The Bent Nail.' },
+    { title: 'Find Orren Vey\'s killer', status: 'Resolved — Maela Rusk captured', goal: 'Identify and apprehend whoever murdered courier Orren Vey.' },
+    { title: 'Bury Orren beside his mother', status: 'Pending — awaiting case closure', goal: 'Deliver Orren\'s remains and sealed burial token once the investigation concludes.' },
+    { title: 'Deliver Lysa Vey\'s letter', status: 'Held, unopened', goal: 'Find and deliver Orren\'s final letter to his sister Lysa Vey.' },
+    { title: 'Recruit Tobin Reed', status: 'Hester recruited; Tobin remains a lead', goal: 'Track down Tobin Reed near the River Gate and negotiate expedition terms.' },
+    { title: 'Investigate Captain Varek Skane', status: 'Active — location unconfirmed', goal: 'Determine whether Varek Skane is truly alive and commanding the restored Black Hart at Myre Castle.' },
+  ],
+  npcs: [
+    {name:'Mara Venn', status:'alive', role:'Tavern keeper of The Bent Nail', location:'The Bent Nail, Dreg\'s Ford', attitude:'Curious', summary:'Says the missing iron-bound coffer belongs to her. Agreed to pay Kimbo 10 gp for recovering it and 5 gp for Orren\'s courier ledger (paid). Confessed under Kimbo\'s Charisma 22 that the coffer holds a 40 gp Black Hart "widow\'s tithe."'},
+    {name:'Orren Vey', status:'deceased', role:'Professional road courier', location:'Shrine of the Nine (remains)', summary:'Missing courier carrying an iron-bound coffer, sealed message, and a Black Hart sword. Named his killer as Maela Rusk during the Rite of the Last Ember.'},
+    {name:'Rowan Pike', status:'alive', role:'Town scout under Reeve Halric Dain', location:'Dreg\'s Ford', attitude:'Cautious but respectful', hireling:'Hireling · town-assigned wage', summary:'Assigned to accompany Kimbo on the official message recovery. Skilled at trail signs and moving quietly.', gm:{ac:12,hp:'4/4',attacks:'Shortbow +2 (1d4) · Dagger +2 (1d4)'}},
+    {name:'Maela Rusk', status:'captured', role:'Courier-master of Dreg\'s Ford', location:'Captured — town custody', summary:'Orren\'s spirit identified her as his killer. Confessed the murder, seal theft, and named "the Castellan" — Captain Varek Skane — as who ordered Kimbo marooned.'},
+    {name:'Miri Sedge', status:'alive', role:'Apprentice field healer under Nella Fen', location:'Nella Fen\'s Remedies', attitude:'Receptive but evaluating him carefully', hireling:'Hireling · 1 gp/expedition day', summary:'Agreed to accompany Kimbo and Rowan; will collect ghostleaf sprigs if safely encountered.', gm:{ac:11,hp:'4/4',attacks:'Dagger +0 (1d4)',notes:'Stabilization checks with advantage.'}},
+    {name:'Hester Crowe', status:'alive', role:'Veteran caravan guard', location:'Usually found at The Bent Nail', attitude:'Respectful but watchful', hireling:'Hireling · 3 gp/expedition day', summary:'Recruited veteran guard, willing to continue under existing terms after the spider-pit encounter.', gm:{ac:14,hp:'6/6',attacks:'Spear +3 (1d6)',notes:'Once per round may interpose for a close ally before a melee attack is rolled.'}},
+  ],
+  factions: [
+    {name:'Dreg\'s Ford Reeve\'s Office', type:'Civic authority', disposition:'allied', leader:'Halric Dain', territory:'Dreg\'s Ford', goal:'Recover the sealed message; uphold law in town', status:'Active investigation into Maela Rusk', notes:'Issued a lawful warrant for Maela Rusk after the FEN-7 register corroborated Orren\'s spirit testimony.'},
+    {name:'Order of the Black Hart', type:'Extinct knightly order (apparently restored)', disposition:'hostile', leader:'Captain Varek Skane (alleged)', territory:'Myre Castle, the Gloaming (unconfirmed)', goal:'Recover Road\'s Memory and the Hartguard Gorget to awaken the Black Hart knights beneath Myre Castle', status:'Active threat — two agents captured, Skane unconfirmed', notes:'Vanished over a century ago amid accusations of treason and grave-robbery.'},
+  ],
+  treasure: [
+    {name:'Road\'s Memory (Black Hart sword)', category:'Relic weapon', qty:'1', where:'Edda Quill — warded iron chest, Reeve\'s Hall', status:'contained', notes:'Cursed — anchored to Sir Aldren Myre\'s bone shard sealed inside the pommel reliquary.'},
+    {name:'Hartguard Gorget', category:'Relic', qty:'1', where:'Bell-Keeper\'s Ossuary beneath Drowned Bell Weir', status:'lead', notes:'Reputed to ease stabilization checks on its dying wearer (DC 9 instead of DC 15).'},
+    {name:'The Iron-Bound Coffer (Mara Venn\'s)', category:'Container', qty:'1', where:'Charcoal pit beneath the bramble hollow', status:'pending', notes:'Contains a 40 gp Black Hart "widow\'s tithe" per Mara\'s confession.'},
+    {name:'The Sealed Message (Halric\'s)', category:'Document', qty:'1', where:'Charcoal pit beneath the bramble hollow', status:'pending', notes:'Gray waxed-cloth packet from Magistrate Elara Voss, countermark FEN-7.'},
+    {name:'Kimbo\'s coin', category:'Currency', qty:'20 gp 4 sp', where:'Kimbo Slice', status:'held', notes:'Current total after all Session 1 transactions.'},
+  ],
+};
+
+function npcCard(n){
+  const statusClass = n.status === 'alive' ? 'status-alive' : n.status === 'deceased' ? 'status-deceased' : 'status-captured';
+  const statusLabel = n.status.charAt(0).toUpperCase() + n.status.slice(1);
+  const chips = [`📍 ${n.location}`];
+  if (n.attitude) chips.push(n.attitude);
+  if (n.hireling) chips.push(n.hireling);
+  const gm = n.gm ? `<div class="gm-block"><div class="gm-label">⛨ GM only</div>
+    <div class="gm-stats"><span><span class="k">AC</span>${n.gm.ac}</span><span><span class="k">HP</span>${n.gm.hp}</span></div>
+    <div class="gm-attacks"><span class="k">Attacks</span>${n.gm.attacks}</div>
+    ${n.gm.notes ? `<div class="gm-notes">${n.gm.notes}</div>` : ''}</div>` : '';
+  return `<div class="npc-card">
+    <div class="npc-top"><span class="npc-name">${n.name}</span><span class="status-chip ${statusClass}"><span class="dot"></span>${statusLabel}</span></div>
+    <div class="npc-role">${n.role}</div>
+    <div class="npc-meta-row">${chips.map(c => `<span class="meta-chip ${n.hireling && c===n.hireling ? 'hireling' : ''}">${c}</span>`).join('')}</div>
+    <p class="npc-summary">${n.summary}</p>
+    ${gm}
+  </div>`;
+}
+function factionCard(f){
+  const dClass = f.disposition === 'allied' ? 'disposition-allied' : 'disposition-hostile';
+  const dLabel = f.disposition.charAt(0).toUpperCase() + f.disposition.slice(1);
+  return `<div class="faction-card">
+    <div class="faction-top"><span class="faction-name">${f.name}</span><span class="disposition-chip ${dClass}"><span class="dot"></span>${dLabel}</span></div>
+    <div class="faction-type">${f.type}</div>
+    <div class="faction-fields">
+      <div class="field"><div class="k">Leader</div><div class="v">${f.leader}</div></div>
+      <div class="field"><div class="k">Territory</div><div class="v">${f.territory}</div></div>
+      <div class="field"><div class="k">Goal</div><div class="v">${f.goal}</div></div>
+      <div class="field"><div class="k">Status</div><div class="v">${f.status}</div></div>
+    </div>
+    <div class="faction-notes">${f.notes}</div>
+  </div>`;
+}
+function treasureRow(t){
+  return `<div class="treasure-row">
+    <div class="t-name">${t.name}</div><div class="t-category">${t.category}</div>
+    <div class="t-qty">${t.qty}</div><div class="t-where">${t.where}</div>
+    <span class="tstatus-chip tstatus-${t.status}">${t.status}</span>
+    <div class="t-notes">${t.notes}</div>
+  </div>`;
+}
+function questCard(q){
+  return `<div class="quest-card"><h3>${q.title}</h3><div class="status">${q.status}</div><div class="goal">${q.goal}</div></div>`;
+}
+function render(tab, el){
+  if (tab === 'quests') el.innerHTML = DATA.quests.map(questCard).join('');
+  else if (tab === 'npcs') el.innerHTML = DATA.npcs.map(npcCard).join('');
+  else if (tab === 'factions') el.innerHTML = DATA.factions.map(factionCard).join('');
+  else el.innerHTML = DATA.treasure.map(treasureRow).join('');
+}
+function wireTabs(tabsEl, bodyEl, countEl){
+  render('quests', bodyEl);
+  tabsEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-tab]');
+    if (!btn) return;
+    tabsEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === btn));
+    render(btn.dataset.tab, bodyEl);
+    if (countEl) {
+      const n = DATA[btn.dataset.tab].length;
+      const label = btn.dataset.tab === 'quests' ? (n===1?'Quest':'Quests') : btn.dataset.tab === 'npcs' ? 'NPCs' : btn.dataset.tab === 'factions' ? (n===1?'Faction':'Factions') : 'Items';
+      countEl.textContent = `${n} ${label}`;
+    }
+  });
+}
+wireTabs(document.getElementById('deskTabs'), document.getElementById('deskBody'), document.getElementById('deskCount'));
+wireTabs(document.getElementById('mobTabs'), document.getElementById('mobBody'), null);
+
+document.getElementById('roleSwitch').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-role]');
+  if (!btn) return;
+  document.body.dataset.role = btn.dataset.role;
+  e.currentTarget.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === btn));
+});
+</script>
+
+</body>
+</html>

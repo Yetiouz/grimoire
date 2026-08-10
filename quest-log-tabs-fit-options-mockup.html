@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grimoire — Quest Log tab row: fit options</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Chivo+Mono:wght@400;500;600&family=Bebas+Neue&display=swap');
+:root{
+  --bg:#050506; --panel:#101013; --panel2:#17171b;
+  --line:#232329; --line-soft:#1c1c22; --line-hover:#33333c;
+  --ink:#f4f4f6; --ink-dim:#a5a5ae; --ink-faint:#66666f;
+  --purple:#9b5cff; --green:#39ff8f; --red:#ff3b52; --cyan:#35f0ff; --orange:#ff8a3d; --yellow:#ffd23f;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--bg); color:var(--ink); font-family:'Instrument Sans',-apple-system,sans-serif; padding:32px 24px 100px}
+h1{font-family:'Bebas Neue',sans-serif; text-transform:uppercase; font-size:28px; margin:0}
+.sub{color:var(--ink-dim); font-size:14.5px; line-height:1.6; max-width:74ch; margin:10px 0 28px}
+.mono{font-family:'Chivo Mono',monospace}
+.row{display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start}
+.variant{width:320px}
+.variant .vlabel{font-family:'Chivo Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--purple); margin-bottom:4px}
+.variant .vdesc{font-size:12px; color:var(--ink-faint); line-height:1.5; margin-bottom:10px; min-height:48px}
+.fitcheck{font-family:'Chivo Mono',monospace; font-size:10.5px; margin-top:8px; padding:6px 10px; border-radius:8px; display:inline-flex; align-items:center; gap:6px}
+.fitcheck.ok{color:var(--green); background:rgba(57,255,143,0.08); border:1px solid rgba(57,255,143,0.25)}
+.fitcheck.warn{color:var(--yellow); background:rgba(255,210,63,0.08); border:1px solid rgba(255,210,63,0.25)}
+
+.colcard{display:flex; flex-direction:column; overflow:hidden; border-radius:16px; border:1px solid var(--line); background:var(--panel); height:420px}
+.colhead{display:flex; align-items:center; justify-content:space-between; height:38px; padding:0 12px; border-bottom:1px solid var(--line-soft); flex-shrink:0}
+.colhead .left{font-family:'Chivo Mono',monospace; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-dim)}
+.colsub{flex-shrink:0; border-bottom:1px solid var(--line-soft); padding:8px 10px}
+.colbody{min-height:0; flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:6px}
+
+.qltabs{display:flex; gap:4px}
+.qltabs button{font-family:'Chivo Mono',monospace; color:var(--ink-dim); background:var(--panel2); border:1px solid var(--line-soft); border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center}
+.qltabs button.on{background:var(--purple); border-color:var(--purple); color:#fff}
+.qltabs svg{stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0}
+
+/* A: icon + short label */
+.qltabs.a{flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none}
+.qltabs.a button{font-size:10px; letter-spacing:0.03em; text-transform:uppercase; padding:6px 10px 6px 8px; gap:5px}
+.qltabs.a svg{width:13px; height:13px}
+
+/* B: icon only, tooltip for the label */
+.qltabs.b button{width:34px; height:30px; padding:0}
+.qltabs.b svg{width:16px; height:16px}
+
+/* C: short label, no icon */
+.qltabs.c{flex-wrap:nowrap}
+.qltabs.c button{font-size:10.5px; letter-spacing:0.03em; text-transform:uppercase; padding:7px 11px; font-weight:600}
+
+/* D: original — full labels, horizontal scroll (baseline for comparison) */
+.qltabs.d{flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none}
+.qltabs.d::-webkit-scrollbar{display:none}
+.qltabs.d button{font-size:10.5px; letter-spacing:0.04em; text-transform:uppercase; font-weight:600; padding:6px 11px; flex-shrink:0}
+
+.card{background:var(--panel2); border:1px solid var(--line-soft); border-radius:12px; padding:10px 11px}
+.card .n{font-size:12.5px; font-weight:600; color:var(--ink)}
+.card .m{font-size:11.5px; color:var(--ink-dim); margin-top:3px; line-height:1.5}
+</style>
+</head>
+<body>
+
+<h1>Quest Log tab row — four ways to make it fit</h1>
+<p class="sub">All four below are rendered at the column's real 320px width, live in your browser — so whether a row
+   actually wraps or scrolls is the real answer, not my guess at character widths. Click through each one's tabs.
+   Content is abbreviated real data (same NPCs/Factions/Treasure/Quests), just enough per card to judge density, not
+   the full write-ups.</p>
+
+<div class="row">
+
+  <div class="variant">
+    <div class="vlabel">A — Icon + short label</div>
+    <div class="vdesc">Small icon per tab plus a shortened word ("NPCs"→people icon, "Factions"→banner icon,
+      "Treasure"→gem icon). Most legible option that still reliably fits in one row.</div>
+    <div class="colcard">
+      <div class="colhead"><span class="left">Quest Log</span></div>
+      <div class="colsub"><div class="qltabs a" id="tabsA">
+        <button data-tab="quests" class="on"><svg viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22V15"/></svg>Quests</button>
+        <button data-tab="npcs"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16.5 10.5a3 3 0 1 0-1-5.8"/><path d="M15.5 14a6 6 0 0 1 6 6"/></svg>People</button>
+        <button data-tab="factions"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6z"/></svg>Factions</button>
+        <button data-tab="treasure"><svg viewBox="0 0 24 24"><path d="M3 8l9-5 9 5-9 5-9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Loot</button>
+      </div></div>
+      <div class="colbody" id="bodyA"></div>
+    </div>
+    <div class="fitcheck" data-check="A">checking…</div>
+  </div>
+
+  <div class="variant">
+    <div class="vlabel">B — Icons only</div>
+    <div class="vdesc">No text at all, same icon set as A, square tap targets with a tooltip on hover/long-press for
+      the label. Matches ToolsDock's icon-forward visual language elsewhere in the app. Most compact by far, but
+      loses at-a-glance scanability for a first-time player.</div>
+    <div class="colcard">
+      <div class="colhead"><span class="left">Quest Log</span></div>
+      <div class="colsub"><div class="qltabs b" id="tabsB">
+        <button data-tab="quests" class="on" title="Quests"><svg viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22V15"/></svg></button>
+        <button data-tab="npcs" title="NPCs"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16.5 10.5a3 3 0 1 0-1-5.8"/><path d="M15.5 14a6 6 0 0 1 6 6"/></svg></button>
+        <button data-tab="factions" title="Factions"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6z"/></svg></button>
+        <button data-tab="treasure" title="Treasure"><svg viewBox="0 0 24 24"><path d="M3 8l9-5 9 5-9 5-9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></button>
+      </div></div>
+      <div class="colbody" id="bodyB"></div>
+    </div>
+    <div class="fitcheck" data-check="B">checking…</div>
+  </div>
+
+  <div class="variant">
+    <div class="vlabel">C — Short labels, no icons</div>
+    <div class="vdesc">Same words as A ("People"/"Loot") but no icon — smallest change from what you already saw,
+      just shorter text. No new icons to design/govern in the closed icon set either.</div>
+    <div class="colcard">
+      <div class="colhead"><span class="left">Quest Log</span></div>
+      <div class="colsub"><div class="qltabs c" id="tabsC">
+        <button data-tab="quests" class="on">Quests</button>
+        <button data-tab="npcs">People</button>
+        <button data-tab="factions">Factions</button>
+        <button data-tab="treasure">Loot</button>
+      </div></div>
+      <div class="colbody" id="bodyC"></div>
+    </div>
+    <div class="fitcheck" data-check="C">checking…</div>
+  </div>
+
+  <div class="variant">
+    <div class="vlabel">D — Original (baseline)</div>
+    <div class="vdesc">What you saw in the last mockup: full words, horizontal scroll if it doesn't fit. Kept here
+      only so you can compare against A/B/C side by side rather than from memory.</div>
+    <div class="colcard">
+      <div class="colhead"><span class="left">Quest Log</span></div>
+      <div class="colsub"><div class="qltabs d" id="tabsD">
+        <button data-tab="quests" class="on">Quests</button>
+        <button data-tab="npcs">NPCs</button>
+        <button data-tab="factions">Factions</button>
+        <button data-tab="treasure">Treasure</button>
+      </div></div>
+      <div class="colbody" id="bodyD"></div>
+    </div>
+    <div class="fitcheck" data-check="D">checking…</div>
+  </div>
+
+</div>
+
+<script>
+const DATA = {
+  quests: [ {n:'Recover the sealed message', m:'Accepted; complete if safely possible'}, {n:'Recover the coffer', m:'Accepted'}, {n:'Find Orren\'s killer', m:'Resolved — Maela Rusk captured'} ],
+  npcs: [ {n:'Rowan Pike', m:'Town scout · alive'}, {n:'Maela Rusk', m:'Courier-master · captured'}, {n:'Hester Crowe', m:'Caravan guard · hireling'} ],
+  factions: [ {n:'Dreg\'s Ford Reeve\'s Office', m:'Allied · civic authority'}, {n:'Order of the Black Hart', m:'Hostile · extinct order, restored'} ],
+  treasure: [ {n:'Road\'s Memory', m:'Relic weapon · contained'}, {n:'Hartguard Gorget', m:'Relic · lead only'}, {n:'The Iron-Bound Coffer', m:'Container · pending recovery'} ],
+};
+function render(tab, el){
+  el.innerHTML = DATA[tab].map(x => `<div class="card"><div class="n">${x.n}</div><div class="m">${x.m}</div></div>`).join('');
+}
+function wire(id, bodyId, checkId){
+  const tabsEl = document.getElementById(id), bodyEl = document.getElementById(bodyId);
+  render('quests', bodyEl);
+  tabsEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-tab]');
+    if (!btn) return;
+    tabsEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === btn));
+    render(btn.dataset.tab, bodyEl);
+  });
+  // Real fit check: does the tab row's scrollWidth exceed its visible clientWidth?
+  requestAnimationFrame(() => {
+    const overflow = tabsEl.scrollWidth > tabsEl.clientWidth + 1;
+    const el = document.querySelector(`[data-check="${checkId}"]`);
+    el.textContent = overflow ? '⚠ overflows — scrolls to show all tabs' : '✓ fits in one row, no scroll needed';
+    el.className = 'fitcheck ' + (overflow ? 'warn' : 'ok');
+  });
+}
+wire('tabsA','bodyA','A');
+wire('tabsB','bodyB','B');
+wire('tabsC','bodyC','C');
+wire('tabsD','bodyD','D');
+</script>
+
+</body>
+</html>

@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grimoire — Slice 9: World Overlay (NPCs / Factions / Treasure) mockup</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Pirata+One&family=Instrument+Sans:wght@400;500;600;700&family=Chivo+Mono:wght@400;500;600&family=Bebas+Neue&display=swap');
+
+:root{
+  --bg:#050506; --panel:#101013; --panel2:#17171b;
+  --line:#232329; --line-soft:#1c1c22; --line-hover:#33333c;
+  --ink:#f4f4f6; --ink-dim:#a5a5ae; --ink-faint:#66666f;
+  --purple:#9b5cff; --purple-hover:#ab74ff;
+  --green:#39ff8f; --red:#ff3b52; --yellow:#ffd23f; --orange:#ff8a3d; --pink:#ff3fd6; --cyan:#35f0ff;
+  --radius-card:16px; --radius-button:8px;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:'Instrument Sans',-apple-system,sans-serif; -webkit-font-smoothing:antialiased;
+  padding-bottom:120px;
+}
+h1,h2,h3{font-family:'Bebas Neue',sans-serif; text-transform:uppercase; margin:0}
+.mono{font-family:'Chivo Mono',monospace}
+.label{font-family:'Chivo Mono',monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-faint)}
+
+/* ===== Page chrome (mockup framing, not product) ===== */
+.pagehead{max-width:1080px; margin:0 auto; padding:32px 24px 20px; border-bottom:1px solid var(--line)}
+.pagehead .brand{font-family:'Pirata One',serif; font-size:17px; color:var(--ink-dim); margin-bottom:10px}
+.pagehead h1{font-size:32px; letter-spacing:0.01em}
+.pagehead p{color:var(--ink-dim); font-size:15px; line-height:1.6; max-width:76ch; margin:10px 0 0}
+.pagehead .contract{color:var(--ink-faint); font-size:13px; margin-top:6px}
+
+.controls{
+  position:sticky; top:0; z-index:40; background:rgba(5,5,6,0.94); backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line); padding:12px 24px; display:flex; gap:20px; flex-wrap:wrap; align-items:center;
+}
+.controls .group{display:flex; align-items:center; gap:8px}
+.controls .group .label{margin-right:2px}
+.pill-switch{display:inline-flex; gap:6px; padding:4px; background:var(--panel2); border:1px solid var(--line-soft); border-radius:999px}
+.pill-switch button{
+  font-family:'Chivo Mono',monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase;
+  color:var(--ink-dim); background:transparent; border:none; border-radius:999px; padding:7px 14px; cursor:pointer;
+}
+.pill-switch button.on{background:var(--purple); color:#fff}
+
+section.block{max-width:1080px; margin:0 auto; padding:40px 24px; border-bottom:1px solid var(--line)}
+section.block:last-of-type{border-bottom:none}
+section.block h2{font-size:24px; letter-spacing:0.02em; margin-bottom:4px}
+section.block .sub{color:var(--ink-faint); font-size:13px; margin-bottom:24px; max-width:76ch; line-height:1.6}
+
+/* ===== ToolsDock context (unchanged, plus the new 4th button) ===== */
+.dock{display:flex; gap:8px; max-width:420px}
+.dockbtn{
+  flex:1; aspect-ratio:1; min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:4px; border-radius:8px; border:1px solid var(--line-soft); background:var(--panel); color:var(--ink-dim); cursor:pointer;
+}
+.dockbtn.active{border-color:var(--purple); color:var(--ink); box-shadow:0 0 0 1px rgba(155,92,255,.35)}
+.dockbtn svg{width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+.dockbtn .dlabel{font-family:'Chivo Mono',monospace; font-size:11px}
+
+/* ===== Overlay shell — matches Overlay.tsx exactly (backdrop, header row, Close · Esc) ===== */
+.overlay-backdrop{
+  position:relative; margin-top:24px; border-radius:16px; overflow:hidden;
+  background:rgba(5,5,6,0.75); backdrop-filter:blur(4px); padding:24px;
+  border:1px dashed var(--line-hover);
+}
+.overlay-note{font-family:'Chivo Mono',monospace; font-size:11px; color:var(--ink-faint); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.06em}
+.panel{
+  width:100%; max-width:1200px; margin:0 auto; display:flex; flex-direction:column;
+  background:var(--panel); border:1px solid var(--line); border-radius:16px; max-height:82vh; overflow:hidden;
+}
+.panel-head{
+  display:flex; align-items:baseline; justify-content:space-between; gap:16px;
+  border-bottom:1px solid var(--line-soft); padding:20px 24px 14px;
+}
+.panel-head h2{font-size:26px}
+.closebtn{
+  font-family:'Chivo Mono',monospace; font-size:12px; text-transform:uppercase; letter-spacing:0.06em;
+  color:var(--ink-faint); border:1px solid var(--line); border-radius:8px; padding:0 12px; min-height:40px;
+  display:inline-flex; align-items:center; flex-shrink:0; background:transparent; cursor:pointer;
+}
+.closebtn:hover{border-color:var(--line-hover); color:var(--ink)}
+.panel-body{padding:16px 24px 24px; overflow-y:auto}
+
+/* World-overlay-specific tab bar (NPCs / Factions / Treasure) */
+.worldtabs{display:flex; gap:6px; padding:4px; background:var(--panel2); border:1px solid var(--line-soft); border-radius:10px; margin-bottom:20px; width:fit-content}
+.worldtabs button{
+  font-family:'Chivo Mono',monospace; font-size:12px; letter-spacing:0.05em; text-transform:uppercase; font-weight:600;
+  color:var(--ink-dim); background:transparent; border:none; border-radius:7px; padding:9px 16px; cursor:pointer;
+}
+.worldtabs button.on{background:var(--purple); color:#fff}
+.worldtabs .count{opacity:0.7; font-weight:400; margin-left:4px}
+
+[data-tab-panel]{display:none}
+[data-tab-panel].on{display:block}
+
+/* ===== NPC card ===== */
+.npc-grid{display:flex; flex-direction:column; gap:10px}
+.npc-card{background:var(--panel2); border:1px solid var(--line-soft); border-radius:16px; padding:16px}
+.npc-top{display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap}
+.npc-name{font-family:'Instrument Sans',sans-serif; font-size:16px; font-weight:600; text-transform:none; color:var(--ink)}
+.status-chip{
+  font-family:'Chivo Mono',monospace; font-size:10.5px; letter-spacing:0.05em; text-transform:uppercase;
+  display:inline-flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--line-soft);
+  border-radius:999px; padding:3px 10px 3px 8px; color:var(--ink-dim); flex-shrink:0;
+}
+.status-chip .dot{width:7px; height:7px; border-radius:99px}
+.status-alive .dot{background:var(--green)}
+.status-deceased .dot{background:var(--ink-faint)}
+.status-captured .dot{background:var(--orange)}
+.npc-role{font-size:13px; color:var(--ink-dim); margin-top:2px}
+.npc-meta-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+.meta-chip{
+  font-family:'Chivo Mono',monospace; font-size:10.5px; color:var(--ink-faint); background:var(--panel);
+  border:1px solid var(--line-soft); border-radius:999px; padding:3px 10px;
+}
+.meta-chip.hireling{color:var(--cyan); border-color:rgba(53,240,255,0.3)}
+.npc-summary{font-size:13.5px; line-height:1.65; color:var(--ink-dim); margin-top:10px; max-width:78ch}
+
+/* GM-only stat block — shown/hidden entirely by the role switcher, not just dimmed,
+   matching NpcCard's real behavior: a player's own listNpcStatBlock() call returns
+   null (RLS-filtered), so a player build of this component has nothing to render
+   here at all — this isn't a permission *veil*, the data genuinely isn't there. */
+.gm-block{
+  margin-top:12px; padding:12px 14px; background:var(--panel); border:1px solid rgba(155,92,255,0.25);
+  border-radius:12px;
+}
+.gm-block .gm-label{
+  font-family:'Chivo Mono',monospace; font-size:10px; letter-spacing:0.08em; text-transform:uppercase;
+  color:var(--purple); margin-bottom:8px; display:flex; align-items:center; gap:6px;
+}
+.gm-stats{display:flex; gap:18px; flex-wrap:wrap; font-family:'Chivo Mono',monospace; font-size:12.5px}
+.gm-stats .stat{color:var(--ink)}
+.gm-stats .stat .k{color:var(--ink-faint); margin-right:5px}
+.gm-attacks{margin-top:8px; font-size:12.5px; color:var(--ink-dim)}
+.gm-attacks .k{font-family:'Chivo Mono',monospace; font-size:10px; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-faint); display:block; margin-bottom:3px}
+.gm-notes{margin-top:6px; font-size:12.5px; color:var(--ink-faint); font-style:italic}
+body[data-role="player"] .gm-block{display:none}
+
+/* ===== Faction card ===== */
+.faction-grid{display:flex; flex-direction:column; gap:12px}
+.faction-card{background:var(--panel2); border:1px solid var(--line-soft); border-radius:16px; padding:18px}
+.faction-top{display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap}
+.faction-name{font-size:19px; letter-spacing:0.01em}
+.disposition-chip{
+  font-family:'Chivo Mono',monospace; font-size:10.5px; letter-spacing:0.05em; text-transform:uppercase;
+  display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:3px 10px 3px 8px;
+  border:1px solid var(--line-soft); background:var(--panel); color:var(--ink-dim);
+}
+.disposition-chip .dot{width:7px; height:7px; border-radius:99px}
+.disposition-allied .dot{background:var(--green)}
+.disposition-hostile .dot{background:var(--red)}
+.faction-type{font-family:'Chivo Mono',monospace; font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.05em; margin-top:4px}
+.faction-fields{display:grid; grid-template-columns:1fr 1fr; gap:10px 24px; margin-top:14px}
+.faction-fields .field .k{font-family:'Chivo Mono',monospace; font-size:10px; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-faint); margin-bottom:3px}
+.faction-fields .field .v{font-size:13.5px; color:var(--ink-dim); line-height:1.5}
+.faction-notes{margin-top:14px; padding-top:14px; border-top:1px solid var(--line-soft); font-size:13px; color:var(--ink-faint); line-height:1.6}
+@media (max-width:640px){.faction-fields{grid-template-columns:1fr}}
+
+/* ===== Treasure row ===== */
+.treasure-list{display:flex; flex-direction:column; gap:2px; background:#08080a; border:1px solid var(--line-soft); border-radius:14px; padding:8px}
+.treasure-row{display:grid; grid-template-columns:1.6fr 1fr 1.2fr 0.9fr; gap:14px; align-items:start; padding:12px 12px; border-radius:10px}
+.treasure-row:hover{background:var(--panel2)}
+.t-name{font-size:13.5px; font-weight:600; color:var(--ink)}
+.t-category{font-family:'Chivo Mono',monospace; font-size:10.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.04em; margin-top:2px}
+.t-qty{font-family:'Chivo Mono',monospace; font-size:12.5px; color:var(--ink-dim)}
+.t-where{font-size:12.5px; color:var(--ink-dim); line-height:1.5}
+.t-where .who{color:var(--ink)}
+.t-status-cell{display:flex; justify-content:flex-end}
+.tstatus-chip{
+  font-family:'Chivo Mono',monospace; font-size:10px; letter-spacing:0.04em; text-transform:uppercase;
+  border-radius:999px; padding:3px 10px; border:1px solid var(--line-soft); background:var(--panel); color:var(--ink-dim); white-space:nowrap;
+}
+.tstatus-held{color:var(--green); border-color:rgba(57,255,143,0.3)}
+.tstatus-pending{color:var(--yellow); border-color:rgba(255,210,63,0.3)}
+.tstatus-lead{color:var(--ink-faint)}
+.tstatus-secured{color:var(--cyan); border-color:rgba(53,240,255,0.3)}
+.tstatus-contained{color:var(--orange); border-color:rgba(255,138,61,0.3)}
+.t-notes{grid-column:1/-1; margin-top:4px; font-size:12px; color:var(--ink-faint); line-height:1.55; max-width:82ch}
+.treasure-head-row{display:grid; grid-template-columns:1.6fr 1fr 1.2fr 0.9fr; gap:14px; padding:0 12px 8px; font-family:'Chivo Mono',monospace; font-size:10px; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-faint)}
+@media (max-width:760px){
+  .treasure-row, .treasure-head-row{grid-template-columns:1fr; gap:4px}
+  .t-status-cell{justify-content:flex-start; margin-top:4px}
+  .treasure-head-row{display:none}
+}
+
+.tool-note{border:1px dashed var(--line); border-radius:12px; padding:14px 16px; margin-top:20px; color:var(--ink-faint); font-size:13px; line-height:1.6}
+.tool-note b{color:var(--ink-dim)}
+footer{max-width:1080px; margin:0 auto; padding:32px 24px; color:var(--ink-faint); font-size:12px}
+</style>
+</head>
+<body data-role="gm">
+
+<div class="pagehead">
+  <div class="brand">Grimoire</div>
+  <h1>Slice 9 — World Overlay: NPCs / Factions / Treasure</h1>
+  <p>Surfaces the 17 NPCs, 2 factions, and 13 treasure items already imported from The Black Road with no UI today.
+     Same <code class="mono">Overlay</code>-wraps-a-domain-component shape as Maps, opened from a new 4th
+     <code class="mono">ToolsDock</code> button (the already-unused <code class="mono">world</code>/Globe icon).
+     Content below is real data pulled live from the campaign, not placeholder text — same rule the Maps and Check
+     Card mockups followed.</p>
+  <p class="contract">GM-only stat blocks: NPC combat stats live in a separate <code class="mono">npc_stat_blocks</code>
+     table behind RLS (migration <code class="mono">npc_stat_blocks_gm_only</code>, applied). Use the Viewer switch
+     below to see the exact difference — as GM, three hirelings (Rowan Pike, Miri Sedge, Hester Crowe) show a stat
+     block; as Player, that section doesn't render at all, because <code class="mono">listNpcStatBlock()</code>
+     genuinely gets nothing back for a non-owner, not because the UI is hiding something it has.</p>
+</div>
+
+<div class="controls">
+  <div class="group">
+    <span class="label">Viewer</span>
+    <div class="pill-switch" id="roleSwitch">
+      <button data-role="gm" class="on">GM</button>
+      <button data-role="player">Player</button>
+    </div>
+  </div>
+</div>
+
+<section class="block">
+  <h2>Entry point — ToolsDock</h2>
+  <p class="sub">The 4th dock button, reusing the <code class="mono">world</code> icon (Globe) that's existed unused
+     in <code class="mono">Icon.tsx</code> since the visual-reconciliation pass. Sits after Roll, same
+     <code class="mono">DockButton</code> shape as Maps/Rules/Roll.</p>
+  <div class="dock">
+    <div class="dockbtn"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><path d="M3 14h7v7H3zM14 14l7 7M21 14l-7 7"/></svg><span class="dlabel">Maps</span></div>
+    <div class="dockbtn"><svg viewBox="0 0 24 24"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 0 4 22.5V4.5Z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg><span class="dlabel">Rules</span></div>
+    <div class="dockbtn"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1" fill="currentColor"/><circle cx="16" cy="16" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg><span class="dlabel">Roll</span></div>
+    <div class="dockbtn active"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2c2.5 2.7 4 6.3 4 10s-1.5 7.3-4 10c-2.5-2.7-4-6.3-4-10s1.5-7.3 4-10Z"/></svg><span class="dlabel">World</span></div>
+  </div>
+</section>
+
+<section class="block">
+  <h2>The World overlay</h2>
+  <p class="sub">Opened, showing the NPCs tab. Toggle the tabs to see Factions and Treasure; toggle Viewer above to
+     compare GM vs Player.</p>
+
+  <div class="overlay-backdrop">
+    <div class="overlay-note">— overlay chrome below, dimmed background implied —</div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>World</h2>
+        <button class="closebtn">Close · Esc</button>
+      </div>
+      <div class="panel-body">
+
+        <div class="worldtabs" id="worldTabs">
+          <button data-tab="npcs" class="on">NPCs <span class="count">17</span></button>
+          <button data-tab="factions">Factions <span class="count">2</span></button>
+          <button data-tab="treasure">Treasure <span class="count">13</span></button>
+        </div>
+
+        <!-- ===================== NPCS ===================== -->
+        <div data-tab-panel="npcs" class="on">
+          <div class="npc-grid">
+
+            <div class="npc-card">
+              <div class="npc-top"><span class="npc-name">Mara Venn</span><span class="status-chip status-alive"><span class="dot"></span>Alive</span></div>
+              <div class="npc-role">Tavern keeper of The Bent Nail</div>
+              <div class="npc-meta-row"><span class="meta-chip">📍 The Bent Nail, Dreg's Ford</span><span class="meta-chip">Curious</span></div>
+              <p class="npc-summary">Says the missing iron-bound coffer belongs to her. Agreed to pay Kimbo 10 gp for recovering it and 5 gp for Orren's courier ledger (paid). Confessed under Kimbo's Charisma 22 that the coffer holds a 40 gp Black Hart "widow's tithe" extorted annually by Maela because her late husband Toman once carried messages for the order; Maela threatened her staff. Will testify against Maela and permits Halric to inventory the coffer before its return.</p>
+            </div>
+
+            <div class="npc-card">
+              <div class="npc-top"><span class="npc-name">Orren Vey</span><span class="status-chip status-deceased"><span class="dot"></span>Deceased</span></div>
+              <div class="npc-role">Professional road courier</div>
+              <div class="npc-meta-row"><span class="meta-chip">📍 Shrine of the Nine (remains, root-cellar crypt)</span></div>
+              <p class="npc-summary">Missing courier carrying an iron-bound coffer, sealed message, and a sword bearing the Order of the Black Hart's insignia. Body recovered; murdered five days prior by a blood-draining hollow needle, then used as Sir Aldren Myre's vessel. During the Rite of the Last Ember he named his killer as Maela Rusk, explained her motive, requested burial beside his mother, and revealed a hidden letter for his sister Lysa Vey. His spirit has passed beyond the sword's reach.</p>
+            </div>
+
+            <div class="npc-card">
+              <div class="npc-top"><span class="npc-name">Halric Dain</span><span class="status-chip status-alive"><span class="dot"></span>Alive</span></div>
+              <div class="npc-role">Reeve of Dreg's Ford</div>
+              <div class="npc-meta-row"><span class="meta-chip">📍 Reeve's Hall</span><span class="meta-chip">Exceptionally helpful on first meeting</span></div>
+              <p class="npc-summary">Claims the sealed message belongs to his office. Agreement with Kimbo: 12 gp for recovering it, plus temporary chainmail and scout Rowan Pike (Kimbo must not open the message himself). Message was sent by Magistrate Elara Voss; gray waxed-cloth packet, black cord, blue-black raven-and-broken-crown seal, countermark FEN-7. Issued a lawful warrant for Maela Rusk after the FEN-7 register proved she signed it out under a false claim of his authority.</p>
+            </div>
+
+            <div class="npc-card">
+              <div class="npc-top"><span class="npc-name">Rowan Pike</span><span class="status-chip status-alive"><span class="dot"></span>Alive</span></div>
+              <div class="npc-role">Town scout and pathfinder under Reeve Halric Dain</div>
+              <div class="npc-meta-row"><span class="meta-chip">📍 Dreg's Ford</span><span class="meta-chip">Cautious but respectful</span><span class="meta-chip hireling">Hireling · town-assigned wage</span></div>
+              <p class="npc-summary">Assigned to accompany Kimbo on the official recovery of Halric's sealed message. Skilled at trail signs, navigation, and moving quietly. After the spider-pit encounter, remains under town assignment but refuses to return to the pit until Maela is located or contained unless Kimbo persuades her otherwise.</p>
+              <div class="gm-block">
+                <div class="gm-label">⛨ GM only — stat block</div>
+                <div class="gm-stats"><span class="stat"><span class="k">AC</span>12</span><span class="stat"><span class="k">HP</span>4/4</span></div>
+                <div class="gm-attacks"><span class="k">Attacks</span>Shortbow +2 (1d4) · Dagger +2 (1d4)</div>
+              </div>
+            </div>
+
+            <div class="npc-card">
+              <div class="npc-top"><span class="npc-name">Aster Vale</span><span class="status-chip status-alive"><span class="dot"></span>Alive</span></div>
+              <div class="npc-role">Caretaker and lay attendant at the Shrine of the Nine</div>
+              <div class="npc-meta-row"><span class="meta-chip">📍 Shrine of the Nine, Dreg's Ford</span><span class="meta-chip">Neutral and attentive on first meeting</span></div>
+              <p class="npc-summary">Receives petitions, offerings, oaths, and healing/blessing requests for the shrine. Authorized the Rite of the Last Ember (result 22) after Kimbo vowed to pursue Orren's killer and return his remains for burial.</p>
+            </div>
+
+            <div class="npc-card">
+              <div class="npc-top"><span class="npc-name">Edda Quill</span><span class="status-chip status-alive"><span class="dot"></span>Alive</span></div>
+              <div class="npc-role">Local historian</div>
+              <div class="npc-meta-row"><span class="meta-chip">📍 Dreg's Ford (records annex, Reeve's Hall)</span><span class="meta-chip">Reacted irritably on first meeting</span></div>
+              <p class="npc-summary">Identified the sword's insignia as the extinct Order of the Black Hart. Accepted contract: 8 gp to examine the recovered sword (paid), loan of a Black Hart handling kit, identification and curse research, and free protective-relic research after Kimbo's Charisma 20. Identified the sword as Road's Memory, cursed via Sir Aldren Myre's bone shard in the pommel reliquary, and located the Hartguard Gorget lead in the Bell-Keeper's Ossuary beneath Drowned Bell Weir (natural 20/23 result).</p>
+            </div>
+
+            <div class="npc-card">
+              <div class="npc-top"><span class="npc-name">Maela Rusk</span><span class="status-chip status-captured"><span class="dot"></span>Captured</span></div>
+              <div class="npc-role">Courier-master of Dreg's Ford</div>
+              <div class="npc-meta-row"><span class="meta-chip">📍 Captured — town custody</span></div>
+              <p class="npc-summary">Orren's spirit identified her as his killer — stabbed him with a hollow black needle to intercept Voss's message exposing her as a Black Hart servant, and to create a vessel for Sir Aldren Myre. Fled after the murder; the FEN-7 register and a trapped document box corroborated the accusation. Captured alive at Drowned Bell Weir (Kimbo's Charisma 22) attempting to meet "the Ferryman." Confessed under bluffs (CHA 20, then a natural 20/23): admitted the murder, seal theft, dispatch substitution, tithe extortion, and named "the Castellan" — Captain Varek Skane, Kimbo's former commander — as the one who ordered Kimbo marooned.</p>
+            </div>
+
+            <div class="npc-card">
+              <div class="npc-top"><span class="npc-name">Dren Tal</span><span class="status-chip status-captured"><span class="dot"></span>Captured</span></div>
+              <div class="npc-role">The Black Hart agent called "the Ferryman"; formerly a licensed river guide, officially believed drowned eight years ago</div>
+              <div class="npc-meta-row"><span class="meta-chip">📍 Captured — town custody, held separately from Maela</span></div>
+              <p class="npc-summary">Captured alive with Maela at Drowned Bell Weir. Cooperated (Kimbo's result 21, no immunity promised): identified his riverside cache beneath the third stone step of the abandoned river customs house, explained the Bell-Warden bone-whistle command, and warned of a blind broodmother plus at least two pale spiders in the charcoal pit. Confirmed Varek Skane is living, not undead, and seeks Road's Memory and the Hartguard Gorget to awaken the Black Hart knights buried beneath Myre Castle.</p>
+            </div>
+
+            <div class="npc-card">
+              <div class="npc-top"><span class="npc-name">Captain Varek Skane</span><span class="status-chip status-alive"><span class="dot"></span>Alive</span></div>
+              <div class="npc-role">Former captain of the Black Wake; alleged living Castellan of the restored Black Hart at Myre Castle</div>
+              <div class="npc-meta-row"><span class="meta-chip">📍 Myre Castle (unconfirmed)</span><span class="meta-chip">Not yet met</span></div>
+              <p class="npc-summary">Kimbo's former commander. Per Dren, condemned Kimbo after Kimbo refused to help kill surrendered prisoners at Red Shoal and struck Varek to stop it; Maela says Varek signed the order to stab and maroon Kimbo. Tall, broad, black plate with a silver-split stag, clouded left eye, badly burned weak left hand. Seeks Road's Memory and the Hartguard Gorget for a rite to awaken the Black Hart knights buried beneath Myre Castle. Dren believes he doesn't yet know Kimbo survived.</p>
+            </div>
+
+            <div class="npc-card">
+              <div class="npc-top"><span class="npc-name">Pell</span><span class="status-chip status-alive"><span class="dot"></span>Alive</span></div>
+              <div class="npc-role">Grave-robber</div>
+              <div class="npc-meta-row"><span class="meta-chip">📍 Usually around The Bent Nail</span><span class="meta-chip">Neutral and willing to talk if indulged</span></div>
+              <p class="npc-summary">Claimed Orren was already dead — cold, breathless, bloodstained, speaking in a doubled voice — before entering the Black Road. Admitted trying to rob Orren and surrendered a torn brass courier button as evidence (partially corroborated by Miri's examination). Bought a drink for 1 sp after questioning; unverified beyond the partial corroboration.</p>
+            </div>
+
+            <div class="npc-card">
+              <div class="npc-top"><span class="npc-name">Jessa Morn</span><span class="status-chip status-alive"><span class="dot"></span>Alive</span></div>
+              <div class="npc-role">North Palisade gate guard</div>
+              <div class="npc-meta-row"><span class="meta-chip">📍 North Palisade Gate, Dreg's Ford</span><span class="meta-chip">Neutral and cooperative</span></div>
+              <p class="npc-summary">Held the night watch when Orren departed. Confirmed he presented a valid courier badge, carried all known cargo, moved stiffly, didn't answer her greeting, and caused the gate dog to whine and retreat. No one else used the gate within the following hour.</p>
+            </div>
+
+            <div class="npc-card">
+              <div class="npc-top"><span class="npc-name">Nella Fen</span><span class="status-chip status-alive"><span class="dot"></span>Alive</span></div>
+              <div class="npc-role">Herbalist and healer</div>
+              <div class="npc-meta-row"><span class="meta-chip">📍 Nella Fen's Remedies</span><span class="meta-chip">Exceptionally helpful and immediately concerned on first meeting</span></div>
+              <p class="npc-summary">Provides medical supplies and recommended apprentice healer Miri Sedge, in exchange for Kimbo's promise not to abandon Miri and to recover ghostleaf. Prepared two spider-antitoxin doses for 4 gp (collected).</p>
+            </div>
+
+            <div class="npc-card">
+              <div class="npc-top"><span class="npc-name">Miri Sedge</span><span class="status-chip status-alive"><span class="dot"></span>Alive</span></div>
+              <div class="npc-role">Apprentice field healer under Nella Fen</div>
+              <div class="npc-meta-row"><span class="meta-chip">📍 Nella Fen's Remedies, Dreg's Ford</span><span class="meta-chip">Receptive but evaluating him carefully</span><span class="meta-chip hireling">Hireling · 1 gp/expedition day</span></div>
+              <p class="npc-summary">Agreed to accompany Kimbo and Rowan; will collect three intact ghostleaf sprigs if safely encountered. After the spider-pit encounter, will help in town but is currently too shaken to return to the pit without reassurance or stronger safety preparations (two antitoxins, fire for the webs, a secured rope descent, a disciplined formation, and a mandatory retreat plan).</p>
+              <div class="gm-block">
+                <div class="gm-label">⛨ GM only — stat block</div>
+                <div class="gm-stats"><span class="stat"><span class="k">AC</span>11</span><span class="stat"><span class="k">HP</span>4/4</span></div>
+                <div class="gm-attacks"><span class="k">Attacks</span>Dagger +0 (1d4)</div>
+                <div class="gm-notes">Stabilization checks with advantage.</div>
+              </div>
+            </div>
+
+            <div class="npc-card">
+              <div class="npc-top"><span class="npc-name">Tobin Reed</span><span class="status-chip status-alive"><span class="dot"></span>Alive</span></div>
+              <div class="npc-role">Porter, lamplighter, and expedition hand</div>
+              <div class="npc-meta-row"><span class="meta-chip">📍 Usually works near the River Gate; not yet met</span><span class="meta-chip hireling">Hireling · expected 1 gp/expedition day</span></div>
+              <p class="npc-summary">Potential recruit — carries expedition gear, manages torches and lanterns, packs camps, avoids combat. Not yet recruited.</p>
+            </div>
+
+            <div class="npc-card">
+              <div class="npc-top"><span class="npc-name">Hester Crowe</span><span class="status-chip status-alive"><span class="dot"></span>Alive</span></div>
+              <div class="npc-role">Veteran caravan guard</div>
+              <div class="npc-meta-row"><span class="meta-chip">📍 Usually found at The Bent Nail</span><span class="meta-chip">Respectful but watchful, after Kimbo convinced her he's trying to atone</span><span class="meta-chip hireling">Hireling · 3 gp/expedition day</span></div>
+              <p class="npc-summary">Recruited veteran guard. Willing to continue under the existing terms after the spider-pit encounter (result 8).</p>
+              <div class="gm-block">
+                <div class="gm-label">⛨ GM only — stat block</div>
+                <div class="gm-stats"><span class="stat"><span class="k">AC</span>14</span><span class="stat"><span class="k">HP</span>6/6</span></div>
+                <div class="gm-attacks"><span class="k">Attacks</span>Spear +3 (1d6)</div>
+                <div class="gm-notes">Once per round before a melee attack is rolled against a close ally, may interpose and become the target instead.</div>
+              </div>
+            </div>
+
+            <div class="npc-card">
+              <div class="npc-top"><span class="npc-name">Brannic Coal</span><span class="status-chip status-alive"><span class="dot"></span>Alive</span></div>
+              <div class="npc-role">Smith</div>
+              <div class="npc-meta-row"><span class="meta-chip">📍 The Crooked Buckle</span><span class="meta-chip">Businesslike and neutral</span></div>
+              <p class="npc-summary">Sells and repairs mundane weapons and armor (leather 10 gp, chainmail 60 gp, plate by order 130 gp, shields 10 gp). Sent nothing with Orren Vey and claims no recovery fee or property.</p>
+            </div>
+
+            <div class="npc-card">
+              <div class="npc-top"><span class="npc-name">Tamsin Latch</span><span class="status-chip status-alive"><span class="dot"></span>Alive</span></div>
+              <div class="npc-role">Locksmith, appraiser, and recovery broker</div>
+              <div class="npc-meta-row"><span class="meta-chip">📍 Latch &amp; Ledger</span><span class="meta-chip">Cautiously favorable — views Kimbo as a potential preferred client</span></div>
+              <p class="npc-summary">Opens, identifies, and assesses recovered mundane property; gets first opportunity to inspect and bid on Kimbo's genuinely unclaimed recoveries (no obligation to accept). Opened Maela's trapped document box (18) and later the confiscated-property inventory (22, disabling a poison needle) under Halric's warrant, town paying her fee.</p>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ===================== FACTIONS ===================== -->
+        <div data-tab-panel="factions">
+          <div class="faction-grid">
+
+            <div class="faction-card">
+              <div class="faction-top">
+                <span class="faction-name">Dreg's Ford Reeve's Office</span>
+                <span class="disposition-chip disposition-allied"><span class="dot"></span>Allied</span>
+              </div>
+              <div class="faction-type">Civic authority</div>
+              <div class="faction-fields">
+                <div class="field"><div class="k">Leader</div><div class="v">Halric Dain</div></div>
+                <div class="field"><div class="k">Territory</div><div class="v">Dreg's Ford</div></div>
+                <div class="field"><div class="k">Goal</div><div class="v">Recover the sealed message; uphold law in town</div></div>
+                <div class="field"><div class="k">Status</div><div class="v">Active investigation into Maela Rusk</div></div>
+              </div>
+              <div class="faction-notes">Issued a lawful warrant for Maela Rusk after the FEN-7 register corroborated Orren's spirit testimony. Ownership and intended recipient of the sealed message remain unconfirmed pending Voss verification.</div>
+            </div>
+
+            <div class="faction-card">
+              <div class="faction-top">
+                <span class="faction-name">Order of the Black Hart</span>
+                <span class="disposition-chip disposition-hostile"><span class="dot"></span>Hostile</span>
+              </div>
+              <div class="faction-type">Extinct knightly order (apparently restored)</div>
+              <div class="faction-fields">
+                <div class="field"><div class="k">Leader</div><div class="v">Captain Varek Skane (alleged, as "the Castellan")</div></div>
+                <div class="field"><div class="k">Territory</div><div class="v">Myre Castle, the Gloaming (unconfirmed location)</div></div>
+                <div class="field"><div class="k">Goal</div><div class="v">Recover Road's Memory and the Hartguard Gorget to awaken the Black Hart knights buried beneath Myre Castle</div></div>
+                <div class="field"><div class="k">Status</div><div class="v">Active threat — Maela Rusk ("Rook") and Dren Tal ("the Ferryman") captured; Varek Skane's location and full strength unconfirmed</div></div>
+              </div>
+              <div class="faction-notes">Vanished over a century ago amid accusations of treason and grave-robbery (per Edda Quill). Orren carried a sword bearing its insignia.</div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ===================== TREASURE ===================== -->
+        <div data-tab-panel="treasure">
+          <div class="treasure-head-row"><span>Item</span><span>Quantity</span><span>Held by / Location</span><span style="text-align:right">Status</span></div>
+          <div class="treasure-list">
+
+            <div class="treasure-row">
+              <div><div class="t-name">Kimbo's coin</div><div class="t-category">Currency</div></div>
+              <div class="t-qty">20 gp 4 sp</div>
+              <div class="t-where"><span class="who">Kimbo Slice</span></div>
+              <div class="t-status-cell"><span class="tstatus-chip tstatus-held">Held</span></div>
+              <div class="t-notes">Current total after all Session 1 transactions.</div>
+            </div>
+
+            <div class="treasure-row">
+              <div><div class="t-name">Constantine's coin</div><div class="t-category">Currency</div></div>
+              <div class="t-qty">1 gp</div>
+              <div class="t-where"><span class="who">Constantine</span></div>
+              <div class="t-status-cell"><span class="tstatus-chip tstatus-held">Held</span></div>
+              <div class="t-notes">Personal funds; not in current play.</div>
+            </div>
+
+            <div class="treasure-row">
+              <div><div class="t-name">LaLa's coin</div><div class="t-category">Currency</div></div>
+              <div class="t-qty">16 gp</div>
+              <div class="t-where"><span class="who">LaLa</span></div>
+              <div class="t-status-cell"><span class="tstatus-chip tstatus-held">Held</span></div>
+              <div class="t-notes">Personal funds; not in current play.</div>
+            </div>
+
+            <div class="treasure-row">
+              <div><div class="t-name">Road's Memory (Black Hart sword)</div><div class="t-category">Relic weapon</div></div>
+              <div class="t-qty">1</div>
+              <div class="t-where"><span class="who">Edda Quill</span> — Warded iron chest, Reeve's Hall</div>
+              <div class="t-status-cell"><span class="tstatus-chip tstatus-contained">Contained</span></div>
+              <div class="t-notes">Cursed — anchored to Sir Aldren Myre's bone shard sealed inside the pommel reliquary. Do not draw, wield, break, or casually open the reliquary. Varek Skane wants it recovered.</div>
+            </div>
+
+            <div class="treasure-row">
+              <div><div class="t-name">Hartguard Gorget</div><div class="t-category">Relic</div></div>
+              <div class="t-qty">1</div>
+              <div class="t-where">Bell-Keeper's Ossuary beneath Drowned Bell Weir (behind four concealed Hart nails)</div>
+              <div class="t-status-cell"><span class="tstatus-chip tstatus-lead">Lead only</span></div>
+              <div class="t-notes">Reputed to make stabilization checks on its dying wearer easy (DC 9 instead of DC 15).</div>
+            </div>
+
+            <div class="treasure-row">
+              <div><div class="t-name">The Iron-Bound Coffer (Mara Venn's)</div><div class="t-category">Container</div></div>
+              <div class="t-qty">1</div>
+              <div class="t-where">Charcoal pit beneath the bramble hollow</div>
+              <div class="t-status-cell"><span class="tstatus-chip tstatus-pending">Pending recovery</span></div>
+              <div class="t-notes">Contains a 40 gp Black Hart "widow's tithe" per Mara's confession. Owed to Mara on recovery (10 gp recovery fee already agreed).</div>
+            </div>
+
+            <div class="treasure-row">
+              <div><div class="t-name">The Sealed Message (Halric's)</div><div class="t-category">Document</div></div>
+              <div class="t-qty">1</div>
+              <div class="t-where">Charcoal pit beneath the bramble hollow</div>
+              <div class="t-status-cell"><span class="tstatus-chip tstatus-pending">Pending recovery</span></div>
+              <div class="t-notes">Gray waxed-cloth packet from Magistrate Elara Voss, blue-black wax seal, countermark FEN-7. 12 gp owed to Halric on recovery.</div>
+            </div>
+
+            <div class="treasure-row">
+              <div><div class="t-name">Maela Rusk's confiscated packet and pack</div><div class="t-category">Evidence</div></div>
+              <div class="t-qty">1 packet, 1 pack</div>
+              <div class="t-where"><span class="who">Reeve's Hall</span> (evidence)</div>
+              <div class="t-status-cell"><span class="tstatus-chip tstatus-secured">Secured</span></div>
+              <div class="t-notes">Packet held Voss's true opened warning naming Maela and identifying Dren Tal. Pack held a Black Hart tithe ledger, river-route map, 9 gp 7 sp, two dark-reagent vials, travel gear, and a dagger.</div>
+            </div>
+
+            <div class="treasure-row">
+              <div><div class="t-name">Dren Tal's confiscated pack</div><div class="t-category">Evidence</div></div>
+              <div class="t-qty">1 pack</div>
+              <div class="t-where"><span class="who">Reeve's Hall</span> (evidence)</div>
+              <div class="t-status-cell"><span class="tstatus-chip tstatus-secured">Secured</span></div>
+              <div class="t-notes">River tools, rope, 15 sp, a bone whistle (commands the Bell-Warden once), a Black Hart token, and a key to Dren's riverside cache.</div>
+            </div>
+
+            <div class="treasure-row">
+              <div><div class="t-name">Dren's riverside cache</div><div class="t-category">Lead</div></div>
+              <div class="t-qty">unknown</div>
+              <div class="t-where">Beneath the third stone step of the abandoned river customs house, downstream from Drowned Bell Weir</div>
+              <div class="t-status-cell"><span class="tstatus-chip tstatus-lead">Lead only</span></div>
+              <div class="t-notes">Allegedly contains Captain Varek Skane's signed order against Kimbo, a route rubbing toward Myre, and Dren's reserve money. Trap warning: turning the key normally collapses the step into the river.</div>
+            </div>
+
+            <div class="treasure-row">
+              <div><div class="t-name">Orren Vey's sealed burial token</div><div class="t-category">Document</div></div>
+              <div class="t-qty">1</div>
+              <div class="t-where"><span class="who">Kimbo Slice</span></div>
+              <div class="t-status-cell"><span class="tstatus-chip tstatus-held">Held</span></div>
+              <div class="t-notes">Received from the Shrine of the Nine after Orren's remains were placed on the consecrated bier. To be used when the investigation concludes and Orren is buried beside his mother.</div>
+            </div>
+
+            <div class="treasure-row">
+              <div><div class="t-name">Lysa Vey's sealed letter</div><div class="t-category">Document</div></div>
+              <div class="t-qty">1</div>
+              <div class="t-where"><span class="who">Kimbo Slice</span> — hidden inside his armor lining</div>
+              <div class="t-status-cell"><span class="tstatus-chip tstatus-held">Held, unopened</span></div>
+              <div class="t-notes">Orren's final unsent letter to his sister, recovered from behind his courier ledger's back cover. Not yet delivered.</div>
+            </div>
+
+            <div class="treasure-row">
+              <div><div class="t-name">Black Hart handling kit</div><div class="t-category">Gear</div></div>
+              <div class="t-qty">1 slot</div>
+              <div class="t-where"><span class="who">Kimbo Slice</span> — on loan from Edda Quill</div>
+              <div class="t-status-cell"><span class="tstatus-chip tstatus-secured">On loan</span></div>
+              <div class="t-notes">Grants advantage on checks to secure or transport Road's Memory without drawing or touching it. To be returned to Edda.</div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <h2>Open calls for the owner</h2>
+  <div class="tool-note">
+    <b>1. Faction/Treasure GM-secret split — deliberately NOT built.</b> Only <code class="mono">npcs.stat_block</code>
+    got the table-split treatment. Faction disposition/goal and treasure location/notes stay fully party-visible in
+    this pass — matching the scoping decision ("Hide stat_block from players now"), not a broader GM/player split
+    across every world table. Flag here if that's wrong and something in Factions/Treasure should also move behind
+    RLS.<br><br>
+    <b>2. NPC ordering.</b> <code class="mono">npcs</code> has no <code class="mono">sort_order</code> column (unlike
+    <code class="mono">quests</code>), so <code class="mono">listNpcs()</code> sorts by <code class="mono">created_at</code>
+    — i.e. import order, which happens to roughly follow the campaign's own chronology above. Worth a real sort key
+    later (e.g. by <code class="mono">status</code>, or a manual GM-set order) once NPC count grows past what
+    "introduced-in-order" comfortably represents.<br><br>
+    <b>3. Card component split.</b> This mockup shows NpcCard/FactionCard/TreasureRow as one visual family so the
+    three tabs read as one overlay — task #52 builds these as three separate components
+    (<code class="mono">NpcCard.tsx</code>, <code class="mono">FactionCard.tsx</code>, <code class="mono">TreasureRow.tsx</code>),
+    not one shared card, since their real field sets diverge (only NpcCard has a GM-only section; only Treasure is
+    row-shaped rather than card-shaped).
+  </div>
+</section>
+
+<footer>
+  Slice 9 mockup — tokens pulled live from app/src/index.css (Tailwind v4 <code class="mono">@theme</code>), overlay
+  chrome cross-checked against Overlay.tsx and MapsOverlay.tsx, ToolsDock row cross-checked against ToolsDock.tsx.
+  All NPC/Faction/Treasure content is real campaign data (The Black Road) queried live from Supabase, not placeholder
+  text. Stat-block figures for Rowan Pike / Miri Sedge / Hester Crowe are the real rows migrated into
+  <code class="mono">npc_stat_blocks</code>. No client code has been written for this slice yet — this file is the gate.
+</footer>
+
+<script>
+  const roleSwitch = document.getElementById('roleSwitch');
+  roleSwitch.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-role]');
+    if (!btn) return;
+    document.body.dataset.role = btn.dataset.role;
+    roleSwitch.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === btn));
+  });
+
+  const worldTabs = document.getElementById('worldTabs');
+  worldTabs.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-tab]');
+    if (!btn) return;
+    const tab = btn.dataset.tab;
+    worldTabs.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === btn));
+    document.querySelectorAll('[data-tab-panel]').forEach(panel => {
+      panel.classList.toggle('on', panel.dataset.tabPanel === tab);
+    });
+  });
+</script>
+
+</body>
+</html>

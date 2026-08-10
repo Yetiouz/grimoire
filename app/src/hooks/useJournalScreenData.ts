@@ -5,6 +5,8 @@ import { listCharacters } from '../lib/characters'
 import type { Character } from '../lib/characters'
 import { listQuests } from '../lib/quests'
 import type { Quest } from '../lib/quests'
+import { listFactions, listNpcStatBlocks, listNpcs, listTreasure } from '../lib/world'
+import type { Faction, Npc, NpcStatBlock, Treasure } from '../lib/world'
 
 /**
  * `JournalScreen`'s core data fetch — sessions, entries, characters,
@@ -22,26 +24,47 @@ import type { Quest } from '../lib/quests'
  * `react-hooks/set-state-in-effect` opt-out because that rule flags any
  * setState reachable from an effect-called function even past an
  * `await`, which it doesn't model.
+ *
+ * `npcs`/`factions`/`treasure`/`npcStatBlocks` added for BUILD_PLAN.md
+ * slice 9 (`WorldTabs`) — loaded alongside everything else here rather
+ * than lazily on first tab-open, since the Quest Log column is always
+ * visible (not opened on demand the way Maps/RulesChat are), so there's
+ * no "hasn't been opened yet" moment to defer the fetch to.
+ * `npcStatBlocks` is a `Map<npc_id, NpcStatBlock>` built from
+ * `listNpcStatBlocks`'s array return — `WorldTabs`/`NpcCard` want O(1)
+ * lookup per NPC row, not a linear `.find()` per card.
  */
 export function useJournalScreenData(campaignId: string) {
   const [sessions, setSessions] = useState<CampaignSession[] | null>(null)
   const [entries, setEntries] = useState<JournalEntry[] | null>(null)
   const [characters, setCharacters] = useState<Character[] | null>(null)
   const [quests, setQuests] = useState<Quest[] | null>(null)
+  const [npcs, setNpcs] = useState<Npc[] | null>(null)
+  const [factions, setFactions] = useState<Faction[] | null>(null)
+  const [treasure, setTreasure] = useState<Treasure[] | null>(null)
+  const [npcStatBlocks, setNpcStatBlocks] = useState<Map<string, NpcStatBlock>>(new Map())
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
-      const [sessionRows, entryRows, characterRows, questRows] = await Promise.all([
+      const [sessionRows, entryRows, characterRows, questRows, npcRows, factionRows, treasureRows, statBlockRows] = await Promise.all([
         listSessions(campaignId),
         listJournalEntries(campaignId),
         listCharacters(campaignId),
         listQuests(campaignId),
+        listNpcs(campaignId),
+        listFactions(campaignId),
+        listTreasure(campaignId),
+        listNpcStatBlocks(campaignId),
       ])
       setSessions(sessionRows)
       setEntries(entryRows)
       setCharacters(characterRows)
       setQuests(questRows)
+      setNpcs(npcRows)
+      setFactions(factionRows)
+      setTreasure(treasureRows)
+      setNpcStatBlocks(new Map(statBlockRows.map((row) => [row.npc_id, row])))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong loading the journal.')
     }
@@ -57,6 +80,7 @@ export function useJournalScreenData(campaignId: string) {
     entries, setEntries,
     characters, setCharacters,
     quests, setQuests,
+    npcs, factions, treasure, npcStatBlocks,
     error, setError,
     load,
   }

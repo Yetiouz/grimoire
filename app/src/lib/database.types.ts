@@ -657,6 +657,42 @@ export type Database = {
           },
         ]
       }
+      npc_stat_blocks: {
+        Row: {
+          campaign_id: string
+          npc_id: string
+          stat_block: Json
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          npc_id: string
+          stat_block: Json
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          npc_id?: string
+          stat_block?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "npc_stat_blocks_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "npc_stat_blocks_npc_id_fkey"
+            columns: ["npc_id"]
+            isOneToOne: true
+            referencedRelation: "npcs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       npcs: {
         Row: {
           attitude: string | null
@@ -668,7 +704,6 @@ export type Database = {
           location: string | null
           name: string
           role: string | null
-          stat_block: Json | null
           status: string
           summary: string
         }
@@ -682,7 +717,6 @@ export type Database = {
           location?: string | null
           name: string
           role?: string | null
-          stat_block?: Json | null
           status?: string
           summary?: string
         }
@@ -696,7 +730,6 @@ export type Database = {
           location?: string | null
           name?: string
           role?: string | null
-          stat_block?: Json | null
           status?: string
           summary?: string
         }

@@ -13,7 +13,7 @@ import { ALL_FILTER_KINDS } from '../../lib/journalFilters'
 import type { FilterKind } from '../../lib/journalFilters'
 import { JournalComposer } from './JournalComposer'
 import { PlayerCard } from './PlayerCard'
-import { QuestLogPanel } from './QuestLogPanel'
+import { WorldTabs } from './WorldTabs'
 import { MapsPanel } from './MapsPanel'
 import type { LogEntryKind } from '../ui/LogEntryRow'
 import type { GmTurnResult } from '../../lib/gm'
@@ -22,12 +22,19 @@ import type { GmCheck, ResolveSource } from '../../lib/checks'
 import type { CampaignSession } from '../../lib/campaigns'
 import type { Character } from '../../lib/characters'
 import type { Quest } from '../../lib/quests'
+import type { Faction, Npc, NpcStatBlock, Treasure } from '../../lib/world'
 
 interface MobileJournalViewProps {
   loading: boolean
   activeCharacter: Character | null
   characters: Character[]
   quests: Quest[]
+  /** BUILD_PLAN.md slice 9 (`WorldTabs`) — same data `JournalDesktopLayout`
+   * takes, threaded here for the Quests tab's now-tabbed content. */
+  npcs: Npc[]
+  factions: Faction[]
+  treasure: Treasure[]
+  npcStatBlocks: Map<string, NpcStatBlock>
   sessions: CampaignSession[]
   /** BOB_queue task 1: the already-merged, already-sorted feed — see
    * lib/feed.ts's buildFeed(). Was `entries: JournalEntry[]` before
@@ -72,11 +79,16 @@ const VIEW_TITLES: Record<MobileView, string> = {
   tools: 'Tools',
 }
 
+/** `world` dropped from this grid (2026-08-10, BUILD_PLAN.md slice 9 v2):
+ * it was a disabled stub pointing at a destination that didn't exist yet
+ * (the earlier separate-overlay plan for NPCs/Factions/Treasure). That
+ * destination now lives under the Quests tab's own tab row instead (see
+ * `WorldTabs`), so a second disabled tile pointing nowhere here would
+ * just be confusing — per the owner's call when this redirect happened. */
 const TOOL_TILES: Array<{ icon: IconName; label: string }> = [
   { icon: 'rules', label: 'Rules' },
   { icon: 'search', label: 'Search' },
   { icon: 'settings', label: 'Campaign' },
-  { icon: 'world', label: 'World' },
 ]
 
 function ToolTile({ icon, label, onClick }: { icon: IconName; label: string; onClick?: () => void }) {
@@ -139,6 +151,10 @@ export function MobileJournalView({
   activeCharacter,
   characters,
   quests,
+  npcs,
+  factions,
+  treasure,
+  npcStatBlocks,
   sessions,
   items,
   sessionOpen,
@@ -229,62 +245,75 @@ export function MobileJournalView({
         />
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {loading ? (
-          <SkeletonGroup label="Loading journal" className="gap-3 p-4">
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
-          </SkeletonGroup>
-        ) : activeView === null ? (
-          <div className="px-4 py-3">
-            <JournalFeed
-              items={items}
-              sessions={sessions}
-              filter={feedFilter}
-              onSaveAsNote={sessionOpen ? (item) => setNoteSeed({ body: item.body }) : undefined}
-              onResolveCheck={onResolveCheck}
-              resolvingCheckId={resolvingCheckId}
-            />
-          </div>
-        ) : activeView === 'party' ? (
-          <div className="flex flex-col gap-2 p-4">
-            {characters.length > 0 ? (
-              characters.map((character) => (
-                <PlayerCard key={character.id} character={character} onClick={() => onOpenCharacter(character)} />
-              ))
-            ) : (
-              <EmptyState icon="party" title="No party yet" description="Characters you add to this campaign show up here." />
-            )}
-          </div>
-        ) : activeView === 'quests' ? (
-          <div className="p-4">
-            {quests.length > 0 ? (
-              <QuestLogPanel quests={quests} />
-            ) : (
-              <EmptyState icon="quest" title="No quests yet" description="Quests logged for this campaign show up here." />
-            )}
-          </div>
-        ) : activeView === 'tools' ? (
-          <div className={cx('grid grid-cols-2 gap-3 p-4', text.label)}>
-            {TOOL_TILES.map((tile) => (
-              <ToolTile
-                key={tile.label}
-                {...tile}
-                onClick={tile.label === 'Rules' ? onOpenRules : undefined}
+      {/* Quests is pulled out of the shared scrolling wrapper below
+        * (2026-08-10, BUILD_PLAN.md slice 9 v2): `WorldTabs` pins its own
+        * tab row above its own internally-scrolling list — nesting that
+        * inside a second `overflow-y-auto` ancestor would leave the tab
+        * row with nothing bounding its height to pin against (a scrolling
+        * block, unlike a sized flex container, doesn't constrain a
+        * `flex-1` child), so the tab row would just scroll away with the
+        * body exactly like the old unbtabbed panel did. Giving it its own
+        * sibling slot here — a direct flex child of this component's own
+        * `flex flex-col` root — gives it the bounded height it needs. */}
+      {!loading && activeView === 'quests' ? (
+        <WorldTabs
+          quests={quests}
+          npcs={npcs}
+          factions={factions}
+          treasure={treasure}
+          npcStatBlocks={npcStatBlocks}
+          className="min-h-0 flex-1 px-4 pb-4 pt-3"
+        />
+      ) : (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {loading ? (
+            <SkeletonGroup label="Loading journal" className="gap-3 p-4">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+            </SkeletonGroup>
+          ) : activeView === null ? (
+            <div className="px-4 py-3">
+              <JournalFeed
+                items={items}
+                sessions={sessions}
+                filter={feedFilter}
+                onSaveAsNote={sessionOpen ? (item) => setNoteSeed({ body: item.body }) : undefined}
+                onResolveCheck={onResolveCheck}
+                resolvingCheckId={resolvingCheckId}
               />
-            ))}
-          </div>
-        ) : campaignId ? (
-          <div className="p-4">
-            <MapsPanel campaignId={campaignId} />
-          </div>
-        ) : (
-          <div className="p-4">
-            <EmptyState icon="map" title="Maps" description="Open a campaign to see its maps." />
-          </div>
-        )}
-      </div>
+            </div>
+          ) : activeView === 'party' ? (
+            <div className="flex flex-col gap-2 p-4">
+              {characters.length > 0 ? (
+                characters.map((character) => (
+                  <PlayerCard key={character.id} character={character} onClick={() => onOpenCharacter(character)} />
+                ))
+              ) : (
+                <EmptyState icon="party" title="No party yet" description="Characters you add to this campaign show up here." />
+              )}
+            </div>
+          ) : activeView === 'tools' ? (
+            <div className={cx('grid grid-cols-2 gap-3 p-4', text.label)}>
+              {TOOL_TILES.map((tile) => (
+                <ToolTile
+                  key={tile.label}
+                  {...tile}
+                  onClick={tile.label === 'Rules' ? onOpenRules : undefined}
+                />
+              ))}
+            </div>
+          ) : campaignId ? (
+            <div className="p-4">
+              <MapsPanel campaignId={campaignId} />
+            </div>
+          ) : (
+            <div className="p-4">
+              <EmptyState icon="map" title="Maps" description="Open a campaign to see its maps." />
+            </div>
+          )}
+        </div>
+      )}
 
       {activeView === null && (
         <div className="shrink-0 border-t border-line-soft bg-panel px-4 py-3">

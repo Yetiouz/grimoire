@@ -2,13 +2,12 @@ import { useState } from 'react'
 import { ColumnCard } from '../ui/ColumnCard'
 import { ErrorBanner } from '../ui/ErrorBanner'
 import { Skeleton, SkeletonGroup } from '../ui/Skeleton'
-import { text } from '../../lib/typography'
 import { JournalFeed } from './JournalFeed'
 import { JournalFilterBar } from './JournalFilterBar'
 import type { FilterKind } from '../../lib/journalFilters'
 import { JournalComposer } from './JournalComposer'
 import { PlayerCard } from './PlayerCard'
-import { QuestLogPanel } from './QuestLogPanel'
+import { WorldTabs } from './WorldTabs'
 import { ToolsDock } from './ToolsDock'
 import type { LogEntryKind } from '../ui/LogEntryRow'
 import type { FeedItem } from '../../lib/feed'
@@ -17,10 +16,19 @@ import type { GmTurnResult } from '../../lib/gm'
 import type { CampaignSession, JournalEntry } from '../../lib/campaigns'
 import type { Character } from '../../lib/characters'
 import type { Quest } from '../../lib/quests'
+import type { Faction, Npc, NpcStatBlock, Treasure } from '../../lib/world'
 
 interface JournalDesktopLayoutProps {
   characters: Character[] | null
   quests: Quest[] | null
+  /** BUILD_PLAN.md slice 9 (`WorldTabs`) — loaded alongside `quests` by
+   * `useJournalScreenData`, threaded straight through the same way
+   * `quests` already is. `npcStatBlocks` is empty for a non-owner viewer
+   * (RLS-filtered server-side); see `WorldTabs`' own doc comment. */
+  npcs: Npc[] | null
+  factions: Faction[] | null
+  treasure: Treasure[] | null
+  npcStatBlocks: Map<string, NpcStatBlock>
   sessions: CampaignSession[] | null
   entries: JournalEntry[] | null
   error: string | null
@@ -79,6 +87,10 @@ interface JournalDesktopLayoutProps {
 export function JournalDesktopLayout({
   characters,
   quests,
+  npcs,
+  factions,
+  treasure,
+  npcStatBlocks,
   sessions,
   entries,
   error,
@@ -178,18 +190,24 @@ export function JournalDesktopLayout({
         )}
       </ColumnCard>
 
-      {/* RIGHT: quest card — same shell, independent scroll. */}
-      {quests !== null && quests.length > 0 && (
-        <ColumnCard
-          headerLeft="Quest Log"
-          headerRight={
-            <span className={text.label}>
-              {quests.length} {quests.length === 1 ? 'Quest' : 'Quests'}
-            </span>
-          }
-          bodyClassName="gap-2"
-        >
-          <QuestLogPanel quests={quests} />
+      {/* RIGHT: Quest Log card — same shell, independent scroll. Slice 9
+        * v2 (2026-08-10, owner's redirect from a separate World overlay):
+        * NPCs/Factions/Treasure are three more tabs here rather than a
+        * second click-to-open surface — `WorldTabs` owns the tab row and
+        * the scrolling list as one self-contained unit; this card just
+        * gives it a bounded height to fill. The header's old "N Quests"
+        * count is gone rather than made tab-aware: it was a single-slot
+        * `headerRight` the parent controls, and `WorldTabs` owns tab
+        * state internally (see its own doc comment for why), so there's
+        * no clean way for this card to know which tab is active without
+        * lifting that state back out — not worth it for a count. Shown
+        * whenever any of the four lists has loaded, not gated on quests
+        * specifically being non-empty like the old quests-only panel
+        * was — a campaign with NPCs but no quests yet should still see
+        * this card. */}
+      {quests !== null && npcs !== null && factions !== null && treasure !== null && (
+        <ColumnCard headerLeft="Quest Log" bodyClassName="gap-0">
+          <WorldTabs quests={quests} npcs={npcs} factions={factions} treasure={treasure} npcStatBlocks={npcStatBlocks} className="min-h-0 flex-1" />
         </ColumnCard>
       )}
     </div>
