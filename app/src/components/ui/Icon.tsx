@@ -20,6 +20,7 @@ import {
   StickyNote,
   Users,
   Volume2,
+  VolumeX,
   X,
 } from 'lucide-react'
 import { cx } from '../../lib/cx'
@@ -68,6 +69,14 @@ import { cx } from '../../lib/cx'
  * `active` while speech is in progress rather than swapping to a
  * second icon, so the button never jumps between two different shapes
  * for what is, to the player, one control with two states).
+ *
+ * `voiceOff` added for the journal header's AI-voice toggle
+ * (2026-08-10, AiVoiceToggle.tsx) — a genuinely different glyph from
+ * `speak`/Volume2 rather than reusing it with a strikethrough via CSS,
+ * so the muted state is legible at a glance the way LogEntryRow's own
+ * two-states-one-glyph choice above is for a different reason (there,
+ * the glyph stays the same on purpose; here, the state IS the thing
+ * being communicated, so it shouldn't).
  */
 const icons = {
   hp: Heart,
@@ -92,6 +101,7 @@ const icons = {
   world: Globe,
   saveNote: StickyNote,
   speak: Volume2,
+  voiceOff: VolumeX,
 } as const
 
 export type IconName = keyof typeof icons

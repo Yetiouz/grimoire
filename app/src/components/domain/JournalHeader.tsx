@@ -11,6 +11,12 @@ interface JournalHeaderProps {
    * action, header owns the layout" split PageHeader's `titleAction`
    * already uses. */
   sessionAction: ReactNode
+  /** The AI-voice on/off control (AiVoiceToggle.tsx), same "host owns
+   * the action, header owns the layout" split as `sessionAction` above.
+   * Undefined/null when the AI voice tier doesn't exist in this build
+   * (`VITE_GM_TTS` off) — JournalScreen decides that, not this
+   * component, and nothing renders in its place. */
+  voiceToggle?: ReactNode
   onBack: () => void
 }
 
@@ -39,23 +45,15 @@ interface JournalHeaderProps {
  * is read-only text — but Journal needs a real Start/End Session
  * trigger somewhere, and grouping it with the name it belongs to reads
  * better than inventing a third bar for one button); session meta
- * right-aligned, matching the mockup exactly.
- *
- * Mobile layout slice: the top bar (logo/search/menu) hides below `xl:`
- * — `mobile-view-mockup.html`'s own top bar is "campaign name + meta
- * left, pause + stop right — one bar instead of two," and search/menu
- * are non-functional stubs regardless of viewport, so hiding them below
- * `xl:` loses no real capability. Losing the logo does lose the only
- * back-to-campaigns control, though, so the campaign name itself
- * becomes that control below `xl:` — a real `back` chevron plus the
- * name, wrapped in one button; `pointer-events-none` at `xl:` and up
- * makes it visually inert there (the logo is still the desktop control,
- * unchanged) while leaving it keyboard-reachable regardless of size.
+ * right-aligned, matching the mockup exactly. `voiceToggle`
+ * (2026-08-10) sits between the meta text and the session action —
+ * same right-hand group, added without disturbing the mockup's
+ * session-meta/session-action pairing.
  */
-export function JournalHeader({ campaignName, sessionMeta, sessionAction, onBack }: JournalHeaderProps) {
+export function JournalHeader({ campaignName, sessionMeta, sessionAction, voiceToggle, onBack }: JournalHeaderProps) {
   return (
     <header className="border-b border-line">
-      <div className="hidden items-center justify-between gap-4 border-b border-line-soft px-4 py-2 xl:flex">
+      <div className="flex items-center justify-between gap-4 border-b border-line-soft px-4 py-2">
         <button type="button" onClick={onBack} aria-label="Back to campaigns" className="block">
           <img src="/logo.webp" alt="Grimoire" className="h-6 w-auto" />
         </button>
@@ -87,44 +85,12 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, onBack
         * group holds the right — meta text sits immediately LEFT of the
         * colored session buttons (SessionAction), which are the
         * far-right element per the owner's design note. */}
-      <div className="px-4 py-2">
-        {/* Below `xl:` the title and the session meta bracket the
-          * session buttons: `items-stretch` makes the text column take
-          * the buttons' own height, and `justify-between` pins the
-          * title to its top edge and the meta to its bottom edge, so
-          * the three line up as one block (owner's call). At `xl:` the
-          * column collapses back to the v11 single row — title left,
-          * meta immediately left of the far-right buttons. */}
-        <div className="flex items-stretch justify-between gap-3">
-          <div className="flex min-w-0 flex-col justify-between xl:flex-row xl:items-center">
-            {/* `leading-none` strips the half-leading that would
-              * otherwise sit above the caps and push the title down off
-              * the button's top edge. The touch target is restored by
-              * the `after:` pseudo-element rather than `min-h-11`: real
-              * height here has to stay equal to the text for the
-              * top/bottom alignment to hold, but the pseudo-element
-              * extends the hit area 12px past it in both directions
-              * (48px total) without occupying any layout space. */}
-            <button
-              type="button"
-              onClick={onBack}
-              aria-label="Back to campaigns"
-              className="relative flex min-w-0 items-center gap-1 after:absolute after:inset-x-0 after:-inset-y-3 after:content-[''] xl:pointer-events-none"
-            >
-              <Icon name="back" className="shrink-0 xl:hidden" />
-              <h1 className={cx(text.h3, 'truncate leading-none')}>{campaignName}</h1>
-            </button>
-            {/* `ml-7` (28px) is a derived optical offset, not an
-              * off-scale spacing value: the back chevron's fixed 24px
-              * icon box plus its 4px gap, i.e. exactly where the
-              * title's first letter starts. Same category of cited
-              * exception as ColumnHeader's `h-[38px]`. */}
-            <span className={cx(text.label, 'ml-7 block leading-none xl:hidden')}>{sessionMeta}</span>
-          </div>
-          <div className="flex shrink-0 items-center gap-3">
-            <span className={cx(text.label, 'hidden xl:inline')}>{sessionMeta}</span>
-            {sessionAction}
-          </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2">
+        <h1 className={text.h3}>{campaignName}</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className={text.label}>{sessionMeta}</span>
+          {voiceToggle}
+          {sessionAction}
         </div>
       </div>
     </header>

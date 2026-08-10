@@ -4,6 +4,7 @@ import { JournalDesktopLayout } from '../../components/domain/JournalDesktopLayo
 import { ALL_FILTER_KINDS } from '../../lib/journalFilters'
 import type { FilterKind } from '../../lib/journalFilters'
 import { JournalHeader } from '../../components/domain/JournalHeader'
+import { AiVoiceToggle } from '../../components/domain/AiVoiceToggle'
 import { CharacterSheet } from '../../components/domain/CharacterSheet'
 import { DiceRoller } from '../../components/domain/DiceRoller'
 import { MapsOverlay } from '../../components/domain/MapsOverlay'
@@ -14,6 +15,7 @@ import type { FeedItem } from '../../lib/feed'
 import { useJournalFeed } from '../../hooks/useJournalFeed'
 import { useJournalScreenData } from '../../hooks/useJournalScreenData'
 import { useGmJournalHandlers } from '../../hooks/useGmJournalHandlers'
+import { useAiVoicePreference } from '../../hooks/useAiVoicePreference'
 import { endSession, logJournalEntry, startSession } from '../../lib/campaigns'
 import type { Campaign } from '../../lib/campaigns'
 import type { Character } from '../../lib/characters'
@@ -92,20 +94,28 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   // satisfies on its own by never unmounting across tab switches).
   const [activeFilters, setActiveFilters] = useState<Set<FilterKind>>(() => new Set(ALL_FILTER_KINDS))
 
-  // Wires the read-aloud's AI tier (lib/speech.ts) to this campaign —
-  // but only when VITE_GM_TTS is explicitly on, which today it is NOT.
-  // Owner's call after hearing it live: free-tier TTS is throttled so
-  // hard that even a successful read takes ~9s (and most requests just
-  // time out), each listen costs a budget request better spent on GM
-  // turns, and the system voices on his own devices sound as good. So
-  // the browser voice IS the feature now, and the Gemini voice is a
-  // dormant tier for a future paid key: flip VITE_GM_TTS=true in
-  // Vercel and it all comes back, server side already deployed.
+  // Wires the read-aloud's AI tier (lib/speech.ts) to this campaign.
+  // `ttsAvailable` is the build's own capability — VITE_GM_TTS off
+  // means the tier doesn't exist in this build at all, full stop, same
+  // as always. Gemini's old free tier earned that gate the hard way
+  // (throttled so hard a read took ~9s when it didn't just time out);
+  // 2026-08-10's swap to Fish Audio's free tier removed the reason for
+  // it to stay off, so VITE_GM_TTS is now on in Vercel.
+  //
+  // `aiVoiceOn` is a second, independent gate on top of that: the
+  // player's own choice, via the header's AiVoiceToggle, persisted
+  // per-device by useAiVoicePreference. This is what lets someone
+  // prefer their system voice (still a legitimate taste, not just a
+  // fallback) without anyone touching Vercel — flipping VITE_GM_TTS
+  // back off would be the wrong tool for that now that it's a
+  // one-click, per-player choice instead.
+  const ttsAvailable = gmEnabled && import.meta.env.VITE_GM_TTS === 'true'
+  const [aiVoiceOn, setAiVoiceOn] = useAiVoicePreference()
+
   useEffect(() => {
-    const ttsOn = gmEnabled && import.meta.env.VITE_GM_TTS === 'true'
-    configureAiSpeech(ttsOn ? campaign.id : null)
+    configureAiSpeech(ttsAvailable && aiVoiceOn ? campaign.id : null)
     return () => configureAiSpeech(null)
-  }, [campaign.id])
+  }, [campaign.id, ttsAvailable, aiVoiceOn])
 
   // Solo v1 has exactly one in-play PC (Kimbo) — using the single
   // `active` character's color is correct for that case without
@@ -257,6 +267,14 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     />
   )
 
+  // Nothing to switch between when the tier doesn't exist in this
+  // build — render no control at all rather than a toggle that can
+  // only ever show "off" (see the effect above for what `ttsAvailable`
+  // gates).
+  const voiceToggle = ttsAvailable ? (
+    <AiVoiceToggle on={aiVoiceOn} onToggle={() => setAiVoiceOn(!aiVoiceOn)} />
+  ) : null
+
   return (
     // v11 shell (SPEC decision log, Aug 4): fixed-height app frame — the
     // PAGE never scrolls; each column card scrolls itself. `dvh`, not
@@ -268,7 +286,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     // each desktop `ColumnCard` own their own internal scroll, matching
     // `Overlay`'s slide-up variant, which already used `100dvh`.
     <div className="flex h-dvh flex-col overflow-hidden">
-      <JournalHeader campaignName={campaign.name} sessionMeta={sessionMeta} sessionAction={sessionAction} onBack={onBack} />
+      <JournalHeader campaignName={campaign.name} sessionMeta={sessionMeta} sessionAction={sessionAction} voiceToggle={voiceToggle} onBack={onBack} />
 
       {/* DESKTOP: unchanged three-column grid, xl: and up only — see
         * JournalDesktopLayout.tsx. */}
