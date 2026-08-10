@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { EmptyState } from '../ui/EmptyState'
-import { QuestLogPanel } from './QuestLogPanel'
-import { NpcCard } from './NpcCard'
-import { FactionCard } from './FactionCard'
-import { TreasureRow } from './TreasureRow'
+import { deriveStatusIndicator } from '../../lib/statusTone'
+import { WorldPreviewRow } from './WorldPreviewRow'
+import { WorldDetailOverlay } from './WorldDetailOverlay'
+import type { WorldSelection } from './WorldDetailOverlay'
 import type { Quest } from '../../lib/quests'
 import type { Npc, Faction, Treasure, NpcStatBlock } from '../../lib/world'
 
@@ -17,7 +17,7 @@ interface WorldTabsProps {
   /** Keyed by `npc_id` — build with
    * `new Map(statBlockRows.map(row => [row.npc_id, row]))` from
    * `listNpcStatBlocks`. Empty for a non-owner viewer (RLS-filtered), so
-   * every `NpcCard` below naturally renders with no GM section — see
+   * every NPC's detail view naturally opens with no GM section — see
    * that map's own doc comment for why no separate `isGm` flag is
    * threaded through here. */
   npcStatBlocks: Map<string, NpcStatBlock>
@@ -29,10 +29,8 @@ type WorldTab = 'quests' | 'npcs' | 'factions' | 'treasure'
 /** Mockup-approved labels (`quest-log-tabs-fit-options-mockup.html`,
  * variant C — the owner's pick): short words, no icons, chosen because
  * the four full words ("Quests"/"NPCs"/"Factions"/"Treasure") don't
- * reliably fit the desktop Quest Log column's real 20rem width in one
- * row without a horizontal scroll, and the icon variants either added a
- * new icon this app's closed icon set doesn't have (Factions/Treasure)
- * or dropped legibility for a first-time player (icons-only). */
+ * reliably fit the desktop Quest Log column's real width in one row
+ * without a horizontal scroll. */
 const TABS: Array<{ key: WorldTab; label: string }> = [
   { key: 'quests', label: 'Quests' },
   { key: 'npcs', label: 'People' },
@@ -41,30 +39,23 @@ const TABS: Array<{ key: WorldTab; label: string }> = [
 ]
 
 /**
- * BUILD_PLAN.md slice 9, v2 (2026-08-10 — the owner's redirect from a
- * separate ToolsDock button + modal overlay to tabs on the existing,
- * always-visible Quest Log panel): NPCs/Factions/Treasure sit alongside
- * Quests as four tabs in one panel, rather than a second click-to-open
- * surface. This component owns the tab row AND the scrolling list below
- * it as one self-contained flex column — deliberately not split across
- * `ColumnCard`'s `header`/`subheader`/`children` slots, because that
- * would need the tab-selection state to live in whichever parent
- * assembles those three props, and this exact same component needs to
- * drop into two different parents (`JournalDesktopLayout`'s `ColumnCard`
- * child, and `MobileJournalView`'s own bespoke layout, which doesn't use
- * `ColumnCard` at all) without either one knowing about tab state. Both
- * callers just give this a bounded height (`flex-1 min-h-0` from a flex
- * parent) and it handles pinning its own tab row above its own
- * internally-scrolling list — the same "pinned strip + scrolling body"
- * shape `ColumnCard` itself uses, just self-contained rather than
- * composed from outside.
- *
- * Reuses `QuestLogPanel` for the Quests tab rather than duplicating its
- * `.map(QuestCard)` — this component is additive to that one, not a
- * replacement for it.
+ * BUILD_PLAN.md slice 9, v3 (2026-08-10): two owner redirects layered on
+ * top of each other. v2 moved NPCs/Factions/Treasure from a separate
+ * ToolsDock overlay into tabs on the existing Quest Log panel (see this
+ * file's earlier doc comment, still true below for why the tab row and
+ * scrolling list are one self-contained flex column rather than split
+ * across `ColumnCard`'s slots). v3 is this pass: every tab now renders
+ * compact `WorldPreviewRow`s (title + unified status dot + one line of
+ * context) instead of the full detail cards directly — clicking a row
+ * opens `WorldDetailOverlay` with the complete card
+ * (`QuestCard`/`NpcCard`/`FactionCard`/`TreasureRow`), per the owner's
+ * "previews... then when you click on it, pop up a screen with all the
+ * info." `selection` here is the one piece of new state this needed;
+ * `activeTab` is unchanged from v2.
  */
 export function WorldTabs({ quests, npcs, factions, treasure, npcStatBlocks, className }: WorldTabsProps) {
   const [activeTab, setActiveTab] = useState<WorldTab>('quests')
+  const [selection, setSelection] = useState<WorldSelection | null>(null)
 
   return (
     <div className={cx('flex min-h-0 flex-1 flex-col', className)}>
@@ -88,32 +79,66 @@ export function WorldTabs({ quests, npcs, factions, treasure, npcStatBlocks, cla
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
         {activeTab === 'quests' &&
           (quests.length > 0 ? (
-            <QuestLogPanel quests={quests} />
+            quests.map((quest) => (
+              <WorldPreviewRow
+                key={quest.id}
+                title={quest.title}
+                indicator={deriveStatusIndicator(quest.status)}
+                preview={quest.goal}
+                onClick={() => setSelection({ kind: 'quest', item: quest })}
+              />
+            ))
           ) : (
             <EmptyState icon="quest" title="No quests yet" description="Quests logged for this campaign show up here." />
           ))}
 
         {activeTab === 'npcs' &&
           (npcs.length > 0 ? (
-            npcs.map((npc) => <NpcCard key={npc.id} npc={npc} statBlock={npcStatBlocks.get(npc.id)} />)
+            npcs.map((npc) => (
+              <WorldPreviewRow
+                key={npc.id}
+                title={npc.name}
+                indicator={deriveStatusIndicator(npc.status)}
+                preview={npc.role}
+                onClick={() => setSelection({ kind: 'npc', item: npc, statBlock: npcStatBlocks.get(npc.id) })}
+              />
+            ))
           ) : (
             <EmptyState icon="party" title="No NPCs yet" description="NPCs logged for this campaign show up here." />
           ))}
 
         {activeTab === 'factions' &&
           (factions.length > 0 ? (
-            factions.map((faction) => <FactionCard key={faction.id} faction={faction} />)
+            factions.map((faction) => (
+              <WorldPreviewRow
+                key={faction.id}
+                title={faction.name}
+                indicator={deriveStatusIndicator(faction.disposition)}
+                preview={faction.type}
+                onClick={() => setSelection({ kind: 'faction', item: faction })}
+              />
+            ))
           ) : (
             <EmptyState icon="world" title="No factions yet" description="Factions logged for this campaign show up here." />
           ))}
 
         {activeTab === 'treasure' &&
           (treasure.length > 0 ? (
-            treasure.map((item) => <TreasureRow key={item.id} treasure={item} />)
+            treasure.map((item) => (
+              <WorldPreviewRow
+                key={item.id}
+                title={item.name}
+                indicator={deriveStatusIndicator(item.status)}
+                preview={[item.category, item.quantity_value].filter(Boolean).join(' · ') || null}
+                onClick={() => setSelection({ kind: 'treasure', item })}
+              />
+            ))
           ) : (
             <EmptyState icon="gear" title="No treasure yet" description="Treasure logged for this campaign shows up here." />
           ))}
       </div>
+
+      <WorldDetailOverlay selection={selection} onClose={() => setSelection(null)} />
     </div>
   )
 }

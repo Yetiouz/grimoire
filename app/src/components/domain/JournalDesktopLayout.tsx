@@ -120,7 +120,13 @@ export function JournalDesktopLayout({
   // seed state rather than sharing one the other could stomp.
   const [noteSeed, setNoteSeed] = useState<{ body: string } | null>(null)
   return (
-    <div className="hidden flex-1 grid-cols-1 gap-3 p-4 xl:grid xl:min-h-0 xl:grid-cols-[16rem_minmax(0,1fr)_20rem]">
+    // Right column widened 20rem -> 26rem (2026-08-10, owner: "widen quest
+    // log panel so the top nav fits") — WorldTabs' tab row (Quests/People/
+    // Factions/Loot) plus ColumnCard's own p-3 padding was tighter than
+    // comfortable at 20rem even with the shortened variant-C labels. Left
+    // column and the center journal's minmax(0,1fr) are unchanged; the
+    // extra width comes entirely out of the center column's flexible share.
+    <div className="hidden flex-1 grid-cols-1 gap-3 p-4 xl:grid xl:min-h-0 xl:grid-cols-[16rem_minmax(0,1fr)_26rem]">
       {/* LEFT: Party card + Tools card (v11: members grouped in one
         * card, tools in their own card below it) — each a ColumnCard,
         * the card-shell layout primitive (CLAUDE.md). */}
