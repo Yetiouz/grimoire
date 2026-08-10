@@ -58,6 +58,11 @@ interface MobileJournalViewProps {
    * the voice tier doesn't exist in this build. */
   aiVoiceOn?: boolean
   onToggleAiVoice?: () => void
+  /** Whether the voice tier exists in this build (`VITE_GM_TTS`) —
+   * forwarded straight to `JournalComposer`'s Voice budget bar
+   * (2026-08-10). Distinct from `aiVoiceOn` above: that's the player's
+   * own on/off choice, this is the build's capability. */
+  ttsAvailable?: boolean
   /** BOB_queue task 1 fold-in: this was accepted as a prop already but
    * never declared here or threaded to JournalComposer below, so "Ask
    * Rules" was reachable on mobile but silently fell through to logging
@@ -173,6 +178,7 @@ export function MobileJournalView({
   onAskRules,
   aiVoiceOn,
   onToggleAiVoice,
+  ttsAvailable,
   onResolveCheck,
   resolvingCheckId,
   campaignId,
@@ -339,6 +345,7 @@ export function MobileJournalView({
             onAskGm={onAskGm}
             onAskRules={onAskRules}
             campaignId={campaignId}
+            ttsAvailable={ttsAvailable}
             seed={noteSeed}
           />
         </div>

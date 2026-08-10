@@ -69,6 +69,11 @@ interface JournalDesktopLayoutProps {
    * the voice tier doesn't exist in this build. */
   aiVoiceOn?: boolean
   onToggleAiVoice?: () => void
+  /** Whether the voice tier exists in this build (`VITE_GM_TTS`) —
+   * forwarded straight to `JournalComposer`'s Voice budget bar
+   * (2026-08-10). Distinct from `aiVoiceOn` above: that's the player's
+   * own on/off choice, this is the build's capability. */
+  ttsAvailable?: boolean
   /** Slice 17: forwarded straight to `JournalFeed` — see its own doc
    * comment. Both optional, same "omit for read-only" convention every
    * other feed callback here already follows. */
@@ -120,6 +125,7 @@ export function JournalDesktopLayout({
   onAskRules,
   aiVoiceOn,
   onToggleAiVoice,
+  ttsAvailable,
   onResolveCheck,
   resolvingCheckId,
   campaignId,
@@ -181,6 +187,7 @@ export function JournalDesktopLayout({
             onAskGm={onAskGm}
             onAskRules={onAskRules}
             campaignId={campaignId}
+            ttsAvailable={ttsAvailable}
             seed={noteSeed}
           />
         }

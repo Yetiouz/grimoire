@@ -351,6 +351,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
         onAskRules={handleAskRules}
         aiVoiceOn={ttsAvailable ? aiVoiceOn : undefined}
         onToggleAiVoice={ttsAvailable ? () => setAiVoiceOn(!aiVoiceOn) : undefined}
+        ttsAvailable={ttsAvailable}
         onResolveCheck={(check, source, total) => void handleResolveCheck(check, source, total)}
         resolvingCheckId={resolvingCheckId}
         campaignId={campaign.id}
@@ -396,6 +397,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
           onAskRules={handleAskRules}
           aiVoiceOn={ttsAvailable ? aiVoiceOn : undefined}
           onToggleAiVoice={ttsAvailable ? () => setAiVoiceOn(!aiVoiceOn) : undefined}
+          ttsAvailable={ttsAvailable}
           onResolveCheck={(check, source, total) => void handleResolveCheck(check, source, total)}
           resolvingCheckId={resolvingCheckId}
           campaignId={campaign.id}

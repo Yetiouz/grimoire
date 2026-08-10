@@ -4,9 +4,10 @@ import { text } from '../../lib/typography'
 import { TextInput } from '../ui/TextInput'
 import { Button } from '../ui/Button'
 import type { LogEntryKind } from '../ui/LogEntryRow'
-import { getGmBudget } from '../../lib/gm'
+import { getGmBudget, getGmBudgetByMode } from '../../lib/gm'
 import { GmReply } from './GmReply'
-import type { GmBudget, GmTurnResult } from '../../lib/gm'
+import { GmBudgetBar } from './GmBudgetBar'
+import type { GmBudget, GmBudgetByMode, GmTurnResult } from '../../lib/gm'
 
 /** One selection answers one question: what is this message? The four
  * journal kinds and the two Ask modes are a single radio row (owner:
@@ -68,6 +69,12 @@ interface JournalComposerProps {
   onAskRules?: (input: string) => Promise<GmTurnResult>
   /** Only needed to read the day's remaining GM turns on mount. */
   campaignId?: string
+  /** Whether the voice tier exists in this build (`VITE_GM_TTS`), same
+   * flag `JournalScreen` computes as `ttsAvailable`. Gates the second
+   * (Voice) budget bar below, same as it gates the header's own copy —
+   * see `GmBudgetBar`'s doc comment for why the meter moved here
+   * (2026-08-10, owner: "stack those where we have this 134 left"). */
+  ttsAvailable?: boolean
   /** "Save as note" quick action (2026-08-09): the host layout hands
    * back a new object here each time the player taps the action on a
    * journal entry. Seeding, not submitting — this switches the
@@ -87,6 +94,7 @@ export function JournalComposer({
   onAskGm,
   onAskRules,
   campaignId,
+  ttsAvailable = false,
   seed,
   className,
 }: JournalComposerProps) {
@@ -95,6 +103,7 @@ export function JournalComposer({
   const [submitting, setSubmitting] = useState(false)
   const [reply, setReply] = useState<GmTurnResult | null>(null)
   const [budget, setBudget] = useState<GmBudget | null>(null)
+  const [budgetByMode, setBudgetByMode] = useState<GmBudgetByMode | null>(null)
   const bodyInputRef = useRef<HTMLInputElement>(null)
   // Tracks the last seed object this composer has already consumed, so
   // the effect below fires once per distinct "save as note" tap (new
@@ -119,22 +128,33 @@ export function JournalComposer({
   const aiMode = gmAvailable && selected.ai
   const rulesMode = aiMode && choice === 'rules' && Boolean(onAskRules)
 
+  // Meter is relevant whenever either AI exists here: Ask GM/Ask Rules
+  // spend the shared pool through this composer, and voice reads spend
+  // it through LogEntryRow elsewhere on the page but are still worth
+  // showing here since this is now the one place both bars live
+  // (2026-08-10). Matches `JournalScreen`'s own `aiGmActive ||
+  // ttsAvailable` gate for the same reasoning.
+  const meterRelevant = gmAvailable || ttsAvailable
+
   // Read the day's budget once on mount so the counter is honest before
   // the first question rather than appearing only after a reply carries
-  // it back. Costs one database read and no provider requests.
+  // it back. Costs two cheap database reads (limit + the mode split)
+  // and no provider requests.
   useEffect(() => {
-    if (!gmAvailable || !campaignId) return
+    if (!meterRelevant || !campaignId) return
     let cancelled = false
     void getGmBudget(campaignId).then((result) => {
       if (!cancelled && result) setBudget(result)
     })
+    void getGmBudgetByMode(campaignId).then((result) => {
+      if (!cancelled && result) setBudgetByMode(result)
+    })
     return () => {
       cancelled = true
     }
-  }, [gmAvailable, campaignId])
+  }, [meterRelevant, campaignId])
 
   const remaining = budget ? Math.max(0, budget.limit - budget.used) : null
-  const usedFraction = budget && budget.limit > 0 ? budget.used / budget.limit : 0
   const outOfBudget = reply?.status === 'budget_exhausted' || remaining === 0
   const disabled = !sessionOpen || submitting
 
@@ -147,6 +167,16 @@ export function JournalComposer({
         const ask = rulesMode ? onAskRules! : onAskGm!
         const result = await ask(trimmed)
         if (result.budget) setBudget(result.budget)
+        // The edge function's reply only carries the combined figure
+        // (`result.budget`, above) — it has no reason to know about the
+        // mode split, that's a separate direct-RPC read. Re-fetch it so
+        // the GM bar reflects this turn immediately rather than waiting
+        // out whatever poll interval a caller elsewhere might be on.
+        if (campaignId) {
+          void getGmBudgetByMode(campaignId).then((byMode) => {
+            if (byMode) setBudgetByMode(byMode)
+          })
+        }
         // A reply that reached the journal needs no strip — it is already
         // in the feed above. Everything else (brakes, budget, errors, a
         // failed journal write) still surfaces here.
@@ -216,37 +246,19 @@ export function JournalComposer({
           )
         })}
         </div>
-        {gmAvailable && remaining !== null && (
-          <div className="ml-auto flex shrink-0 items-center gap-2">
-            {/* A bar as well as a number: the number answers "how many
-              * have I got", the bar answers "should I be worried yet"
-              * at a glance, mid-scene, without reading. */}
-            <span
-              className="h-1 w-12 overflow-hidden rounded-full bg-panel2"
-              role="img"
-              aria-label={`${Math.round(usedFraction * 100)} percent of today's GM budget used`}
-            >
-              <span
-                className={cx(
-                  'block h-full rounded-full transition-[width] duration-300',
-                  usedFraction >= 1 ? 'bg-red' : usedFraction >= 0.8 ? 'bg-yellow' : 'bg-cyan',
-                )}
-                style={{ width: `${Math.min(100, usedFraction * 100)}%` }}
-              />
-            </span>
-            <span
-              className={cx(
-                text.label,
-                // Bar-only on mobile — the count costs ~70px the one-line
-                // row can't spare; the bar still answers "should I be
-                // worried" and the full number lives on desktop.
-                'hidden tabular-nums xl:inline',
-                usedFraction >= 1 ? 'text-red' : usedFraction >= 0.8 ? 'text-yellow' : undefined,
-              )}
-              title={`${budget?.used} of ${budget?.limit} requests used today. A simple turn costs one.`}
-            >
-              {remaining} left
-            </span>
+        {meterRelevant && budget && budgetByMode && (
+          // Stacked, not side-by-side (2026-08-10, owner: "stack those
+          // where we have this 134 left") — this replaced the composer's
+          // original single bar-plus-"N left" meter, which only ever
+          // covered GM text turns. Each bar is `GmBudgetBar`, the same
+          // component the header uses, so the two locations read
+          // identically: percentage against the one shared daily pool,
+          // split by mode. GM only renders when Ask GM/Ask Rules exist
+          // here at all; Voice only when the build's voice tier is on —
+          // same two gates the header's own pair uses.
+          <div className="ml-auto flex shrink-0 flex-col items-end gap-1">
+            {gmAvailable && <GmBudgetBar label="GM" used={budgetByMode.textUsed} limit={budget.limit} />}
+            {ttsAvailable && <GmBudgetBar label="Voice" used={budgetByMode.voiceUsed} limit={budget.limit} />}
           </div>
         )}
       </div>
