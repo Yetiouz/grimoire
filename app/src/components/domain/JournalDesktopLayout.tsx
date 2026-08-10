@@ -140,10 +140,15 @@ export function JournalDesktopLayout({
     // Right column widened 20rem -> 26rem (2026-08-10, owner: "widen quest
     // log panel so the top nav fits") — WorldTabs' tab row (Quests/People/
     // Factions/Loot) plus ColumnCard's own p-3 padding was tighter than
-    // comfortable at 20rem even with the shortened variant-C labels. Left
-    // column and the center journal's minmax(0,1fr) are unchanged; the
-    // extra width comes entirely out of the center column's flexible share.
-    <div className="hidden flex-1 grid-cols-1 gap-3 p-4 xl:grid xl:min-h-0 xl:grid-cols-[16rem_minmax(0,1fr)_26rem]">
+    // comfortable at 20rem even with the shortened variant-C labels.
+    // Left column widened 16rem -> 18rem, same day, same reasoning (owner:
+    // "expand the party frame so the gold can fit on the same line as the
+    // other stats") — PlayerCard's stat row (HP/AC/BAG/GP) was wrapping
+    // GP onto its own line at 16rem once a character had gear-slot data to
+    // show alongside HP/AC. The center journal's minmax(0,1fr) is
+    // unchanged; both side columns' extra width comes entirely out of its
+    // flexible share.
+    <div className="hidden flex-1 grid-cols-1 gap-3 p-4 xl:grid xl:min-h-0 xl:grid-cols-[18rem_minmax(0,1fr)_26rem]">
       {/* LEFT: Party card + Tools card (v11: members grouped in one
         * card, tools in their own card below it) — each a ColumnCard,
         * the card-shell layout primitive (CLAUDE.md). */}
