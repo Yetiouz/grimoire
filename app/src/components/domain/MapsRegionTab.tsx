@@ -1,12 +1,24 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ChangeEvent, MouseEvent } from 'react'
+import type { ChangeEvent } from 'react'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { Button } from '../ui/Button'
 import { TextInput } from '../ui/TextInput'
 import { EmptyState } from '../ui/EmptyState'
-import { setPartyPosition, uploadCampaignMap } from '../../lib/maps'
-import type { CampaignMap, CampaignMapPosition } from '../../lib/maps'
+import { MapImageViewer } from './MapImageViewer'
+import { MapPin, markerColor } from './MapPin'
+import { DeleteMapButton } from './DeleteMapButton'
+import { MapMarkerEditRow } from './MapMarkerEditRow'
+import {
+  addMapMarker,
+  clearCampaignMap,
+  listMapMarkers,
+  removeMapMarker,
+  setPartyPosition,
+  updateMapMarker,
+  uploadCampaignMap,
+} from '../../lib/maps'
+import type { CampaignMap, CampaignMapMarker, CampaignMapPosition, MarkerKind } from '../../lib/maps'
 
 interface MapsRegionTabProps {
   campaignId: string
@@ -15,17 +27,31 @@ interface MapsRegionTabProps {
   position: CampaignMapPosition | null
   onPositionUpdate: (position: CampaignMapPosition) => void
   onMapUploaded: (map: CampaignMap) => void
+  onMapCleared: (kind: 'region') => void
   onError: (message: string) => void
 }
 
 /** Split out of `MapsPanel.tsx` (CLAUDE.md's ~300-line component cap) —
- * the Region tab's own image+pin, travel chips, edit row, and
- * upload/replace control. Owns its own interaction state (edit-row
- * open/closed, in-flight saves) since none of it is shared with Site or
- * Scene; results get lifted to `MapsPanel` via `onPositionUpdate`/
- * `onMapUploaded` so the tab bar's badge state and the Site tab's own
- * data stay independent copies, not one shared blob. */
-export function MapsRegionTab({ campaignId, map, imageUrl, position, onPositionUpdate, onMapUploaded, onError }: MapsRegionTabProps) {
+ * the Region tab's own image+pin, travel chips, edit row, markers, and
+ * upload/replace/delete-map controls. Owns its own interaction state
+ * (edit-row open/closed, in-flight saves, marker selection) since none
+ * of it is shared with Site or Scene; results get lifted to `MapsPanel`
+ * via `onPositionUpdate`/`onMapUploaded`/`onMapCleared` so the tab bar's
+ * badge state and the Site tab's own data stay independent copies, not
+ * one shared blob.
+ *
+ * Markers are fetched here rather than in `MapsPanel` — unlike
+ * `maps`/`position`, they're only ever read by the tab that owns their
+ * `kind`, so there's no cross-tab state to keep in sync the way image
+ * URLs are.
+ *
+ * Click-to-act on the map has two modes, never both live at once:
+ * plain click moves the party pin (the original behavior); "+ Marker"
+ * arms one-shot marker-placement so the next click drops a marker
+ * instead — same distinction `MapImageViewer` itself doesn't need to
+ * know about, since it only ever reports "the map was clicked here."
+ */
+export function MapsRegionTab({ campaignId, map, imageUrl, position, onPositionUpdate, onMapUploaded, onMapCleared, onError }: MapsRegionTabProps) {
   const [editing, setEditing] = useState(false)
   const [locationInput, setLocationInput] = useState('')
   const [paceInput, setPaceInput] = useState('')
@@ -37,6 +63,11 @@ export function MapsRegionTab({ campaignId, map, imageUrl, position, onPositionU
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const [markers, setMarkers] = useState<CampaignMapMarker[]>([])
+  const [placingMarker, setPlacingMarker] = useState(false)
+  const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null)
+  const [markerSaving, setMarkerSaving] = useState(false)
+
   useEffect(() => {
     setLocationInput(position?.location_label ?? '')
     setPaceInput(position?.travel_pace ?? '')
@@ -47,10 +78,31 @@ export function MapsRegionTab({ campaignId, map, imageUrl, position, onPositionU
     setLabel(map?.label ?? '')
   }, [map])
 
-  async function handleMapClick(event: MouseEvent<HTMLDivElement>) {
-    const rect = event.currentTarget.getBoundingClientRect()
-    const x = Math.min(100, Math.max(0, ((event.clientX - rect.left) / rect.width) * 100))
-    const y = Math.min(100, Math.max(0, ((event.clientY - rect.top) / rect.height) * 100))
+  useEffect(() => {
+    let cancelled = false
+    listMapMarkers(campaignId, 'region')
+      .then((data) => {
+        if (!cancelled) setMarkers(data)
+      })
+      .catch((err: unknown) => onError(err instanceof Error ? err.message : 'Could not load markers.'))
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignId])
+
+  async function handleMapClick(x: number, y: number) {
+    if (placingMarker) {
+      setPlacingMarker(false)
+      try {
+        const marker = await addMapMarker(campaignId, { kind: 'region', x, y, label: 'New marker' })
+        setMarkers((prev) => [...prev, marker])
+        setSelectedMarkerId(marker.id)
+      } catch (err) {
+        onError(err instanceof Error ? err.message : 'Could not add the marker.')
+      }
+      return
+    }
     setMovingPin(true)
     try {
       onPositionUpdate(await setPartyPosition(campaignId, { x, y }))
@@ -61,12 +113,58 @@ export function MapsRegionTab({ campaignId, map, imageUrl, position, onPositionU
     }
   }
 
+  async function handleClearPin() {
+    try {
+      onPositionUpdate(await setPartyPosition(campaignId, { clearPin: true }))
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Could not clear the party pin.')
+    }
+  }
+
+  async function handleSaveMarker(markerId: string, update: { label: string; markerKind: MarkerKind; notes: string }) {
+    setMarkerSaving(true)
+    try {
+      const updated = await updateMapMarker(markerId, {
+        label: update.label,
+        markerKind: update.markerKind,
+        notes: update.notes || undefined,
+      })
+      setMarkers((prev) => prev.map((m) => (m.id === updated.id ? updated : m)))
+      setSelectedMarkerId(null)
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Could not save the marker.')
+    } finally {
+      setMarkerSaving(false)
+    }
+  }
+
+  async function handleDeleteMarker(markerId: string) {
+    try {
+      await removeMapMarker(markerId)
+      setMarkers((prev) => prev.filter((m) => m.id !== markerId))
+      setSelectedMarkerId(null)
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Could not delete the marker.')
+    }
+  }
+
+  async function handleDeleteMap() {
+    try {
+      await clearCampaignMap(campaignId, 'region', map?.storage_path)
+      onMapCleared('region')
+      setMarkers([])
+      setSelectedMarkerId(null)
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Could not delete the map.')
+    }
+  }
+
   // Blank fields are omitted, not sent as `null`: `set_party_position`
   // coalesces a null argument to "leave the stored value alone" (a
   // partial update — bumping just hexesRemaining — shouldn't require
   // resending location/pace too). That means this form can't clear a
   // field to empty via Save; only the pin's x/y has real clear
-  // semantics (a separate RPC argument, not used by this form).
+  // semantics (the "Clear pin" button below).
   async function handleSavePosition() {
     setSaving(true)
     try {
@@ -96,23 +194,51 @@ export function MapsRegionTab({ campaignId, map, imageUrl, position, onPositionU
       .finally(() => setUploading(false))
   }
 
+  const selectedMarker = markers.find((m) => m.id === selectedMarkerId) ?? null
+
   return (
     <div className="flex flex-col gap-3">
       {map && imageUrl ? (
         <>
-          <div className="relative cursor-crosshair overflow-hidden rounded-card border border-line-soft bg-black" onClick={(event) => void handleMapClick(event)}>
-            <img src={imageUrl} alt={map.label} className="block w-full" />
+          <MapImageViewer src={imageUrl} alt={map.label} onImageClick={(x, y) => void handleMapClick(x, y)}>
             {position?.x != null && position?.y != null && (
-              <div className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2" style={{ left: `${position.x}%`, top: `${position.y}%` }}>
-                <span className="absolute inset-0 animate-ping rounded-full bg-purple/60" />
-                <span className="absolute inset-0 rounded-full border-2 border-bg bg-purple" />
-              </div>
+              <MapPin x={position.x} y={position.y} color="var(--color-purple)" pulsing label="Party position" />
             )}
+            {markers.map((marker) => (
+              <MapPin
+                key={marker.id}
+                x={marker.x}
+                y={marker.y}
+                color={markerColor(marker.marker_kind)}
+                label={marker.label}
+                onClick={() => setSelectedMarkerId(marker.id)}
+              />
+            ))}
+          </MapImageViewer>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className={text.label}>{placingMarker ? 'Click the map to drop a marker.' : movingPin ? 'Moving pin…' : 'Click the map to move the party pin.'}</p>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => setPlacingMarker((v) => !v)} className={text.label} style={placingMarker ? { color: 'var(--color-purple)' } : undefined}>
+                {placingMarker ? 'Cancel marker' : '+ Marker'}
+              </button>
+              <button type="button" onClick={() => void handleClearPin()} className={text.label}>
+                Clear pin
+              </button>
+            </div>
           </div>
-          <p className={text.label}>{movingPin ? 'Moving pin…' : 'Click the map to move the party pin.'}</p>
         </>
       ) : (
         <EmptyState icon="map" title="No region map yet" description="Upload a hex map below to show the party's position and travel state here." />
+      )}
+
+      {selectedMarker && (
+        <MapMarkerEditRow
+          marker={selectedMarker}
+          saving={markerSaving}
+          onSave={(update) => void handleSaveMarker(selectedMarker.id, update)}
+          onDelete={() => void handleDeleteMarker(selectedMarker.id)}
+          onClose={() => setSelectedMarkerId(null)}
+        />
       )}
 
       <div className="flex flex-wrap items-center gap-2 rounded-card border border-line-soft bg-panel px-3 py-2.5">
@@ -152,14 +278,17 @@ export function MapsRegionTab({ campaignId, map, imageUrl, position, onPositionU
         </div>
       )}
 
-      <div className="flex flex-wrap items-end gap-2">
-        <div className="min-w-[10rem] flex-1">
-          <TextInput label="Map label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. The Gloaming" className="w-full" />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="min-w-[10rem] flex-1">
+            <TextInput label="Map label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. The Gloaming" className="w-full" />
+          </div>
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+          <Button variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+            {uploading ? 'Uploading…' : map ? 'Replace map' : 'Upload map'}
+          </Button>
         </div>
-        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-        <Button variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-          {uploading ? 'Uploading…' : map ? 'Replace map' : 'Upload map'}
-        </Button>
+        {map && <DeleteMapButton onConfirm={handleDeleteMap} />}
       </div>
     </div>
   )

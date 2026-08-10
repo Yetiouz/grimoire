@@ -49,6 +49,53 @@ export type Database = {
           },
         ]
       }
+      campaign_map_markers: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          kind: string
+          label: string
+          marker_kind: string
+          notes: string | null
+          updated_at: string
+          x: number
+          y: number
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          label: string
+          marker_kind?: string
+          notes?: string | null
+          updated_at?: string
+          x: number
+          y: number
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          label?: string
+          marker_kind?: string
+          notes?: string | null
+          updated_at?: string
+          x?: number
+          y?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_map_markers_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_map_position: {
         Row: {
           campaign_id: string
@@ -866,6 +913,35 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      add_map_marker: {
+        Args: {
+          p_campaign_id: string
+          p_kind: string
+          p_label: string
+          p_marker_kind?: string
+          p_notes?: string
+          p_x: number
+          p_y: number
+        }
+        Returns: {
+          campaign_id: string
+          created_at: string
+          id: string
+          kind: string
+          label: string
+          marker_kind: string
+          notes: string | null
+          updated_at: string
+          x: number
+          y: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "campaign_map_markers"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       adjust_character_gold: {
         Args: {
           p_character_id: string
@@ -987,6 +1063,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      clear_campaign_map: {
+        Args: { p_campaign_id: string; p_kind: string }
+        Returns: undefined
       }
       create_campaign: {
         Args: { p_name: string }
@@ -1163,6 +1243,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      remove_map_marker: { Args: { p_marker_id: string }; Returns: undefined }
       resolve_check: {
         Args: { p_check_id: string; p_source: string; p_total?: number }
         Returns: Json
@@ -1270,6 +1351,34 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "sessions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_map_marker: {
+        Args: {
+          p_label?: string
+          p_marker_id: string
+          p_marker_kind?: string
+          p_notes?: string
+          p_x?: number
+          p_y?: number
+        }
+        Returns: {
+          campaign_id: string
+          created_at: string
+          id: string
+          kind: string
+          label: string
+          marker_kind: string
+          notes: string | null
+          updated_at: string
+          x: number
+          y: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "campaign_map_markers"
           isOneToOne: true
           isSetofReturn: false
         }

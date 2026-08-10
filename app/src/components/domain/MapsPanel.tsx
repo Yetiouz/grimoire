@@ -124,6 +124,14 @@ export function MapsPanel({ campaignId }: MapsPanelProps) {
     }
   }
 
+  // Mirror of `handleMapUploaded` for the delete direction — `maps` and
+  // `imageUrls` are the two pieces of state a cleared map needs to drop
+  // out of; `campaign_map_position`/markers deliberately aren't touched
+  // here either (see `clearCampaignMap`'s own doc comment).
+  function handleMapCleared(kind: MapKind) {
+    setMaps((prev) => (prev ?? []).filter((m) => m.kind !== kind))
+  }
+
   const regionMap = maps?.find((m) => m.kind === 'region') ?? null
   const siteMap = maps?.find((m) => m.kind === 'site') ?? null
 
@@ -155,6 +163,7 @@ export function MapsPanel({ campaignId }: MapsPanelProps) {
             position={position}
             onPositionUpdate={setPosition}
             onMapUploaded={(updated) => void handleMapUploaded(updated)}
+            onMapCleared={handleMapCleared}
             onError={setError}
           />
         ) : activeTab === 'site' ? (
@@ -163,6 +172,7 @@ export function MapsPanel({ campaignId }: MapsPanelProps) {
             map={siteMap}
             imageUrl={siteMap ? imageUrls[siteMap.storage_path] : undefined}
             onMapUploaded={(updated) => void handleMapUploaded(updated)}
+            onMapCleared={handleMapCleared}
             onError={setError}
           />
         ) : (

@@ -3,12 +3,20 @@ import type { Tables } from './database.types'
 
 export type CampaignMap = Tables<'campaign_maps'>
 export type CampaignMapPosition = Tables<'campaign_map_position'>
+export type CampaignMapMarker = Tables<'campaign_map_markers'>
 
 /** `campaign_maps.kind` is `text` with a check constraint, not a real
  * enum (migration `maps_overlay_v1`) — this is the client-side mirror of
  * that constraint, kept here rather than trusting whatever string a
  * caller happens to pass. */
 export type MapKind = 'region' | 'site' | 'scene'
+
+/** `campaign_map_markers.marker_kind` is a second, deliberately distinct
+ * `text` + check constraint (migration `maps_overlay_v2_markers`) — not
+ * to be confused with `MapKind` above, which is *which map* a marker
+ * lives on (region/site), not what the marker itself represents.
+ * Defaults to `'poi'` server-side when omitted. */
+export type MarkerKind = 'poi' | 'npc' | 'danger' | 'custom'
 
 const MAP_BUCKET = 'campaign-maps'
 
@@ -79,6 +87,103 @@ export async function setPartyPosition(campaignId: string, update: PartyPosition
   })
   if (error) throw error
   return data
+}
+
+/** All markers dropped on a given map. `kind` here is the *map* kind
+ * (region/site — same domain as `CampaignMap['kind']`), not a marker's
+ * own `marker_kind` — see the type comment above. RLS scopes this to
+ * membership, same as every other campaign-scoped read in this file. */
+export async function listMapMarkers(campaignId: string, kind: MapKind): Promise<CampaignMapMarker[]> {
+  const { data, error } = await supabase
+    .from('campaign_map_markers')
+    .select('*')
+    .eq('campaign_id', campaignId)
+    .eq('kind', kind)
+  if (error) throw error
+  return data
+}
+
+export interface AddMapMarkerInput {
+  kind: MapKind
+  x: number
+  y: number
+  label: string
+  markerKind?: MarkerKind
+  notes?: string
+}
+
+/** Wraps `add_map_marker`. `markerKind` defaults to `'poi'` server-side
+ * (the DB column default) when omitted, so callers that don't care yet
+ * (e.g. a quick "drop a pin here" flow) don't have to pick one. */
+export async function addMapMarker(campaignId: string, input: AddMapMarkerInput): Promise<CampaignMapMarker> {
+  const { data, error } = await supabase.rpc('add_map_marker', {
+    p_campaign_id: campaignId,
+    p_kind: input.kind,
+    p_x: input.x,
+    p_y: input.y,
+    p_label: input.label,
+    p_marker_kind: input.markerKind ?? undefined,
+    p_notes: input.notes ?? undefined,
+  })
+  if (error) throw error
+  return data
+}
+
+export interface UpdateMapMarkerInput {
+  x?: number
+  y?: number
+  label?: string
+  markerKind?: MarkerKind
+  notes?: string
+}
+
+/** Wraps `update_map_marker` — a partial update server-side (`coalesce`
+ * on omitted args), same pattern as `setPartyPosition`: dragging a
+ * marker to a new `x`/`y` shouldn't require resending its label too. */
+export async function updateMapMarker(markerId: string, update: UpdateMapMarkerInput): Promise<CampaignMapMarker> {
+  const { data, error } = await supabase.rpc('update_map_marker', {
+    p_marker_id: markerId,
+    p_x: update.x ?? undefined,
+    p_y: update.y ?? undefined,
+    p_label: update.label ?? undefined,
+    p_marker_kind: update.markerKind ?? undefined,
+    p_notes: update.notes ?? undefined,
+  })
+  if (error) throw error
+  return data
+}
+
+/** Wraps `remove_map_marker`. No storage cleanup here — markers are pure
+ * DB rows, nothing in the bucket is keyed to a marker id. */
+export async function removeMapMarker(markerId: string): Promise<void> {
+  const { error } = await supabase.rpc('remove_map_marker', { p_marker_id: markerId })
+  if (error) throw error
+}
+
+/** Wraps `clear_campaign_map` — drops the active image for a
+ * `(campaign, kind)`. Deliberately does NOT cascade to
+ * `campaign_map_position` or that campaign's markers (migration
+ * comment: "which image is showing" and "the party's last-known
+ * location / dropped markers" are separate facts that shouldn't vanish
+ * together just because the map image did).
+ *
+ * `storagePath` is optional and, when passed, triggers a best-effort
+ * storage-object removal *after* the DB row is gone — the DB row is the
+ * source of truth for "does this campaign have a region/site map", so a
+ * failed storage cleanup (e.g. the object was already gone) shouldn't
+ * surface as an error to the caller. Mirrors `uploadCampaignMap`'s
+ * storage-then-DB order, just reversed and with the DB step load-bearing
+ * instead of the storage step. */
+export async function clearCampaignMap(campaignId: string, kind: MapKind, storagePath?: string): Promise<void> {
+  const { error } = await supabase.rpc('clear_campaign_map', { p_campaign_id: campaignId, p_kind: kind })
+  if (error) throw error
+  if (storagePath) {
+    try {
+      await supabase.storage.from(MAP_BUCKET).remove([storagePath])
+    } catch {
+      // best-effort — the DB row is already gone, which is what matters.
+    }
+  }
 }
 
 /** Uploads (or replaces — same path every time, `upsert: true`) the
