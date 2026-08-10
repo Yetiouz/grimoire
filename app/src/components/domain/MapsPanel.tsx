@@ -1,0 +1,178 @@
+import { useEffect, useState } from 'react'
+import { cx } from '../../lib/cx'
+import { text } from '../../lib/typography'
+import { ErrorBanner } from '../ui/ErrorBanner'
+import { Skeleton, SkeletonGroup } from '../ui/Skeleton'
+import { EmptyState } from '../ui/EmptyState'
+import { MapsRegionTab } from './MapsRegionTab'
+import { MapsSiteTab } from './MapsSiteTab'
+import { getMapImageUrls, getPartyPosition, listCampaignMaps } from '../../lib/maps'
+import type { CampaignMap, CampaignMapPosition, MapKind } from '../../lib/maps'
+
+interface MapsPanelProps {
+  campaignId: string
+}
+
+const TAB_ORDER: Array<{ key: MapKind; label: string; live: boolean }> = [
+  { key: 'region', label: 'Region', live: true },
+  { key: 'site', label: 'Site', live: true },
+  { key: 'scene', label: 'Scene', live: false },
+]
+
+function MapsTabButton({
+  tabKey,
+  label,
+  live,
+  active,
+  onSelect,
+}: {
+  tabKey: MapKind
+  label: string
+  live: boolean
+  active: boolean
+  onSelect: (key: MapKind) => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(tabKey)}
+      aria-current={active ? 'true' : undefined}
+      className={cx(
+        'flex items-center gap-2 rounded-t-button border border-b-0 px-4 py-2.5',
+        active ? 'border-line-hover bg-panel2' : 'border-line-soft hover:border-line-hover',
+      )}
+    >
+      <span className={text.label} style={active ? { color: 'var(--color-ink)' } : undefined}>
+        {label}
+      </span>
+      <span
+        className={cx(text.label, 'rounded-full border px-2 py-0.5', live && 'border-green/35')}
+        style={live ? { color: 'var(--color-green)' } : undefined}
+      >
+        {live ? 'live' : 'stub'}
+      </span>
+    </button>
+  )
+}
+
+/**
+ * Region + Site + Scene tabs (BUILD_PLAN.md slice 8, "Maps overlay").
+ * Region and Site are real; Scene stays an honest stub — Close/Near/Far
+ * zone positioning ships with Encounter mode, not this pass. Approved as
+ * an HTML mockup before any of this was written (mockup-before-code
+ * gate, same discipline Slice 17's CheckCard variants went through).
+ *
+ * Shared between two call sites rather than built twice: `MapsOverlay`
+ * wraps this in `Overlay` for the desktop `ToolsDock` entry point, and
+ * `MobileJournalView` renders it directly inline under its own "Maps"
+ * bottom tab (which already provides the header-with-close chrome every
+ * mobile tab gets — a second nested `Overlay` there would just wrap one
+ * closeable panel inside another).
+ *
+ * This file owns data-fetching and the tab shell only; `MapsRegionTab`/
+ * `MapsSiteTab` (CLAUDE.md's ~300-line component cap) own their own tab
+ * content and interaction state, reporting results back up via
+ * `onPositionUpdate`/`onMapUploaded` so this file's `maps`/`position`
+ * stay the one source of truth both tabs read from.
+ *
+ * No GM-only gate: matches Grimoire's existing convention (no
+ * `campaign_members.role` check anywhere in the command layer today —
+ * `adjust_character_hp`/`log_journal_entry` trust any member equally),
+ * so any campaign member can drop the pin or replace a map, not just
+ * whoever is running the table.
+ */
+export function MapsPanel({ campaignId }: MapsPanelProps) {
+  const [maps, setMaps] = useState<CampaignMap[] | null>(null)
+  const [position, setPosition] = useState<CampaignMapPosition | null>(null)
+  const [imageUrls, setImageUrls] = useState<Record<string, string>>({})
+  const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<MapKind>('region')
+
+  // Fetch on mount rather than refetch-on-`open` (RulesChat's pattern):
+  // both call sites only ever mount this component while it's actually
+  // showing (`Overlay` unmounts its children when closed; MobileJournalView's
+  // tab switch is a plain ternary, not a keep-alive), so mount already
+  // means "just became visible" at both.
+  useEffect(() => {
+    let cancelled = false
+    setMaps(null)
+    setPosition(null)
+    setError(null)
+    Promise.all([listCampaignMaps(campaignId), getPartyPosition(campaignId)])
+      .then(async ([mapsData, positionData]) => {
+        if (cancelled) return
+        setMaps(mapsData)
+        setPosition(positionData)
+        const urls = await getMapImageUrls(mapsData.map((m) => m.storage_path))
+        if (!cancelled) setImageUrls(urls)
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Could not load the maps.')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [campaignId])
+
+  async function handleMapUploaded(updated: CampaignMap) {
+    setMaps((prev) => [...(prev ?? []).filter((m) => m.kind !== updated.kind), updated])
+    try {
+      const urls = await getMapImageUrls([updated.storage_path])
+      setImageUrls((prev) => ({ ...prev, ...urls }))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load the uploaded map image.')
+    }
+  }
+
+  const regionMap = maps?.find((m) => m.kind === 'region') ?? null
+  const siteMap = maps?.find((m) => m.kind === 'site') ?? null
+
+  return (
+    <div className="flex flex-col">
+      {error && (
+        <ErrorBanner className="mb-3" onRetry={() => setError(null)}>
+          {error}
+        </ErrorBanner>
+      )}
+
+      <div className="flex gap-1.5">
+        {TAB_ORDER.map((tab) => (
+          <MapsTabButton key={tab.key} tabKey={tab.key} label={tab.label} live={tab.live} active={activeTab === tab.key} onSelect={setActiveTab} />
+        ))}
+      </div>
+
+      <div className="rounded-b-card rounded-tr-card border border-line-hover bg-panel2 p-4">
+        {maps === null ? (
+          <SkeletonGroup label="Loading maps">
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </SkeletonGroup>
+        ) : activeTab === 'region' ? (
+          <MapsRegionTab
+            campaignId={campaignId}
+            map={regionMap}
+            imageUrl={regionMap ? imageUrls[regionMap.storage_path] : undefined}
+            position={position}
+            onPositionUpdate={setPosition}
+            onMapUploaded={(updated) => void handleMapUploaded(updated)}
+            onError={setError}
+          />
+        ) : activeTab === 'site' ? (
+          <MapsSiteTab
+            campaignId={campaignId}
+            map={siteMap}
+            imageUrl={siteMap ? imageUrls[siteMap.storage_path] : undefined}
+            onMapUploaded={(updated) => void handleMapUploaded(updated)}
+            onError={setError}
+          />
+        ) : (
+          <EmptyState
+            icon="map"
+            title="Scene (coming soon)"
+            description="Close / Near / Far zone positioning for active encounters — ships with Encounter mode, not this pass."
+          />
+        )}
+      </div>
+    </div>
+  )
+}

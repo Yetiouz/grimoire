@@ -6,6 +6,7 @@ import type { FilterKind } from '../../lib/journalFilters'
 import { JournalHeader } from '../../components/domain/JournalHeader'
 import { CharacterSheet } from '../../components/domain/CharacterSheet'
 import { DiceRoller } from '../../components/domain/DiceRoller'
+import { MapsOverlay } from '../../components/domain/MapsOverlay'
 import { SessionAction } from '../../components/domain/SessionAction'
 import { MobileJournalView } from '../../components/domain/MobileJournalView'
 import { RulesChat } from '../../components/domain/RulesChat'
@@ -78,6 +79,10 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   const [openCharacter, setOpenCharacter] = useState<Character | null>(null)
   const [diceOpen, setDiceOpen] = useState(false)
   const [rulesOpen, setRulesOpen] = useState(false)
+  // Slice 8: desktop-only — ToolsDock's Maps button opens this overlay.
+  // Mobile's own "Maps" bottom tab renders MapsPanel inline instead (see
+  // MobileJournalView's doc comment), so it needs no state here.
+  const [mapsOpen, setMapsOpen] = useState(false)
   // BOB_queue task 1: which kinds show in the desktop feed — every chip
   // lit by default. Independent from MobileJournalView's own copy of
   // this same state; desktop and mobile were never asked to mirror each
@@ -281,6 +286,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
         openSession={openSession}
         onOpenCharacter={setOpenCharacter}
         onOpenDice={() => setDiceOpen(true)}
+        onOpenMaps={() => setMapsOpen(true)}
         gmEnabled={aiGmActive}
         onOpenRules={aiGmActive ? () => setRulesOpen(true) : undefined}
         onLog={(kind, body) => handleLog(kind, body)}
@@ -332,6 +338,8 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
       />
 
       <RulesChat open={rulesOpen} campaignId={campaign.id} onClose={() => setRulesOpen(false)} />
+
+      <MapsOverlay open={mapsOpen} campaignId={campaign.id} onClose={() => setMapsOpen(false)} />
 
       <DiceRoller
         open={diceOpen}

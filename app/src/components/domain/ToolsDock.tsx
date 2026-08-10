@@ -12,6 +12,13 @@ interface ToolsDockProps {
   /** Slice 16. Optional: with the GM off, Rules stays the disabled stub
    * it has always been. */
   onOpenRules?: () => void
+  /** Slice 8 (Maps overlay). Unlike `onOpenRules`, not gated behind
+   * `gm_mode` — Region/Site maps are campaign data any member can view
+   * or edit (no GM-only tier exists anywhere in this app's command
+   * layer), so this is always provided by the caller once the overlay
+   * exists. Optional only so the stub state (pre-slice-8 callers, and
+   * this component's own tests) still renders correctly disabled. */
+  onOpenMaps?: () => void
   className?: string
 }
 
@@ -44,9 +51,9 @@ function DockButton({
 /**
  * Three square icon buttons pinned to the bottom of the party rail
  * (player-view-mockup.html v10's `.tooldock`) — one row, icons
- * centered. Maps and Rules are structural stubs (per the reconciliation
- * work order: "structure ships" ahead of the features themselves,
- * disabled rather than wired to anything). Roll is real.
+ * centered. Maps stopped being a stub in slice 8 (Region + Site tabs,
+ * Scene still a stub within the overlay itself); Rules is still a
+ * structural stub when the GM is off. Roll is real.
  *
  * `rounded-button` (11px), not the mockup's own one-off 12px — the
  * app's radius system is a closed two-value set (`--radius-card`/
@@ -55,10 +62,16 @@ function DockButton({
  * pixel-for-pixel. Labels stay at `text.label` (11px) rather than the
  * mockup's 8px for the same reason: typography is a closed set too.
  */
-export function ToolsDock({ onOpenDice, diceDisabled, onOpenRules, className }: ToolsDockProps) {
+export function ToolsDock({ onOpenDice, diceDisabled, onOpenRules, onOpenMaps, className }: ToolsDockProps) {
   return (
     <div className={cx('flex gap-2', className)}>
-      <DockButton icon="map" label="Maps" title="Maps (coming soon)" disabled />
+      <DockButton
+        icon="map"
+        label="Maps"
+        title={onOpenMaps ? 'Maps' : 'Maps (coming soon)'}
+        onClick={onOpenMaps}
+        disabled={!onOpenMaps}
+      />
       {/* Rules stops being a stub when the GM is on: it opens the
         * out-of-character rules transcript. Questions are asked from the
         * composer; this is where you read them back. */}

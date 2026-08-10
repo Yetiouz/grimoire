@@ -14,6 +14,7 @@ import type { FilterKind } from '../../lib/journalFilters'
 import { JournalComposer } from './JournalComposer'
 import { PlayerCard } from './PlayerCard'
 import { QuestLogPanel } from './QuestLogPanel'
+import { MapsPanel } from './MapsPanel'
 import type { LogEntryKind } from '../ui/LogEntryRow'
 import type { GmTurnResult } from '../../lib/gm'
 import type { FeedItem } from '../../lib/feed'
@@ -108,15 +109,23 @@ function ToolTile({ icon, label, onClick }: { icon: IconName; label: string; onC
  * Pulled into its own file rather than living inline in
  * `JournalScreen.tsx`: CLAUDE.md's ~300-line component cap. All of the
  * actual view content is existing components reused as-is
- * (`PlayerCard`, `QuestLogPanel`, `JournalFeed`/`JournalComposer`) —
- * this file is the tab-driven switch between them plus the two views
- * that don't exist anywhere yet (Maps, Tools), both rendered honestly
- * rather than with fabricated data: Maps is a real `EmptyState` (no
- * hex/travel data model exists to show), Tools is four disabled stub
- * tiles matching `ToolsDock`'s already-established
- * structure-ships-ahead-of-the-feature pattern (Rules/Search/Campaign/
- * World — none of the four have a real destination yet, same as
- * `ToolsDock`'s own Maps/Rules stubs on desktop).
+ * (`PlayerCard`, `QuestLogPanel`, `JournalFeed`/`JournalComposer`,
+ * `MapsPanel`) — this file is the tab-driven switch between them plus
+ * the one view that still doesn't exist (Tools), rendered honestly
+ * rather than with fabricated data: Tools is four disabled stub tiles
+ * matching `ToolsDock`'s already-established structure-ships-ahead-of-
+ * the-feature pattern (Rules/Search/Campaign/World — none of the four
+ * have a real destination yet, same as `ToolsDock`'s own Rules stub on
+ * desktop).
+ *
+ * Maps (slice 8) renders `MapsPanel` directly, not wrapped in `Overlay`
+ * the way `DiceRoller`/`CharacterSheet`/`RulesChat` are on both mobile
+ * and desktop — unlike those three, Maps already has its own permanent
+ * bottom-tab destination here (unlike ToolsDock's stub-button entry
+ * point on desktop, which has no equivalent persistent slot), and the
+ * header-row above already gives every mobile tab a title + close-to-
+ * journal control. A second nested `Overlay` here would just wrap one
+ * closeable panel inside another that's already closeable the same way.
  *
  * BOB_queue task 1: owns its own `JournalFilterBar` state, independent
  * of the desktop panel's copy in JournalScreen — the actual requirement
@@ -266,13 +275,13 @@ export function MobileJournalView({
               />
             ))}
           </div>
+        ) : campaignId ? (
+          <div className="p-4">
+            <MapsPanel campaignId={campaignId} />
+          </div>
         ) : (
           <div className="p-4">
-            <EmptyState
-              icon="map"
-              title="Maps"
-              description="Region, Site, and Scene maps are a later slice — nothing to show yet."
-            />
+            <EmptyState icon="map" title="Maps" description="Open a campaign to see its maps." />
           </div>
         )}
       </div>

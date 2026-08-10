@@ -33,6 +33,11 @@ interface JournalDesktopLayoutProps {
   openSession: CampaignSession | null
   onOpenCharacter: (character: Character) => void
   onOpenDice: () => void
+  /** Slice 8 (Maps overlay) — threaded straight to `ToolsDock`, same as
+   * `MobileJournalView`'s own copy of this prop. Not gated behind
+   * `gmEnabled` (unlike `onOpenRules` below): Maps is campaign data any
+   * member can view, not a GM-only feature. */
+  onOpenMaps: () => void
   /** Slice 16 — threaded straight through to `JournalComposer`/
    * `JournalFilterBar`, same optional-and-off-by-default shape
    * `MobileJournalView` already takes for its own copy of this prop.
@@ -86,6 +91,7 @@ export function JournalDesktopLayout({
   openSession,
   onOpenCharacter,
   onOpenDice,
+  onOpenMaps,
   gmEnabled,
   onOpenRules,
   onLog,
@@ -114,7 +120,7 @@ export function JournalDesktopLayout({
             ))}
           </ColumnCard>
           <ColumnCard headerLeft="Tools">
-            <ToolsDock onOpenDice={onOpenDice} diceDisabled={!openSession} onOpenRules={onOpenRules} />
+            <ToolsDock onOpenDice={onOpenDice} diceDisabled={!openSession} onOpenRules={onOpenRules} onOpenMaps={onOpenMaps} />
           </ColumnCard>
         </div>
       )}
