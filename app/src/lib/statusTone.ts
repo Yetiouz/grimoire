@@ -32,6 +32,11 @@
  * keyword) before "Resolved" and mislabel a completed quest as
  * still-in-progress. Scanning only the leading clause gets "Resolved"
  * right.
+ *
+ * `isQuestClosed` (2026-08-10) is a second, narrower reading of the same
+ * leading clause, for `WorldTabs`' Open/Resolved quest grouping — see
+ * its own doc comment for why the six tones above aren't precise enough
+ * for that split on their own.
  */
 
 export type StatusTone = 'positive' | 'negative' | 'caution' | 'info' | 'special' | 'neutral'
@@ -53,7 +58,10 @@ export const TONE_DOT_CLASS: Record<StatusTone, string> = {
 const CLAUSE_SEPARATORS = ['—', ';', ',']
 const MAX_LABEL_LENGTH = 28
 
-function leadingClause(text: string): string {
+/** Exported (2026-08-10) for `isQuestClosed` below — was private until
+ * that function needed the exact same leading-clause parsing rather
+ * than a second, possibly-drifting copy of it. */
+export function leadingClause(text: string): string {
   let cut = text.length
   for (const separator of CLAUSE_SEPARATORS) {
     const index = text.indexOf(separator)
@@ -86,4 +94,25 @@ export function deriveStatusIndicator(text: string | null | undefined): StatusIn
   if (!text) return null
   const label = leadingClause(text)
   return { label, tone: toneFromClause(label) }
+}
+
+/** Deliberately narrower than the `positive` tone above (2026-08-10, for
+ * `WorldTabs`' Open/Resolved quest split). `positive` also covers
+ * "accepted", "recruited", "held", "secured", "alive", "allied", and "on
+ * loan" — every one describes something going well, but only some of
+ * them mean the quest itself is actually over. "Accepted; complete if
+ * safely possible" is a real imported status and a still-OPEN quest;
+ * its leading clause is "Accepted", which is a `positive`-tone word —
+ * grouping by tone alone would wrongly file it under Resolved. This
+ * checks for actual closure words instead, same leading-clause-only
+ * scan as `deriveStatusIndicator` (so "Resolved — Maela Rusk captured"
+ * reads "Resolved", not "captured"). "Failed"/"abandoned" count as
+ * closed too — closed, not necessarily won; there's no separate
+ * Failed group in `WorldTabs` today, just Open vs. Resolved. */
+const CLOSED_WORDS = ['resolved', 'complete', 'completed', 'closed', 'failed', 'abandoned']
+
+export function isQuestClosed(status: string | null | undefined): boolean {
+  if (!status) return false
+  const clause = leadingClause(status).toLowerCase()
+  return CLOSED_WORDS.some((word) => clause.includes(word))
 }

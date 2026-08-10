@@ -10,14 +10,28 @@ import { GmBudgetBar } from './GmBudgetBar'
 import { useGmBudget } from '../../hooks/useGmBudget'
 import { useGmBudgetByMode } from '../../hooks/useGmBudgetByMode'
 
-/** One selection answers one question: what is this message? The four
- * journal kinds and the two Ask modes are a single radio row (owner:
- * "they should all be inline… you are asking rules, you are putting in
- * a log, you are talking to a gm") — the old two-step (mode toggle,
- * THEN kind chips) asked that same question in two controls that looked
- * identical. Each choice owns a color; the selected chip lights as a
- * soft tint (owner picked variant B of composer-inline-mockup.html),
- * and the send button + input border follow the selection.
+/** One selection answers one question: what is this message? Originally
+ * one flat six-choice row (owner: "they should all be inline… you are
+ * asking rules, you are putting in a log, you are talking to a gm")
+ * replacing an even older two-step (mode toggle, THEN kind chips) that
+ * asked the same question through two controls that looked identical.
+ * Each choice owns a color; the selected chip lights as a soft tint
+ * (owner picked variant B of composer-inline-mockup.html), and the send
+ * button + input border follow the selection.
+ *
+ * Split into two four-choice rows (2026-08-10, owner's redesign): once
+ * an AI GM exists, asking it already produces the narration — a
+ * standalone "Narration" chip sitting next to "GM" looked like two ways
+ * to do the same thing, when really it only ever earned its keep for
+ * solo/human-GM campaigns, where nobody else is narrating for you and
+ * `AI_GM_CHOICES` below never even renders (`onAskGm`/`onAskRules` are
+ * only wired when the campaign has a real AI GM). "Roll" also dropped
+ * from the AI-GM row: `ToolsDock`'s dice button already opens the real
+ * roller and logs its own result, so a second inline way to log a roll
+ * was redundant with that, not with anything else in this row.
+ * `NON_AI_CHOICES` is untouched — unaffected by any of this, since
+ * `visibleChoices` below only reaches for it when there's no AI GM to
+ * ask in the first place.
  *
  * Hexes duplicate index.css's @theme tokens because the button/border
  * treatments need inline styles: Button composes its own bg classes and
@@ -26,18 +40,21 @@ import { useGmBudgetByMode } from '../../hooks/useGmBudgetByMode'
  * luck — inline style is the one mechanism that wins by specification.
  * Chip tints stay class-based (full literal strings, statically
  * scannable). Cyan and orange are fixed identities (GM / Rules,
- * matching the feed); the four kind colors are the owner-approved
- * mockup assignment.
+ * matching the feed) in both rows; purple/yellow (Party/Notes) carry
+ * over their prior Action/Note identities rather than picking new ones.
  */
 type Choice = LogEntryKind | 'gm' | 'rules'
 
 interface ChoiceSpec {
   id: Choice
   label: string
-  /** Mobile label (below xl:) — owner's pick for keeping all six
-   * choices on one line on a phone: abbreviate rather than scroll,
-   * stack, or hide behind a picker. Color + position carry the rest of
-   * the meaning at that size. */
+  /** Mobile label (below xl:) — owner's pick for keeping every choice
+   * on one line on a phone: abbreviate rather than scroll, stack, or
+   * hide behind a picker. Color + position carry the rest of the
+   * meaning at that size. Equal to `label` on both rows now that
+   * neither has more than four choices — "Party"/"GM"/"Notes"/"Rules"
+   * and "Action"/"Roll"/"Note" are already short; only "Narration"
+   * still needs the shorter "Nar". */
   short: string
   ai: boolean
   hex: string
@@ -46,13 +63,26 @@ interface ChoiceSpec {
   placeholder: string
 }
 
-const CHOICES: ChoiceSpec[] = [
+/** Solo and human-GM campaigns — `onAskGm` is never wired for either
+ * (see `JournalScreen`'s `aiGmActive` gate), so this row's shape is
+ * unchanged from the original single-row design: whoever is at the
+ * keyboard is playing every part, including the GM's own narration. */
+const NON_AI_CHOICES: ChoiceSpec[] = [
   { id: 'action', label: 'Action', short: 'Act', ai: false, hex: '#9b5cff', on: 'border-purple/45 bg-purple/15 text-purple', placeholder: 'Add to the journal…' },
   { id: 'narration', label: 'Narration', short: 'Nar', ai: false, hex: '#ff3fd6', on: 'border-pink/45 bg-pink/15 text-pink', placeholder: 'Narrate the scene…' },
   { id: 'roll', label: 'Roll', short: 'Roll', ai: false, hex: '#39ff8f', on: 'border-green/45 bg-green/15 text-green', placeholder: 'Record a roll…' },
   { id: 'note', label: 'Note', short: 'Note', ai: false, hex: '#ffd23f', on: 'border-yellow/45 bg-yellow/15 text-yellow', placeholder: 'Jot a note…' },
-  { id: 'gm', label: 'Ask GM', short: 'GM', ai: true, hex: '#35f0ff', on: 'border-cyan/45 bg-cyan/15 text-cyan', placeholder: 'Tell the GM what you do…' },
-  { id: 'rules', label: 'Ask Rules', short: 'Rules', ai: true, hex: '#ff8a3d', on: 'border-orange/45 bg-orange/15 text-orange', placeholder: 'Ask a rules question…' },
+]
+
+/** AI-GM campaigns. `id: 'action'` still backs "Party" (it logs the
+ * same `LogEntryKind`, just no longer offered next to a manual
+ * "Narration" option) — nothing downstream of `onLog`/the feed needed
+ * to change for the rename. */
+const AI_GM_CHOICES: ChoiceSpec[] = [
+  { id: 'action', label: 'Party', short: 'Party', ai: false, hex: '#9b5cff', on: 'border-purple/45 bg-purple/15 text-purple', placeholder: 'Say or do something…' },
+  { id: 'gm', label: 'GM', short: 'GM', ai: true, hex: '#35f0ff', on: 'border-cyan/45 bg-cyan/15 text-cyan', placeholder: 'Tell the GM what you do…' },
+  { id: 'note', label: 'Notes', short: 'Notes', ai: false, hex: '#ffd23f', on: 'border-yellow/45 bg-yellow/15 text-yellow', placeholder: 'Jot a note…' },
+  { id: 'rules', label: 'Rules', short: 'Rules', ai: true, hex: '#ff8a3d', on: 'border-orange/45 bg-orange/15 text-orange', placeholder: 'Ask a rules question…' },
 ]
 
 interface JournalComposerProps {
@@ -131,7 +161,10 @@ export function JournalComposer({
   }, [seed])
 
   const gmAvailable = gmEnabled && Boolean(onAskGm)
-  const selected = CHOICES.find((c) => c.id === choice) ?? CHOICES[0]
+  // Which four-choice row is showing — see the two arrays' own doc
+  // comments for why there are two rows instead of one filtered set.
+  const visibleChoices = gmAvailable ? AI_GM_CHOICES : NON_AI_CHOICES
+  const selected = visibleChoices.find((c) => c.id === choice) ?? visibleChoices[0]
   const aiMode = gmAvailable && selected.ai
   const rulesMode = aiMode && choice === 'rules' && Boolean(onAskRules)
 
@@ -195,8 +228,6 @@ export function JournalComposer({
     }
   }
 
-  const visibleChoices = gmAvailable ? CHOICES : CHOICES.filter((c) => !c.ai)
-
   return (
     <div className={cx('flex flex-col gap-2', className)}>
       <div className="flex items-center gap-2">
@@ -230,8 +261,8 @@ export function JournalComposer({
                   // Compact-pill exception to the 44px touch-target rule —
                   // decided by the owner for this dense chip-row shape;
                   // same precedent as the header filter chips.
-                  // px-2 below xl:, where the abbreviated labels keep all
-                  // six chips + the bar on one 390px line with no scroll.
+                  // px-2 below xl:, where the compact labels keep all four
+                  // chips + the bar on one 390px line with no scroll.
                   'inline-flex items-center justify-center whitespace-nowrap rounded-full border px-2 py-1 uppercase xl:px-3',
                   text.caption,
                   isOn ? c.on : 'border-line-soft bg-panel2 text-ink-dim hover:border-line-hover',
@@ -298,10 +329,11 @@ export function JournalComposer({
         <Button
           onClick={() => void handleSubmit()}
           disabled={disabled || !body.trim()}
-          // The send button wears the selection's color (mockup B, all six
-          // choices — dark label for contrast on every hue). Inline for
-          // the same stylesheet-order reason as the input border; the
-          // shadow is recomputed so a green Roll button doesn't glow
+          // The send button wears the selection's color (mockup B, every
+          // choice in both rows — dark label for contrast on every hue).
+          // Inline for the same stylesheet-order reason as the input
+          // border; the shadow is recomputed per selection so, e.g., a
+          // green Roll button (still in `NON_AI_CHOICES`) doesn't glow
           // purple.
           style={{
             background: selected.hex,
@@ -309,7 +341,13 @@ export function JournalComposer({
             boxShadow: `0 0 0 1px ${selected.hex}40, 0 8px 24px -8px ${selected.hex}8c`,
           }}
         >
-          {aiMode ? 'Ask' : 'Log'}
+          {/* "Send", not "Ask" (2026-08-10, owner's follow-up on the
+            * chip-row redesign) — this button only ever reads "Ask"/
+            * "Send" for the GM/Rules chips (aiMode), which only exist in
+            * `AI_GM_CHOICES`; Party/Notes still read "Log", the direct-
+            * write path via `onLog` rather than a dispatched-and-
+            * answered turn. */}
+          {aiMode ? 'Send' : 'Log'}
         </Button>
       </div>
     </div>

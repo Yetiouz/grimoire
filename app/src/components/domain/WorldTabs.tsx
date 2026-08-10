@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { EmptyState } from '../ui/EmptyState'
-import { deriveStatusIndicator } from '../../lib/statusTone'
+import { deriveStatusIndicator, isQuestClosed } from '../../lib/statusTone'
 import { WorldPreviewRow } from './WorldPreviewRow'
 import { WorldDetailOverlay } from './WorldDetailOverlay'
 import type { WorldSelection } from './WorldDetailOverlay'
@@ -77,10 +77,29 @@ const TABS: Array<{ key: WorldTab; label: string }> = [
  * `listCampaignNotes`) for freeform campaign notes that aren't tied to
  * any one NPC/faction/quest/treasure row. `selection`/`activeTab` are
  * otherwise unchanged from v3.
+ *
+ * v5 (2026-08-10, owner: "the quests button is more a logs button" —
+ * every quest sat in one flat list in original import order regardless
+ * of whether it was still open, which reads as a history of what
+ * happened rather than a board of what's left to do). The Quests tab
+ * only, below, now splits into an Open group (unchanged row shape) and
+ * a Resolved group (title + dot only, `preview` withheld — see
+ * `isQuestClosed`'s own doc comment for why this needed a narrower
+ * check than the existing status tone). No new field and no re-import:
+ * both groups read the same `quest.status` string `deriveStatusIndicator`
+ * already parses for the dot.
  */
 export function WorldTabs({ quests, npcs, factions, treasure, notes, npcStatBlocks, justifyTabs, className }: WorldTabsProps) {
   const [activeTab, setActiveTab] = useState<WorldTab>('quests')
   const [selection, setSelection] = useState<WorldSelection | null>(null)
+
+  // v5's Open/Resolved split (see the component doc comment above) —
+  // computed here rather than inline in the JSX below purely for
+  // readability; `quests` is a handful of rows (7 in the real imported
+  // data as of this pass), so partitioning on every render costs
+  // nothing worth memoizing.
+  const openQuests = quests.filter((quest) => !isQuestClosed(quest.status))
+  const resolvedQuests = quests.filter((quest) => isQuestClosed(quest.status))
 
   return (
     <div className={cx('flex min-h-0 flex-1 flex-col', className)}>
@@ -105,15 +124,49 @@ export function WorldTabs({ quests, npcs, factions, treasure, notes, npcStatBloc
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
         {activeTab === 'quests' &&
           (quests.length > 0 ? (
-            quests.map((quest) => (
-              <WorldPreviewRow
-                key={quest.id}
-                title={quest.title}
-                indicator={deriveStatusIndicator(quest.status)}
-                preview={quest.goal}
-                onClick={() => setSelection({ kind: 'quest', item: quest })}
-              />
-            ))
+            <>
+              {openQuests.map((quest) => (
+                <WorldPreviewRow
+                  key={quest.id}
+                  title={quest.title}
+                  indicator={deriveStatusIndicator(quest.status)}
+                  preview={quest.goal}
+                  onClick={() => setSelection({ kind: 'quest', item: quest })}
+                />
+              ))}
+
+              {resolvedQuests.length > 0 && (
+                <>
+                  {/* Plain label, not a `SceneDivider` — that component's
+                    * centered rule-flanked treatment is built for the
+                    * journal's scrolling scene breaks; this is a compact
+                    * list-section header, closer in spirit to a filter
+                    * chip row's own left-aligned caption. Count uses the
+                    * same neutral pill shape as everywhere else a bare
+                    * number needs a background (no tone here — this
+                    * isn't a status, just a count). */}
+                  <div className={cx(text.label, 'mt-2 flex items-center gap-2 uppercase tracking-eyebrow text-ink-faint')}>
+                    Resolved
+                    <span className="rounded-full bg-line-soft px-2 py-0.5 text-ink-dim">{resolvedQuests.length}</span>
+                  </div>
+                  {resolvedQuests.map((quest) => (
+                    <WorldPreviewRow
+                      key={quest.id}
+                      title={quest.title}
+                      indicator={deriveStatusIndicator(quest.status)}
+                      // Withheld on purpose (v5): a resolved quest's goal
+                      // line already happened — the title plus the dot's
+                      // label ("Resolved", "Complete", ...) says enough,
+                      // and dropping the second line is what keeps this
+                      // group visually out of the way instead of taking
+                      // the same room as what's still open.
+                      preview={null}
+                      onClick={() => setSelection({ kind: 'quest', item: quest })}
+                    />
+                  ))}
+                </>
+              )}
+            </>
           ) : (
             <EmptyState icon="quest" title="No quests yet" description="Quests logged for this campaign show up here." />
           ))}
