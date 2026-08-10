@@ -267,6 +267,7 @@ export function MobileJournalView({
           treasure={treasure}
           notes={notes}
           npcStatBlocks={npcStatBlocks}
+          justifyTabs
           className="min-h-0 flex-1 px-4 pb-4 pt-3"
         />
       ) : (

@@ -12,11 +12,16 @@
 //           quick-reference files instead. Its replies go to gm_chat, are
 //           private to the asker, and NEVER reach the journal.
 //   speak — read-aloud (tts.ts). Turns a narration entry's text into
-//           audio through the same provider key. No context build, no
-//           model conversation — one TTS request, counted against the
-//           same daily budget, telemetry mode "speak". The client falls
-//           back to the browser's own voice on any non-ok status, so
-//           this path failing can never break the speaker button.
+//           audio via Fish Audio's TTS API, on its own FISH_API_KEY —
+//           NOT the same provider key `complete()` uses below (was the
+//           same Gemini key when this path was Gemini-native TTS; the
+//           2026-08-10 provider swap made that no longer true, and the
+//           two are independent on purpose now, see tts.ts). No context
+//           build, no model conversation — one TTS request, counted
+//           against the same daily budget, telemetry mode "speak". The
+//           client falls back to the browser's own voice on any non-ok
+//           status, so this path failing can never break the speaker
+//           button.
 //
 // Slice 17's tools (tools.ts): log_journal_entry, roll_dice (a GM-only
 // dice pool, created fresh per play turn), adjust_character_hp, and
@@ -207,13 +212,15 @@ Deno.serve(async (req: Request) => {
   // modes too.
   if (mode === "speak") {
     // TTS gets its OWN, much shorter timeout — not the text turn's 60s.
-    // Discovered live: the free tier throttles TTS aggressively, and a
-    // throttled request doesn't 429, it just sits in Google's queue
-    // until the timeout kills it. With a 60s ceiling that meant a
-    // player pressing play, hearing nothing for a full minute, then
-    // getting the browser voice — indistinguishable from a dead
-    // button. 20s is enough for every synthesis that is actually going
-    // to happen (observed: ~4-10s) and fails over fast when it isn't.
+    // Originally sized against Gemini's free tier, which didn't 429 when
+    // throttled, it just sat in Google's queue until the timeout killed
+    // it — with a 60s ceiling that meant a player pressing play, hearing
+    // nothing for a full minute, then getting the browser voice,
+    // indistinguishable from a dead button. Kept unchanged across the
+    // 2026-08-10 swap to Fish Audio: every synthesize() call observed
+    // live during that swap's own testing finished in a few seconds, so
+    // 20s stays a generous ceiling rather than a tight one, and still
+    // fails over fast on the rare request that doesn't come back at all.
     const TTS_TIMEOUT_MS = Number(Deno.env.get("GM_TTS_TIMEOUT_MS") ?? "20000");
     const speakController = new AbortController();
     const speakTimer = setTimeout(() => speakController.abort(), TTS_TIMEOUT_MS);

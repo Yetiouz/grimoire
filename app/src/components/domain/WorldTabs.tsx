@@ -27,6 +27,17 @@ interface WorldTabsProps {
    * that map's own doc comment for why no separate `isGm` flag is
    * threaded through here. */
   npcStatBlocks: Map<string, NpcStatBlock>
+  /** Mobile's request (2026-08-10, owner: "expand the buttons... so the
+   * tabs are justified but keep the same space between them") — mobile's
+   * wider tab row otherwise left visible slack after 5 short labels the
+   * way desktop's tight 26rem column never does. `false` (the default,
+   * desktop's call site) keeps every tab its natural content width,
+   * left-aligned, same as before. `true` (mobile's call site) makes each
+   * tab `flex-1` instead of `shrink-0` — the row's existing `gap-1.5`
+   * between them is untouched either way, so "justified" comes purely
+   * from the buttons themselves growing to fill the row, not from
+   * `justify-between`-style extra gap. */
+  justifyTabs?: boolean
   className?: string
 }
 
@@ -67,7 +78,7 @@ const TABS: Array<{ key: WorldTab; label: string }> = [
  * any one NPC/faction/quest/treasure row. `selection`/`activeTab` are
  * otherwise unchanged from v3.
  */
-export function WorldTabs({ quests, npcs, factions, treasure, notes, npcStatBlocks, className }: WorldTabsProps) {
+export function WorldTabs({ quests, npcs, factions, treasure, notes, npcStatBlocks, justifyTabs, className }: WorldTabsProps) {
   const [activeTab, setActiveTab] = useState<WorldTab>('quests')
   const [selection, setSelection] = useState<WorldSelection | null>(null)
 
@@ -81,7 +92,8 @@ export function WorldTabs({ quests, npcs, factions, treasure, notes, npcStatBloc
             onClick={() => setActiveTab(tab.key)}
             className={cx(
               text.caption,
-              'shrink-0 rounded-full border px-3 py-1.5 font-semibold uppercase tracking-eyebrow',
+              justifyTabs ? 'flex-1 text-center' : 'shrink-0',
+              'rounded-full border px-3 py-1.5 font-semibold uppercase tracking-eyebrow',
               activeTab === tab.key ? 'border-purple bg-purple text-white' : 'border-line-soft bg-panel2 text-ink-dim',
             )}
           >
