@@ -202,6 +202,80 @@ export async function getGmBudget(campaignId: string): Promise<GmBudget | null> 
   }
 }
 
+/** Mirrors `gm_turn/index.ts`'s own `lastPacificMidnight` — the daily
+ * budget resets at Pacific midnight, and `gm_budget_since_by_mode`
+ * (like `gm_budget_since` before it) takes that boundary as a plain
+ * timestamp rather than computing it server-side, so any direct caller
+ * needs this too. Ported rather than shared, since the edge function
+ * and this client build don't share a module today. */
+function lastPacificMidnight(now = new Date()): Date {
+  const tz = 'America/Los_Angeles'
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+  const p: Record<string, string> = {}
+  for (const part of dtf.formatToParts(now)) p[part.type] = part.value
+  const asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second)
+  const offset = asUTC - now.getTime()
+  const local = new Date(now.getTime() + offset)
+  local.setUTCHours(0, 0, 0, 0)
+  return new Date(local.getTime() - offset)
+}
+
+export interface GmBudgetByMode {
+  /** Play + rules turns today — everything that isn't a voice read. */
+  textUsed: number
+  /** Read-aloud (`speak` mode) requests today. */
+  voiceUsed: number
+}
+
+/** Splits today's campaign-wide spend by mode (2026-08-10, migration
+ * `gm_budget_by_mode`) — the same shared pool `getGmBudget` already
+ * reads (see that function's own doc comment: one ceiling, not two),
+ * just broken down by what actually spent it. Built for the header's
+ * two budget bars, one per AI, per owner feedback to "track them truly
+ * separately": this is the honest version of that request — the
+ * CEILING stays the one real shared number, only the USED side is
+ * split by mode, so the UI never implies a separate quota that doesn't
+ * exist server-side.
+ *
+ * Called directly via `supabase.rpc` rather than routed through the
+ * edge function like `getGmBudget` is: the ceiling constant is the one
+ * thing that has to live server-side, and this query doesn't need it —
+ * it just sums `gm_turns` rows the caller can already read under RLS.
+ * Routing it through the function anyway would cost an extra hop for
+ * nothing.
+ *
+ * Returns null on any failure, same honest-hide contract as
+ * `getGmBudget` — treat null as "nothing to show yet," never as "zero
+ * used." */
+export async function getGmBudgetByMode(campaignId: string): Promise<GmBudgetByMode | null> {
+  try {
+    const { data, error } = await supabase.rpc('gm_budget_since_by_mode', {
+      p_campaign_id: campaignId,
+      p_since: lastPacificMidnight().toISOString(),
+    })
+    if (error) return null
+    const row = (Array.isArray(data) ? data[0] : data) as
+      | { campaign_used_text?: number; campaign_used_voice?: number }
+      | null
+    if (!row) return null
+    return {
+      textUsed: Number(row.campaign_used_text ?? 0),
+      voiceUsed: Number(row.campaign_used_voice ?? 0),
+    }
+  } catch {
+    return null
+  }
+}
+
 /** True when the GM is switched on for this build. Off by default:
  * slice 16 ships to `main` while The Black Road is live data, so the
  * feature stays dark until the flag is set deliberately — locally in

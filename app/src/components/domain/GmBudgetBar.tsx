@@ -2,41 +2,45 @@ import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 
 interface GmBudgetBarProps {
-  remaining: number
-  usedFraction: number
-  limit: number
+  /** Short word identifying which AI this bar tracks — "GM" or
+   * "Voice." Shown in the tooltip; the visible text is the percentage
+   * (see the component doc comment for why). */
+  label: string
   used: number
+  limit: number
 }
 
 /**
- * Journal header meter (2026-08-10) — the same bar-plus-number shape as
- * `JournalComposer`'s own inline budget meter (a bar answers "should I
- * be worried yet" at a glance; the number answers "how many exactly"),
- * but reachable in campaigns where the composer's meter never renders
- * at all: that one is gated on `aiGmActive` (AI-GM campaigns only, so
- * the Ask GM/Ask Rules chips have something to gate), while read-aloud
- * (`lib/speech.ts`) works in ANY campaign whose build has `VITE_GM_TTS`
- * on — it narrates hand-typed narration same as AI-authored narration,
- * so a solo- or human-GM'd campaign can spend real budget purely on
- * voice reads and would otherwise have no way to see it happening.
+ * Journal header meter (2026-08-10; rewritten same day per owner
+ * feedback). One bar per AI — GM text turns, voice reads — each
+ * reading its own share of `getGmBudgetByMode`'s split (see that
+ * function's doc comment: the CEILING stays the one real shared
+ * number `gm_turn/index.ts` enforces; only the USED side is split by
+ * mode). Two bars, not one, because the owner asked to "track them
+ * truly separately" — watching only your own AI-GM's turns eat into
+ * the *shared* pool without knowing whether voice or the GM itself is
+ * the reason you're capped would defeat the point of separating them,
+ * so each bar's fraction is against the same shared limit rather than
+ * a private one per AI.
  *
- * Deliberately labeled "GM budget," not "voice budget": play turns,
- * rules turns, and voice reads all draw from the one daily pool
- * `gm_turn/index.ts` enforces. A label implying voice has its own
- * separate allowance would be dishonest the first time a player also
- * uses Ask GM and watches this same number move without having spoken
- * a word — see `useGmBudget`'s own doc comment.
+ * Label reads "N% Used," not the original design's "N left today" —
+ * per the owner's follow-up correction: a percentage reads faster at
+ * a glance than a raw remaining count, especially with two bars side
+ * by side, and "Used" is shorter than the alternatives considered
+ * ("N left today", "Live"/"Stub", "Available"/"Unavailable").
  */
-export function GmBudgetBar({ remaining, usedFraction, limit, used }: GmBudgetBarProps) {
+export function GmBudgetBar({ label, used, limit }: GmBudgetBarProps) {
+  const usedFraction = limit > 0 ? used / limit : 0
+  const percent = Math.round(Math.min(1, usedFraction) * 100)
   return (
     <div
-      className="flex items-center gap-2"
-      title={`${used} of ${limit} GM requests used today — play, rules, and voice reads all share this. A voice read costs one.`}
+      className="flex items-center gap-1.5"
+      title={`${label}: ${used} of ${limit} requests used today — the daily pool is shared across GM turns and voice reads.`}
     >
       <span
-        className="h-1 w-12 overflow-hidden rounded-full bg-panel2"
+        className="h-1 w-10 overflow-hidden rounded-full bg-panel2"
         role="img"
-        aria-label={`${Math.round(usedFraction * 100)} percent of today's GM budget used`}
+        aria-label={`${label}: ${percent} percent of today's shared GM budget used`}
       >
         <span
           className={cx(
@@ -53,7 +57,7 @@ export function GmBudgetBar({ remaining, usedFraction, limit, used }: GmBudgetBa
           usedFraction >= 1 ? 'text-red' : usedFraction >= 0.8 ? 'text-yellow' : undefined,
         )}
       >
-        {remaining} left today
+        {label} {percent}% Used
       </span>
     </div>
   )

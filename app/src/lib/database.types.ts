@@ -1175,6 +1175,15 @@ export type Database = {
           user_used: number
         }[]
       }
+      gm_budget_since_by_mode: {
+        Args: { p_campaign_id: string; p_since: string }
+        Returns: {
+          campaign_used_text: number
+          campaign_used_voice: number
+          user_used_text: number
+          user_used_voice: number
+        }[]
+      }
       gm_check_is_member: { Args: { p_campaign_id: string }; Returns: boolean }
       gm_consume_die: {
         Args: { p_die: string; p_pool_id: string }

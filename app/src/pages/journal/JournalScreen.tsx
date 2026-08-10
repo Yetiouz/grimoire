@@ -17,6 +17,7 @@ import { useJournalScreenData } from '../../hooks/useJournalScreenData'
 import { useGmJournalHandlers } from '../../hooks/useGmJournalHandlers'
 import { useAiVoicePreference } from '../../hooks/useAiVoicePreference'
 import { useGmBudget } from '../../hooks/useGmBudget'
+import { useGmBudgetByMode } from '../../hooks/useGmBudgetByMode'
 import { endSession, logJournalEntry, startSession } from '../../lib/campaigns'
 import type { Campaign } from '../../lib/campaigns'
 import type { Character } from '../../lib/characters'
@@ -120,20 +121,6 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     return () => configureAiSpeech(null)
   }, [campaign.id, ttsAvailable, aiVoiceOn])
 
-  // Header budget meter (2026-08-10, GmBudgetBar.tsx): polls the same
-  // shared daily pool play turns, rules turns, and voice reads all draw
-  // from (see useGmBudget's own doc comment for why this needs its own
-  // poll rather than piggybacking on JournalComposer's mount-plus-
-  // after-every-ask refresh). Gated on `ttsAvailable`, not `aiGmActive`
-  // — this is specifically here to cover the campaigns where read-aloud
-  // is the ONLY thing spending the budget (solo/human-GM'd campaigns
-  // have no Ask GM chips at all, so JournalComposer's own meter never
-  // renders there). Showing both this and the composer's meter at once
-  // in an AI-GM campaign is accepted overlap, not a bug — see
-  // GmBudgetBar's own doc comment.
-  const { remaining: gmBudgetRemaining, usedFraction: gmBudgetUsedFraction, budget: gmBudgetValue } =
-    useGmBudget(campaign.id, ttsAvailable)
-
   // Solo v1 has exactly one in-play PC (Kimbo) — using the single
   // `active` character's color is correct for that case without
   // inventing a real auth-user-to-character lookup (matching
@@ -154,6 +141,21 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   // that switches away from 'ai' should keep showing its history, only
   // stop offering new asks.
   const aiGmActive = gmEnabled && campaign.gm_mode === 'ai'
+
+  // Header budget meter (2026-08-10, GmBudgetBar.tsx; split into two
+  // bars same day per owner feedback — "I want a progress bar for both
+  // AI's I have with a status," then "track them truly separately").
+  // Gated on `aiGmActive || ttsAvailable`, broader than either bar's
+  // own gate below: either AI existing in this build/campaign is
+  // enough reason to poll, even before the first read tells us which
+  // one (if either) has actually been used today. `useGmBudget` still
+  // owns the one real ceiling (`gmBudgetValue.limit`) — only the edge
+  // function knows `GM_DAILY_REQUEST_BUDGET` — while `useGmBudgetByMode`
+  // owns the per-mode USED split, read directly off `gm_turns` via RPC.
+  // Two independent polls, recombined below into `gmBudget`'s two bars.
+  const budgetMeterEnabled = aiGmActive || ttsAvailable
+  const { budget: gmBudgetValue } = useGmBudget(campaign.id, budgetMeterEnabled)
+  const gmBudgetByMode = useGmBudgetByMode(campaign.id, budgetMeterEnabled)
 
   // Header meta line ("<mode> · Session N"): the game-mode word used to
   // be a hardcoded "Solo" (no such field existed yet) — now sourced from
@@ -284,17 +286,26 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     />
   )
 
-  // Nothing to meter when the tier doesn't exist in this build, or
-  // before the first poll resolves — render no control at all rather
-  // than a bar stuck at 0%.
+  // Each bar renders only once both halves it needs are in: the shared
+  // limit (from useGmBudget) and this AI's own USED count (from
+  // useGmBudgetByMode) — and only when that AI actually exists in this
+  // build/campaign (`aiGmActive` for GM turns, `ttsAvailable` for voice
+  // reads). Nothing renders in a slot whose AI is off or still loading,
+  // rather than a bar stuck at 0%.
+  const gmTextBudget =
+    aiGmActive && gmBudgetValue && gmBudgetByMode ? (
+      <GmBudgetBar label="GM" used={gmBudgetByMode.textUsed} limit={gmBudgetValue.limit} />
+    ) : null
+  const gmVoiceBudget =
+    ttsAvailable && gmBudgetValue && gmBudgetByMode ? (
+      <GmBudgetBar label="Voice" used={gmBudgetByMode.voiceUsed} limit={gmBudgetValue.limit} />
+    ) : null
   const gmBudget =
-    ttsAvailable && gmBudgetValue && gmBudgetRemaining !== null ? (
-      <GmBudgetBar
-        remaining={gmBudgetRemaining}
-        usedFraction={gmBudgetUsedFraction}
-        limit={gmBudgetValue.limit}
-        used={gmBudgetValue.used}
-      />
+    gmTextBudget || gmVoiceBudget ? (
+      <div className="flex flex-wrap items-center gap-3">
+        {gmTextBudget}
+        {gmVoiceBudget}
+      </div>
     ) : null
 
   return (
