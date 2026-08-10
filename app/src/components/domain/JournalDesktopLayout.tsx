@@ -42,6 +42,17 @@ interface JournalDesktopLayoutProps {
   feedItems: FeedItem[]
   feedFilter: (item: FeedItem) => boolean
   openSession: CampaignSession | null
+  /** Whether the open session is actually accepting play right now —
+   * false both when there's no open session AND when there is one but
+   * it's paused (2026-08-10). Everything that logs/spends the table's
+   * turn (the composer, dice rolls, "save as note") gates on this, not
+   * on `Boolean(openSession)` — a paused session is still `openSession`
+   * (its id/number stay valid), it just isn't live play. */
+  sessionActive: boolean
+  /** Forwarded to `JournalComposer` purely for its placeholder copy
+   * ("paused" vs. "no session yet") — the actual gate is `sessionActive`
+   * above. */
+  sessionPaused?: boolean
   onOpenCharacter: (character: Character) => void
   onOpenDice: () => void
   /** Slice 8 (Maps overlay) — threaded straight to `ToolsDock`, same as
@@ -115,6 +126,8 @@ export function JournalDesktopLayout({
   feedItems,
   feedFilter,
   openSession,
+  sessionActive,
+  sessionPaused,
   onOpenCharacter,
   onOpenDice,
   onOpenMaps,
@@ -160,7 +173,7 @@ export function JournalDesktopLayout({
             ))}
           </ColumnCard>
           <ColumnCard headerLeft="Tools">
-            <ToolsDock onOpenDice={onOpenDice} diceDisabled={!openSession} onOpenRules={onOpenRules} onOpenMaps={onOpenMaps} />
+            <ToolsDock onOpenDice={onOpenDice} diceDisabled={!sessionActive} onOpenRules={onOpenRules} onOpenMaps={onOpenMaps} />
           </ColumnCard>
         </div>
       )}
@@ -187,7 +200,8 @@ export function JournalDesktopLayout({
         footer={
           <JournalComposer
             onLog={onLog}
-            sessionOpen={Boolean(openSession)}
+            sessionOpen={sessionActive}
+            sessionPaused={sessionPaused}
             gmEnabled={gmEnabled}
             onAskGm={onAskGm}
             onAskRules={onAskRules}
@@ -212,7 +226,7 @@ export function JournalDesktopLayout({
             items={feedItems}
             sessions={sessions}
             filter={feedFilter}
-            onSaveAsNote={openSession ? (item) => setNoteSeed({ body: item.body }) : undefined}
+            onSaveAsNote={sessionActive ? (item) => setNoteSeed({ body: item.body }) : undefined}
             aiVoiceOn={aiVoiceOn}
             onToggleAiVoice={onToggleAiVoice}
             onResolveCheck={onResolveCheck}

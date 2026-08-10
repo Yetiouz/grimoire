@@ -105,6 +105,32 @@ export async function endSession(campaignId: string): Promise<CampaignSession> {
   return data
 }
 
+/** Wraps `pause_session` (migration `session_pause_resume`, 2026-08-10) —
+ * supersedes `end_session`'s own doc comment, which had recorded "no
+ * pause, confirmed directly" as a deliberate decision back when it
+ * shipped. Re-confirmed directly with the owner instead of silently
+ * reversing that call: `SessionAction.tsx`'s pause button had shipped
+ * as a disabled stub since v11 promising "coming with session states,"
+ * and that promise is now kept. A paused session stays open (same
+ * `ended_at is null`, same session number) — it's still the one
+ * `sessions_one_open_per_campaign` tracks — just not accepting new
+ * play until `resumeSession` clears it. Throws if there's no open
+ * session, or if it's already paused — callers should only offer this
+ * when `openSession` exists and isn't already paused. */
+export async function pauseSession(campaignId: string): Promise<CampaignSession> {
+  const { data, error } = await supabase.rpc('pause_session', { p_campaign_id: campaignId })
+  if (error) throw error
+  return data
+}
+
+/** Wraps `resume_session` — the other half of `pauseSession`. Throws if
+ * there's no open session, or if it isn't currently paused. */
+export async function resumeSession(campaignId: string): Promise<CampaignSession> {
+  const { data, error } = await supabase.rpc('resume_session', { p_campaign_id: campaignId })
+  if (error) throw error
+  return data
+}
+
 export async function logJournalEntry(params: {
   campaignId: string
   sessionId: string

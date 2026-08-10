@@ -4,10 +4,11 @@ import { text } from '../../lib/typography'
 import { TextInput } from '../ui/TextInput'
 import { Button } from '../ui/Button'
 import type { LogEntryKind } from '../ui/LogEntryRow'
-import { getGmBudget, getGmBudgetByMode } from '../../lib/gm'
+import type { GmTurnResult } from '../../lib/gm'
 import { GmReply } from './GmReply'
 import { GmBudgetBar } from './GmBudgetBar'
-import type { GmBudget, GmBudgetByMode, GmTurnResult } from '../../lib/gm'
+import { useGmBudget } from '../../hooks/useGmBudget'
+import { useGmBudgetByMode } from '../../hooks/useGmBudgetByMode'
 
 /** One selection answers one question: what is this message? The four
  * journal kinds and the two Ask modes are a single radio row (owner:
@@ -57,8 +58,15 @@ const CHOICES: ChoiceSpec[] = [
 interface JournalComposerProps {
   onLog: (kind: LogEntryKind, body: string) => Promise<void>
   /** Gates the whole composer per the approved plan: no entry can be
-   * logged before a session is explicitly started (Amendment 2). */
+   * logged before a session is explicitly started (Amendment 2). Named
+   * `sessionOpen` for history, but callers now pass `sessionActive`
+   * (false while paused, not just while there's no open session at
+   * all) — see `JournalDesktopLayout`'s doc comment on that prop. */
   sessionOpen: boolean
+  /** Whether the open session is paused (2026-08-10) — purely for
+   * placeholder copy here, distinguishing "no session yet" from
+   * "session's paused" while `sessionOpen` is false either way. */
+  sessionPaused?: boolean
   /** Slice 16. With `gmEnabled` false — the default until
    * `VITE_GM_ENABLED` is set — the Ask chips never render and the row
    * is just the four kinds. */
@@ -90,6 +98,7 @@ interface JournalComposerProps {
 export function JournalComposer({
   onLog,
   sessionOpen,
+  sessionPaused = false,
   gmEnabled = false,
   onAskGm,
   onAskRules,
@@ -102,8 +111,6 @@ export function JournalComposer({
   const [body, setBody] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [reply, setReply] = useState<GmTurnResult | null>(null)
-  const [budget, setBudget] = useState<GmBudget | null>(null)
-  const [budgetByMode, setBudgetByMode] = useState<GmBudgetByMode | null>(null)
   const bodyInputRef = useRef<HTMLInputElement>(null)
   // Tracks the last seed object this composer has already consumed, so
   // the effect below fires once per distinct "save as note" tap (new
@@ -136,25 +143,17 @@ export function JournalComposer({
   // ttsAvailable` gate for the same reasoning.
   const meterRelevant = gmAvailable || ttsAvailable
 
-  // Read the day's budget once on mount so the counter is honest before
-  // the first question rather than appearing only after a reply carries
-  // it back. Costs two cheap database reads (limit + the mode split)
-  // and no provider requests.
-  useEffect(() => {
-    if (!meterRelevant || !campaignId) return
-    let cancelled = false
-    void getGmBudget(campaignId).then((result) => {
-      if (!cancelled && result) setBudget(result)
-    })
-    void getGmBudgetByMode(campaignId).then((result) => {
-      if (!cancelled && result) setBudgetByMode(result)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [meterRelevant, campaignId])
-
-  const remaining = budget ? Math.max(0, budget.limit - budget.used) : null
+  // Folded onto the shared budget hooks (2026-08-10 cleanup) rather than
+  // this component's own inline mount-fetch — see `useGmBudget`'s doc
+  // comment for what that gains (the bar now also picks up a voice
+  // spend from elsewhere on the page via the hook's own poll, not just
+  // this composer's own Asks). `campaignId ?? ''` is safe: `enabled`
+  // gates every read the hook does, so an empty id is never actually
+  // fetched with — same "enabled owns the gate" contract `useJournalFeed`
+  // already uses elsewhere.
+  const budgetEnabled = meterRelevant && Boolean(campaignId)
+  const { budget, remaining, refetch: refetchBudget } = useGmBudget(campaignId ?? '', budgetEnabled)
+  const { byMode: budgetByMode, refetch: refetchBudgetByMode } = useGmBudgetByMode(campaignId ?? '', budgetEnabled)
   const outOfBudget = reply?.status === 'budget_exhausted' || remaining === 0
   const disabled = !sessionOpen || submitting
 
@@ -166,17 +165,18 @@ export function JournalComposer({
       if (aiMode) {
         const ask = rulesMode ? onAskRules! : onAskGm!
         const result = await ask(trimmed)
-        if (result.budget) setBudget(result.budget)
-        // The edge function's reply only carries the combined figure
-        // (`result.budget`, above) — it has no reason to know about the
-        // mode split, that's a separate direct-RPC read. Re-fetch it so
-        // the GM bar reflects this turn immediately rather than waiting
-        // out whatever poll interval a caller elsewhere might be on.
-        if (campaignId) {
-          void getGmBudgetByMode(campaignId).then((byMode) => {
-            if (byMode) setBudgetByMode(byMode)
-          })
-        }
+        // The edge function's reply carries a fresh combined figure
+        // (`result.budget`) as a side effect of the turn it just ran,
+        // but the hook owns that state now (2026-08-10 fold-in) — rather
+        // than reach in and set it directly, force the same out-of-cycle
+        // read `refetch` was built for. One extra cheap DB read (same
+        // "no provider spend" reasoning `useGmBudget` documents) for the
+        // simplicity of one state owner instead of two. The mode split
+        // was already always a separate re-fetch (the edge function has
+        // no reason to know about it), so `refetchBudgetByMode` here is
+        // no new cost, just the same call routed through the hook.
+        void refetchBudget()
+        void refetchBudgetByMode()
         // A reply that reached the journal needs no strip — it is already
         // in the feed above. Everything else (brakes, budget, errors, a
         // failed journal write) still surfaces here.
@@ -285,7 +285,7 @@ export function JournalComposer({
             onKeyDown={(event: { key: string }) => {
               if (event.key === 'Enter') void handleSubmit()
             }}
-            placeholder={!sessionOpen ? 'Start a session to log entries' : selected.placeholder}
+            placeholder={!sessionOpen ? (sessionPaused ? 'Session paused — resume to log entries' : 'Start a session to log entries') : selected.placeholder}
             disabled={disabled}
             className="w-full"
             // Follows the selected color (mockup B). Inline style, not a

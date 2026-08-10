@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { getGmBudget } from '../lib/gm'
 import type { GmBudget } from '../lib/gm'
 
@@ -14,20 +14,32 @@ const POLL_MS = 45_000
  * comment: the campaign-wide cap and the per-player cap are the only
  * two ceilings that exist — there is no separate one for voice).
  *
- * `JournalComposer` already reads this once on mount and again after
- * every composer-submitted Ask, which keeps its own inline meter
- * honest for AI-GM campaigns. This hook exists for the other caller
- * that has no ask to hook a refresh off of: read-aloud never goes
- * through the composer at all (`LogEntryRow` calls `startSpeaking`
- * directly), several component boundaries away, and there's no shared
- * event bus to hang a "budget changed" push notification off without
- * adding one just for this — so it polls instead.
+ * `JournalComposer` (2026-08-10 fold-in) is this hook's one real caller
+ * today — it used to poll for itself with its own inline `useState`/
+ * `useEffect`, which read the budget once on mount and again after
+ * every composer-submitted Ask, but never picked up a spend from
+ * anywhere else. Read-aloud never goes through the composer at all
+ * (`LogEntryRow` calls `startSpeaking` directly, several component
+ * boundaries away, with no shared event bus to hang a "budget changed"
+ * push notification off) — so a voice read used to leave the composer's
+ * own bar stale until the player's next Ask. Folding onto this shared,
+ * actually-polling hook fixes that gap for free.
  *
  * Returns null until the first read resolves, matching `getGmBudget`'s
  * own honest-hide-on-failure contract — treat null as "nothing to show
- * yet," never as "budget is zero." */
+ * yet," never as "budget is zero." `refetch` forces an out-of-cycle
+ * read (e.g. right after the composer's own Ask completes, rather than
+ * waiting out the rest of the poll interval) — same cheap-read
+ * reasoning as the poll itself, just triggered on demand instead of on
+ * a timer. */
 export function useGmBudget(campaignId: string, enabled: boolean) {
   const [budget, setBudget] = useState<GmBudget | null>(null)
+
+  const refetch = useCallback(async () => {
+    if (!enabled) return
+    const result = await getGmBudget(campaignId)
+    if (result) setBudget(result)
+  }, [campaignId, enabled])
 
   useEffect(() => {
     if (!enabled) {
@@ -50,5 +62,5 @@ export function useGmBudget(campaignId: string, enabled: boolean) {
   const remaining = budget ? Math.max(0, budget.limit - budget.used) : null
   const usedFraction = budget && budget.limit > 0 ? budget.used / budget.limit : 0
 
-  return { budget, remaining, usedFraction }
+  return { budget, remaining, usedFraction, refetch }
 }

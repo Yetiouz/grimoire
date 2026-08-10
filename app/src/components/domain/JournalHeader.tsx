@@ -12,6 +12,13 @@ interface JournalHeaderProps {
    * already uses. */
   sessionAction: ReactNode
   onBack: () => void
+  /** Opens `CampaignSearch` (2026-08-10) — the pill used to be a plain,
+   * unclickable div ("structure ships ahead of the feature," no search
+   * index existed to point it at). Optional only for the same reason
+   * `onOpenRules` is elsewhere: no build should hard-require a caller to
+   * wire every affordance, though every real call site now does. Omit
+   * to render the pill disabled, same look it always had. */
+  onOpenSearch?: () => void
 }
 
 /**
@@ -29,10 +36,11 @@ interface JournalHeaderProps {
  * breadcrumb at all, and dropping campaign navigation entirely would be
  * a real capability loss, not just a visual one, so the logo click is
  * the least-invasive way to keep it without adding anything the mockup
- * doesn't already have on that bar. Search and the hamburger menu are
- * structural stubs only, per the work order ("may be non-functional
- * stubs for now, but the structure ships") — neither has a real target
- * yet (no search index, no nav menu), so both render disabled.
+ * doesn't already have on that bar. Search opens `CampaignSearch`
+ * (2026-08-10 — it and the hamburger menu shipped as structural stubs
+ * only, per the work order's "may be non-functional stubs for now, but
+ * the structure ships"; the menu still has no real target, no nav menu
+ * exists yet, so it alone stays disabled).
  *
  * Campaign bar: name stacked above session meta on the left, session
  * action pinned to the right (2026-08-10 rewrite — owner reported the
@@ -55,7 +63,7 @@ interface JournalHeaderProps {
  * fragile on mobile before either was added — but both leaving is why
  * this rewrite has only the session action left to place.)
  */
-export function JournalHeader({ campaignName, sessionMeta, sessionAction, onBack }: JournalHeaderProps) {
+export function JournalHeader({ campaignName, sessionMeta, sessionAction, onBack, onOpenSearch }: JournalHeaderProps) {
   return (
     <header className="border-b border-line">
       <div className="flex items-center justify-between gap-4 border-b border-line-soft px-4 py-2">
@@ -63,9 +71,15 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, onBack
           <img src="/logo.webp" alt="Grimoire" className="h-6 w-auto" />
         </button>
         <div className="flex items-center gap-2">
-          <div
+          <button
+            type="button"
+            onClick={onOpenSearch}
+            disabled={!onOpenSearch}
+            aria-label="Search the campaign"
             className={cx(
               'hidden items-center gap-2 rounded-full border border-line bg-panel px-3 py-1.5 text-ink-faint sm:flex',
+              'disabled:pointer-events-none disabled:opacity-50',
+              onOpenSearch && 'hover:border-line-hover hover:text-ink',
               text.caption,
             )}
           >
@@ -74,7 +88,7 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, onBack
              * rather than the icon shrinking to fit a compact chip. */}
             <Icon name="search" />
             <span>Search the campaign…</span>
-          </div>
+          </button>
           <button
             type="button"
             disabled

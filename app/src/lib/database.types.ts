@@ -828,6 +828,7 @@ export type Database = {
           ended_at: string | null
           id: string
           number: number
+          paused_at: string | null
           started_at: string
           title: string | null
         }
@@ -836,6 +837,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           number: number
+          paused_at?: string | null
           started_at?: string
           title?: string | null
         }
@@ -844,6 +846,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           number?: number
+          paused_at?: string | null
           started_at?: string
           title?: string | null
         }
@@ -1158,6 +1161,7 @@ export type Database = {
           ended_at: string | null
           id: string
           number: number
+          paused_at: string | null
           started_at: string
           title: string | null
         }
@@ -1281,6 +1285,24 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      pause_session: {
+        Args: { p_campaign_id: string }
+        Returns: {
+          campaign_id: string
+          ended_at: string | null
+          id: string
+          number: number
+          paused_at: string | null
+          started_at: string
+          title: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sessions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       remove_character_gear: {
         Args: {
           p_character_id: string
@@ -1354,6 +1376,24 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      resume_session: {
+        Args: { p_campaign_id: string }
+        Returns: {
+          campaign_id: string
+          ended_at: string | null
+          id: string
+          number: number
+          paused_at: string | null
+          started_at: string
+          title: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sessions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       roll_dice: {
         Args: {
           p_campaign_id: string
@@ -1419,6 +1459,7 @@ export type Database = {
           ended_at: string | null
           id: string
           number: number
+          paused_at: string | null
           started_at: string
           title: string | null
         }

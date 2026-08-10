@@ -10,12 +10,13 @@ import { MapsOverlay } from '../../components/domain/MapsOverlay'
 import { SessionAction } from '../../components/domain/SessionAction'
 import { MobileJournalView } from '../../components/domain/MobileJournalView'
 import { RulesChat } from '../../components/domain/RulesChat'
+import { CampaignSearch } from '../../components/domain/CampaignSearch'
 import type { FeedItem } from '../../lib/feed'
 import { useJournalFeed } from '../../hooks/useJournalFeed'
 import { useJournalScreenData } from '../../hooks/useJournalScreenData'
 import { useGmJournalHandlers } from '../../hooks/useGmJournalHandlers'
 import { useAiVoicePreference } from '../../hooks/useAiVoicePreference'
-import { endSession, logJournalEntry, startSession } from '../../lib/campaigns'
+import { endSession, logJournalEntry, pauseSession, resumeSession, startSession } from '../../lib/campaigns'
 import type { Campaign } from '../../lib/campaigns'
 import type { Character } from '../../lib/characters'
 import { rollDice } from '../../lib/dice'
@@ -78,6 +79,8 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
 
   const [startingSession, setStartingSession] = useState(false)
   const [endingSession, setEndingSession] = useState(false)
+  const [pausingSession, setPausingSession] = useState(false)
+  const [resumingSession, setResumingSession] = useState(false)
   const [openCharacter, setOpenCharacter] = useState<Character | null>(null)
   const [diceOpen, setDiceOpen] = useState(false)
   const [rulesOpen, setRulesOpen] = useState(false)
@@ -85,6 +88,12 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   // Mobile's own "Maps" bottom tab renders MapsPanel inline instead (see
   // MobileJournalView's doc comment), so it needs no state here.
   const [mapsOpen, setMapsOpen] = useState(false)
+  // Campaign search (2026-08-10) — unlike Rules/Ask GM, not gated on
+  // gm_mode or the GM feature flag at all: it's a plain filter over
+  // journal_entries/gm_chat/gm_checks that every campaign already has,
+  // solo or GM'd. Always wired, matching CampaignSearch's own "no
+  // separate index, just the data already on screen" design.
+  const [searchOpen, setSearchOpen] = useState(false)
   // BOB_queue task 1: which kinds show in the desktop feed — every chip
   // lit by default. Independent from MobileJournalView's own copy of
   // this same state; desktop and mobile were never asked to mirror each
@@ -129,6 +138,18 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
 
   const openSession = sessions?.find((session) => session.ended_at === null) ?? null
 
+  // Real pause state (2026-08-10, migration `session_pause_resume`) —
+  // `openSession` above stays keyed on `ended_at` alone (a paused
+  // session is still THE open session: its id, number, and every
+  // existing `openSession?.id` reference below remain valid while
+  // paused), so pause is layered on as a second, independent flag
+  // rather than folded into what "open" already means. `sessionActive`
+  // is what every actual PLAY action should gate on — the composer,
+  // dice rolls, GM asks — since a paused session means the table
+  // stepped away, not that logging should silently keep working.
+  const sessionPaused = Boolean(openSession?.paused_at)
+  const sessionActive = Boolean(openSession) && !sessionPaused
+
   // Slice 17: gates every NEW AI-GM interaction (the composer's Ask
   // chips, and opening the Rules transcript to ask another question) on
   // both the build-wide feature flag AND this campaign's own gm_mode —
@@ -151,7 +172,9 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   const gmModeLabel = GM_MODE_LABEL[campaign.gm_mode] ?? 'Solo'
   const latestSession = sessions && sessions.length > 0 ? sessions[sessions.length - 1] : null
   const headerSession = openSession ?? latestSession
-  const sessionMeta = headerSession ? `${gmModeLabel} · Session ${headerSession.number}` : `${gmModeLabel} · No sessions yet`
+  const sessionMeta = headerSession
+    ? `${gmModeLabel} · Session ${headerSession.number}${sessionPaused ? ' · Paused' : ''}`
+    : `${gmModeLabel} · No sessions yet`
   // Journal column header label: the mockup's `.col-head` shows a scene
   // title we have no equivalent field for (no encounter/scene model
   // exists yet) — the session's own real `title` is the closest honest
@@ -226,6 +249,32 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     }
   }
 
+  async function handlePauseSession() {
+    if (!openSession) return
+    setPausingSession(true)
+    try {
+      const session = await pauseSession(campaign.id)
+      setSessions((prev) => (prev ?? []).map((existing) => (existing.id === session.id ? session : existing)))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not pause the session.')
+    } finally {
+      setPausingSession(false)
+    }
+  }
+
+  async function handleResumeSession() {
+    if (!openSession) return
+    setResumingSession(true)
+    try {
+      const session = await resumeSession(campaign.id)
+      setSessions((prev) => (prev ?? []).map((existing) => (existing.id === session.id ? session : existing)))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not resume the session.')
+    } finally {
+      setResumingSession(false)
+    }
+  }
+
   async function handleLog(kind: LogEntryKind, body: string) {
     if (!openSession) return
     const entry = await logJournalEntry({
@@ -261,10 +310,15 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   const sessionAction = (
     <SessionAction
       open={Boolean(openSession)}
+      paused={sessionPaused}
       starting={startingSession}
       ending={endingSession}
+      pausing={pausingSession}
+      resuming={resumingSession}
       onStart={() => void handleStartSession()}
       onEnd={() => void handleEndSession()}
+      onPause={() => void handlePauseSession()}
+      onResume={() => void handleResumeSession()}
     />
   )
 
@@ -279,7 +333,13 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     // each desktop `ColumnCard` own their own internal scroll, matching
     // `Overlay`'s slide-up variant, which already used `100dvh`.
     <div className="flex h-dvh flex-col overflow-hidden">
-      <JournalHeader campaignName={campaign.name} sessionMeta={sessionMeta} sessionAction={sessionAction} onBack={onBack} />
+      <JournalHeader
+        campaignName={campaign.name}
+        sessionMeta={sessionMeta}
+        sessionAction={sessionAction}
+        onBack={onBack}
+        onOpenSearch={() => setSearchOpen(true)}
+      />
 
       {/* DESKTOP: unchanged three-column grid, xl: and up only — see
         * JournalDesktopLayout.tsx. */}
@@ -301,6 +361,8 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
         feedItems={feedItems}
         feedFilter={feedFilter}
         openSession={openSession}
+        sessionActive={sessionActive}
+        sessionPaused={sessionPaused}
         onOpenCharacter={setOpenCharacter}
         onOpenDice={() => setDiceOpen(true)}
         onOpenMaps={() => setMapsOpen(true)}
@@ -350,7 +412,8 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
           npcStatBlocks={npcStatBlocks}
           sessions={sessions ?? []}
           items={feedItems}
-          sessionOpen={Boolean(openSession)}
+          sessionOpen={sessionActive}
+          sessionPaused={sessionPaused}
           onLog={(kind, body) => handleLog(kind, body)}
           gmEnabled={aiGmActive}
           onAskGm={handleAskGm}
@@ -362,6 +425,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
           resolvingCheckId={resolvingCheckId}
           campaignId={campaign.id}
           onOpenRules={aiGmActive ? () => setRulesOpen(true) : undefined}
+          onOpenSearch={() => setSearchOpen(true)}
           onOpenCharacter={setOpenCharacter}
           onOpenDice={() => setDiceOpen(true)}
         />
@@ -375,6 +439,8 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
       />
 
       <RulesChat open={rulesOpen} campaignId={campaign.id} onClose={() => setRulesOpen(false)} />
+
+      <CampaignSearch open={searchOpen} items={feedItems} sessions={sessions ?? []} onClose={() => setSearchOpen(false)} />
 
       <MapsOverlay open={mapsOpen} campaignId={campaign.id} onClose={() => setMapsOpen(false)} />
 

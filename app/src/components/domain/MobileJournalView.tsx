@@ -44,7 +44,14 @@ interface MobileJournalViewProps {
    * this task; JournalScreen now builds this once (useJournalFeed) and
    * hands the same array to both the desktop panel and here. */
   items: FeedItem[]
+  /** Named for history — callers now pass `sessionActive` (false while
+   * paused too, not just while there's no open session), matching
+   * `JournalDesktopLayout`'s own copy of this prop. */
   sessionOpen: boolean
+  /** Whether the open session is paused (2026-08-10) — forwarded to
+   * `JournalComposer` purely for its placeholder copy; the actual gate
+   * is `sessionOpen` above. */
+  sessionPaused?: boolean
   onLog: (kind: LogEntryKind, body: string) => Promise<void>
   /** Slice 16 — handed straight through to `JournalComposer`. Both
    * optional, so the mobile shell is completely unaffected while the
@@ -77,6 +84,10 @@ interface MobileJournalViewProps {
   campaignId?: string
   /** Slice 16 — opens the rules transcript from the Tools tile. */
   onOpenRules?: () => void
+  /** Opens `CampaignSearch` from the Tools tile's Search tile (2026-08-10)
+   * — same "pre-gated by the caller, this component doesn't re-derive
+   * the gate" convention `onOpenRules` already follows. */
+  onOpenSearch?: () => void
   onOpenCharacter: (character: Character) => void
   onOpenDice: () => void
 }
@@ -137,11 +148,12 @@ function ToolTile({ icon, label, onClick }: { icon: IconName; label: string; onC
  * (`PlayerCard`, `QuestLogPanel`, `JournalFeed`/`JournalComposer`,
  * `MapsPanel`) — this file is the tab-driven switch between them plus
  * the one view that still doesn't exist (Tools), rendered honestly
- * rather than with fabricated data: Tools is four disabled stub tiles
- * matching `ToolsDock`'s already-established structure-ships-ahead-of-
- * the-feature pattern (Rules/Search/Campaign/World — none of the four
- * have a real destination yet, same as `ToolsDock`'s own Rules stub on
- * desktop).
+ * rather than with fabricated data: Tools started as three disabled stub
+ * tiles matching `ToolsDock`'s already-established structure-ships-
+ * ahead-of-the-feature pattern (Rules/Search/Campaign — none had a real
+ * destination yet, same as `ToolsDock`'s own Rules stub on desktop).
+ * Rules and Search (2026-08-10) now open real destinations
+ * (`RulesChat`/`CampaignSearch`); Campaign stays a stub.
  *
  * Maps (slice 8) renders `MapsPanel` directly, not wrapped in `Overlay`
  * the way `DiceRoller`/`CharacterSheet`/`RulesChat` are on both mobile
@@ -172,6 +184,7 @@ export function MobileJournalView({
   sessions,
   items,
   sessionOpen,
+  sessionPaused,
   onLog,
   gmEnabled,
   onAskGm,
@@ -183,6 +196,7 @@ export function MobileJournalView({
   resolvingCheckId,
   campaignId,
   onOpenRules,
+  onOpenSearch,
   onOpenCharacter,
   onOpenDice,
 }: MobileJournalViewProps) {
@@ -320,7 +334,7 @@ export function MobileJournalView({
                 <ToolTile
                   key={tile.label}
                   {...tile}
-                  onClick={tile.label === 'Rules' ? onOpenRules : undefined}
+                  onClick={tile.label === 'Rules' ? onOpenRules : tile.label === 'Search' ? onOpenSearch : undefined}
                 />
               ))}
             </div>
@@ -341,6 +355,7 @@ export function MobileJournalView({
           <JournalComposer
             onLog={onLog}
             sessionOpen={sessionOpen}
+            sessionPaused={sessionPaused}
             gmEnabled={gmEnabled}
             onAskGm={onAskGm}
             onAskRules={onAskRules}
