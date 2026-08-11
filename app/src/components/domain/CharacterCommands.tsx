@@ -32,13 +32,22 @@ interface CharacterCommandsProps {
   onUpdate: (updated: Character) => void
 }
 
-// Matches `CharacterSheet.tsx`'s own `sectionLabelClass` exactly —
-// duplicated rather than imported cross-file (this component is mounted
-// *inside* `CharacterSheet`, so importing back from it would be a
-// circular import between the two) but kept byte-identical so "Edit"
-// reads as the same kind of section head as Abilities/Talents/Spells
-// above it, not a visually distinct one.
-const sectionLabelClass = 'mt-12 mb-3 font-mono text-base font-semibold uppercase tracking-eyebrow text-purple first:mt-0'
+// Same visual treatment as `CharacterSheet.tsx`'s own `sectionLabelClass`
+// — duplicated rather than imported cross-file (this component is
+// mounted *inside* `CharacterSheet`, so importing back from it would be
+// a circular import between the two) — but WITHOUT that one's
+// `first:mt-0`. Copying that modifier here was a bug: it exists there
+// to zero the margin on the sheet's true first section label, but
+// "Edit" is the first child of *this component's own* local
+// `flex flex-col` wrapper, so `first:` matched it regardless of what's
+// actually rendered above `CharacterCommands` in the overall sheet
+// (Covenant Duties, or at minimum the vitals strip + identity bar —
+// "Edit" is never really first). That zeroed the intended 48px gap, so
+// the last read-only line above it ran straight into "EDIT" with almost
+// no breathing room. Caught 2026-08-11 ("spacing here is goofy") — same
+// class of first-child mistake as the Fragment fix in
+// `CharacterSheet.tsx`'s own `DETAIL_FIELDS` map, different cause.
+const sectionLabelClass = 'mt-12 mb-3 font-mono text-base font-semibold uppercase tracking-eyebrow text-purple'
 
 // `h-11` (44px) is non-negotiable — SPEC's touch-target minimum, same
 // guarantee every other interactive control in the kit bakes in. The
