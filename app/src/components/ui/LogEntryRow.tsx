@@ -54,6 +54,28 @@ const tagLabel: Partial<Record<LogEntryKind, string>> = {
   note: 'note',
 }
 
+// Message-body width cap. `35ch` on mobile, `65ch` from `sm:` up — a
+// deliberate "readable measure" choice (roughly the classic 45-75
+// character line-length guideline) that was never revisited once the
+// desktop three-column layout landed. Bug (2026-08-11, "chat entries
+// hit an invisible wall before the actual border"): `sm:` is a 640px
+// floor with no further step, so this same ~65-character cap was still
+// being applied inside the `xl:` three-column journal layout's own
+// narration/journal column, which is itself several hundred px wider
+// than 65ch actually measures out to at this app's body text size —
+// text was wrapping well short of the column's real right edge, with a
+// visible dead gap between the wrap point and the border. `xl:` (the
+// same breakpoint the three-column layout itself keys off) drops the
+// cap entirely: below it, the single-column mobile/tablet view still
+// gets the readable-measure treatment (its container is wide enough
+// that an uncapped paragraph would genuinely overrun a comfortable
+// reading width); at `xl:` and up, the surrounding column's own width
+// already IS the appropriate measure for a chat/log context, so letting
+// the paragraph fill it (Tailwind's max-width utilities are the only
+// thing narrowing it — a block-level `<p>`/`<Markdown>` fills its
+// parent by default) is correct rather than double-constraining it.
+const messageWidthClass = 'max-w-[35ch] sm:max-w-[65ch] xl:max-w-none'
+
 /** Scene log / party chat row — six entry kinds now (SPEC.md's original
  * five plus 'rules', added for BOB_queue task 1's unified feed;
  * journal-mockup.html in the repo root is the approved visual spec for
@@ -192,12 +214,13 @@ export function LogEntryRow({
        * above, so the message text lines up under the name rather than
        * the dot. */}
       {kind === 'rules' ? (
-        <Markdown text={message} className="max-w-[35ch] pl-6 sm:max-w-[65ch]" />
+        <Markdown text={message} className={cx(messageWidthClass, 'pl-6')} />
       ) : (
         <p
           className={cx(
             kind === 'system' ? cx(text.caption, 'text-ink-faint') : text.bodySecondary,
-            'max-w-[35ch] pl-6 sm:max-w-[65ch]',
+            messageWidthClass,
+            'pl-6',
           )}
         >
           {message}
