@@ -33,6 +33,14 @@ export interface RulesAncestry {
    * text as free-form strings rather than structured bonuses. */
   languages: string[]
   talent: string
+  /** Extra 1st-level class-talent-table rolls this ancestry grants on
+   * top of the class's own one roll (rulebook pg. 14) — e.g. Human's
+   * "Ambitious: you gain one additional talent roll at 1st level."
+   * Absent/0 for every ancestry that doesn't grant one. Was previously
+   * un-structured (the bonus only existed as prose in `talent`, so the
+   * builder's talent-roll UI never actually granted it) — a visual
+   * review caught the gap, 2026-08-11. */
+  bonusTalentRolls?: number
 }
 
 export interface RulesTalentTableRow {

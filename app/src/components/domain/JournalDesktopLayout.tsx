@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { ColumnCard } from '../ui/ColumnCard'
+import { EmptyState } from '../ui/EmptyState'
 import { ErrorBanner } from '../ui/ErrorBanner'
 import { Skeleton, SkeletonGroup } from '../ui/Skeleton'
 import { JournalFeed } from './JournalFeed'
@@ -178,8 +179,13 @@ export function JournalDesktopLayout({
         * Character Builder, on any campaign with an empty party (every
         * brand-new campaign, by definition). Gating on `!== null`
         * alone keeps the card mounted once the load resolves either
-        * way, with a short empty-state line standing in for the
-        * PlayerCard list when there's nothing to show yet. */}
+        * way, with a real `EmptyState` standing in for the PlayerCard
+        * list when there's nothing to show yet — was a bare caption
+        * line until a visual review caught the mismatch with
+        * `MobileJournalView`'s own Party tab (which already used
+        * `EmptyState` here) and with `WorldTabs`, which already nests
+        * `EmptyState` inside this same desktop grid's Quest Log
+        * `ColumnCard` (2026-08-11 fix, same copy as the mobile copy). */}
       {characters !== null && (
         <div className="flex min-h-0 flex-col gap-3">
           <ColumnCard headerLeft="Party" bodyClassName="gap-2" className="xl:flex-1">
@@ -187,7 +193,7 @@ export function JournalDesktopLayout({
               <PlayerCard key={character.id} character={character} onClick={() => onOpenCharacter(character)} />
             ))}
             {characters.length === 0 && (
-              <p className={cx(text.caption, 'px-1 py-2 text-ink-faint')}>No characters yet.</p>
+              <EmptyState icon="party" title="No party yet" description="Characters you add to this campaign show up here." />
             )}
             <button
               type="button"

@@ -118,7 +118,11 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
   const [stats, setStats] = useState(emptyStats)
   const [ancestryKey, setAncestryKey] = useState<string | null>(null)
   const [classKey, setClassKey] = useState<string | null>(null)
-  const [talentRoll, setTalentRoll] = useState<{ total: number; row: RulesTalentTableRow } | null>(null)
+  // An array, not a single roll: some ancestries (Human's "Ambitious")
+  // grant a bonus 1st-level talent roll on top of the class's own one
+  // (see `RulesAncestry.bonusTalentRolls`) — a visual review caught that
+  // the UI only ever offered one roll regardless, 2026-08-11.
+  const [talentRolls, setTalentRolls] = useState<Array<{ total: number; row: RulesTalentTableRow }>>([])
   const [knownSpells, setKnownSpells] = useState<string[]>([])
   const [spellDraft, setSpellDraft] = useState('')
   const [deityName, setDeityName] = useState<string | null>(null)
@@ -145,6 +149,15 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
   const ancestry = module.ancestries.find((a) => a.key === ancestryKey) ?? null
   const klass = !isZeroLevel ? module.classes.find((c) => c.key === classKey) ?? null : null
   const backgroundTable = module.backgroundTables.find((t) => t.key === backgroundTableKey) ?? module.backgroundTables[0]
+  // 1 (the class's own roll, rulebook pg. 14) plus whatever the chosen
+  // ancestry grants on top (Human's Ambitious talent, currently the only
+  // one in Shadowdark) — see `RulesAncestry.bonusTalentRolls`.
+  const maxTalentRolls = 1 + (ancestry?.bonusTalentRolls ?? 0)
+  // Sliced rather than clamped in state: if someone rolls talents as a
+  // Human then goes Back and switches to a non-bonus ancestry, this
+  // quietly drops the extra roll from what's shown/saved without an
+  // effect racing the render.
+  const effectiveTalentRolls = talentRolls.slice(0, maxTalentRolls)
 
   const statsFilled = ABILITY_ORDER.every((a) => stats[a].value.trim() !== '' && !Number.isNaN(Number(stats[a].value)))
   const anyStatHigh = ABILITY_ORDER.some((a) => Number(stats[a].value) >= 14)
@@ -184,7 +197,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
 
   function selectClass(nextKlass: RulesClass) {
     setClassKey(nextKlass.key)
-    setTalentRoll(null)
+    setTalentRolls([])
     setKnownSpells([])
     setDeityName(null)
     setHpRoll(null)
@@ -192,10 +205,11 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
 
   function rollTalent() {
     if (!klass) return
+    if (talentRolls.length >= maxTalentRolls) return
     const dice = [rollD6(), rollD6()]
     const total = sum(dice)
     const row = matchTableRoll(klass.talentTable, total)
-    if (row) setTalentRoll({ total, row })
+    if (row) setTalentRolls((prev) => [...prev, { total, row }])
   }
 
   function rollHp() {
@@ -285,7 +299,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
     setStats(emptyStats())
     setAncestryKey(null)
     setClassKey(null)
-    setTalentRoll(null)
+    setTalentRolls([])
     setKnownSpells([])
     setSpellDraft('')
     setDeityName(null)
@@ -328,7 +342,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         attacks_talents: [
           ancestry.talent,
           ...(klass?.features ?? []),
-          talentRoll ? `Talent roll (${talentRoll.total}): ${talentRoll.row.effect}` : undefined,
+          ...effectiveTalentRolls.map((roll) => `Talent roll (${roll.total}): ${roll.row.effect}`),
         ].filter((v): v is string => Boolean(v)),
         spells: knownSpells.length > 0 ? knownSpells : undefined,
         equipment: equipment.length > 0 ? equipment : undefined,
@@ -537,12 +551,25 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                 ))}
               </div>
 
-              <div className="mt-3 flex items-center gap-3">
-                <Button type="button" variant="ghost" onClick={rollTalent}>Roll talent (2d6)</Button>
-                {talentRoll && (
-                  <span className={cx(text.bodySecondary)}>
-                    Rolled {talentRoll.total}: {talentRoll.row.effect}
+              <div className="mt-3 flex flex-col gap-2">
+                {effectiveTalentRolls.map((roll, i) => (
+                  <span key={i} className={cx(text.bodySecondary)}>
+                    Rolled {roll.total}: {roll.row.effect}
                   </span>
+                ))}
+                {effectiveTalentRolls.length < maxTalentRolls && (
+                  <div className="flex items-center gap-3">
+                    <Button type="button" variant="ghost" onClick={rollTalent}>Roll talent (2d6)</Button>
+                    {/* Only shown once there's a second roll to explain
+                      * (Human's Ambitious bonus) — a single-roll class
+                      * needs no extra label. */}
+                    {maxTalentRolls > 1 && (
+                      <span className={cx(text.caption, 'text-ink-faint')}>
+                        {effectiveTalentRolls.length}/{maxTalentRolls} rolled
+                        {ancestry && effectiveTalentRolls.length === 0 ? ` — ${ancestry.name}'s bonus roll included` : ''}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -765,9 +792,9 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
               {klass?.features.map((f, i) => (
                 <span key={i} className={cx(text.caption, 'rounded-full border border-line-soft bg-panel2 px-3 py-1')}>{f}</span>
               ))}
-              {talentRoll && (
-                <span className={cx(text.caption, 'rounded-full border border-line-soft bg-panel2 px-3 py-1')}>{talentRoll.row.effect}</span>
-              )}
+              {effectiveTalentRolls.map((roll, i) => (
+                <span key={i} className={cx(text.caption, 'rounded-full border border-line-soft bg-panel2 px-3 py-1')}>{roll.row.effect}</span>
+              ))}
               {knownSpells.map((s) => (
                 <span key={s} className={cx(text.caption, 'rounded-full border border-line-soft bg-panel2 px-3 py-1')}>{s}</span>
               ))}

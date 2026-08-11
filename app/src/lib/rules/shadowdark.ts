@@ -80,6 +80,7 @@ export const SHADOWDARK: RulesModule = {
       name: 'Human',
       languages: ['Common', 'one additional common language'],
       talent: 'Ambitious. You gain one additional talent roll at 1st level.',
+      bonusTalentRolls: 1,
     },
   ],
 
