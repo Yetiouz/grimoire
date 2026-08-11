@@ -283,6 +283,7 @@ export type Database = {
           hp_max: number
           id: string
           level: number
+          luck_tokens: number
           member_id: string | null
           name: string
           sheet: Json
@@ -306,6 +307,7 @@ export type Database = {
           hp_max: number
           id?: string
           level?: number
+          luck_tokens?: number
           member_id?: string | null
           name: string
           sheet?: Json
@@ -329,6 +331,7 @@ export type Database = {
           hp_max?: number
           id?: string
           level?: number
+          luck_tokens?: number
           member_id?: string | null
           name?: string
           sheet?: Json
@@ -967,6 +970,7 @@ export type Database = {
           hp_max: number
           id: string
           level: number
+          luck_tokens: number
           member_id: string | null
           name: string
           sheet: Json
@@ -1034,6 +1038,7 @@ export type Database = {
           hp_max: number
           id: string
           level: number
+          luck_tokens: number
           member_id: string | null
           name: string
           sheet: Json
@@ -1066,6 +1071,40 @@ export type Database = {
           hp_max: number
           id: string
           level: number
+          luck_tokens: number
+          member_id: string | null
+          name: string
+          sheet: Json
+          status: string
+          xp_current: number
+          xp_needed: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "characters"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      adjust_character_luck: {
+        Args: { p_character_id: string; p_delta: number; p_session_id?: string }
+        Returns: {
+          abilities: Json
+          ac: number
+          alignment_title: string | null
+          background: string | null
+          campaign_id: string
+          class_title: string
+          color: string | null
+          created_at: string
+          gear_current: number | null
+          gear_max: number | null
+          gold: Json
+          hp_current: number
+          hp_max: number
+          id: string
+          level: number
+          luck_tokens: number
           member_id: string | null
           name: string
           sheet: Json
@@ -1098,6 +1137,7 @@ export type Database = {
           hp_max: number
           id: string
           level: number
+          luck_tokens: number
           member_id: string | null
           name: string
           sheet: Json
@@ -1150,6 +1190,57 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "campaigns"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_character: {
+        Args: {
+          p_abilities?: Json
+          p_ac: number
+          p_alignment_title?: string
+          p_background?: string
+          p_campaign_id: string
+          p_class_title: string
+          p_color?: string
+          p_gear_max?: number
+          p_gold?: Json
+          p_hp_max: number
+          p_level?: number
+          p_member_id?: string
+          p_name: string
+          p_session_id?: string
+          p_sheet?: Json
+          p_status?: string
+          p_xp_needed?: number
+        }
+        Returns: {
+          abilities: Json
+          ac: number
+          alignment_title: string | null
+          background: string | null
+          campaign_id: string
+          class_title: string
+          color: string | null
+          created_at: string
+          gear_current: number | null
+          gear_max: number | null
+          gold: Json
+          hp_current: number
+          hp_max: number
+          id: string
+          level: number
+          luck_tokens: number
+          member_id: string | null
+          name: string
+          sheet: Json
+          status: string
+          xp_current: number
+          xp_needed: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "characters"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -1325,6 +1416,7 @@ export type Database = {
           hp_max: number
           id: string
           level: number
+          luck_tokens: number
           member_id: string | null
           name: string
           sheet: Json
@@ -1362,6 +1454,7 @@ export type Database = {
           hp_max: number
           id: string
           level: number
+          luck_tokens: number
           member_id: string | null
           name: string
           sheet: Json

@@ -115,6 +115,27 @@ export async function adjustCharacterXp(
   return data
 }
 
+/** Adjusts `luck_tokens` (migration 0022) — the GM-awarded reroll
+ * currency (rulebook p.79: normally capped at one per player, uncapped
+ * under Pulp Mode). Same shape as `adjustCharacterXp`: floors at 0
+ * server-side, no hard ceiling here — this app has no structured
+ * modes-of-play column to key a cap off of, so enforcing the
+ * normal-vs-Pulp cap is left to the GM, same trust model every other
+ * command already uses. */
+export async function adjustCharacterLuck(
+  characterId: string,
+  delta: number,
+  sessionId?: string | null,
+): Promise<Character> {
+  const { data, error } = await supabase.rpc('adjust_character_luck', {
+    p_character_id: characterId,
+    p_delta: delta,
+    p_session_id: sessionId ?? undefined,
+  })
+  if (error) throw error
+  return data
+}
+
 export async function adjustCharacterGold(
   characterId: string,
   delta: { gp?: number; sp?: number; cp?: number },

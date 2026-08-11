@@ -9,6 +9,7 @@ import { GearSlotGrid } from './GearSlotGrid'
 import {
   adjustCharacterGold,
   adjustCharacterHp,
+  adjustCharacterLuck,
   adjustCharacterXp,
   addCharacterGear,
   readCharacterSheet,
@@ -39,9 +40,17 @@ interface CharacterCommandsProps {
 // above it, not a visually distinct one.
 const sectionLabelClass = 'mt-12 mb-3 font-mono text-base font-semibold uppercase tracking-eyebrow text-purple first:mt-0'
 
+// `h-11` (44px) is non-negotiable — SPEC's touch-target minimum, same
+// guarantee every other interactive control in the kit bakes in. The
+// mockup review that shortened these labels (Damage -> Dmg, Full Rest
+// -> Rest) also shrank the buttons themselves to fit one line in a
+// static reference page; that shrink doesn't carry over here since
+// static-mockup layout isn't bound by the real touch-target rule and
+// this row already wraps cleanly via `flex-wrap` at any width. Only the
+// label text and horizontal padding changed.
 const tintButtonClass = (color: 'green' | 'red' | 'purple') =>
   cx(
-    'inline-flex h-11 items-center justify-center rounded-button border px-4 font-mono uppercase',
+    'inline-flex h-11 items-center justify-center rounded-button border px-3 font-mono uppercase',
     text.caption,
     'disabled:pointer-events-none disabled:opacity-40',
     color === 'green' && 'border-green/45 bg-green/10 text-green',
@@ -51,16 +60,21 @@ const tintButtonClass = (color: 'green' | 'red' | 'purple') =>
 
 /**
  * The mutation half of the character sheet (BUILD_PLAN.md slice 6) —
- * HP/XP/gold adjust, gear add/remove, full rest, each a real
+ * HP/XP/gold/luck adjust, gear add/remove, full rest, each a real
  * `SECURITY DEFINER` command call, never a local-only edit. Mounted at
  * the bottom of `CharacterSheet`'s overlay content, below the read-only
  * sections that slice 3 already built. One `pending`/`error` pair
  * covers every action here (only one can run at a time from one sheet),
  * same shape as `JournalScreen`'s own start/end-session handling.
+ *
+ * Luck row added 2026-08-11 alongside migration 0022 (`luck_tokens`) —
+ * same stepper + tinted +/- shape as XP, since Luck has no natural
+ * "damage/heal" verb pair the way HP does.
  */
 export function CharacterCommands({ character, sessionId, onUpdate }: CharacterCommandsProps) {
   const [hpAmount, setHpAmount] = useState(1)
   const [xpAmount, setXpAmount] = useState(1)
+  const [luckAmount, setLuckAmount] = useState(1)
   const [goldGp, setGoldGp] = useState('')
   const [goldSp, setGoldSp] = useState('')
   const [goldCp, setGoldCp] = useState('')
@@ -97,7 +111,7 @@ export function CharacterCommands({ character, sessionId, onUpdate }: CharacterC
           onClick={() => void run(() => adjustCharacterHp(character.id, -hpAmount, sessionId))}
           className={tintButtonClass('red')}
         >
-          Damage
+          Dmg
         </button>
         <button
           type="button"
@@ -114,7 +128,7 @@ export function CharacterCommands({ character, sessionId, onUpdate }: CharacterC
           className={tintButtonClass('purple')}
           title="Restore HP to max"
         >
-          Full Rest
+          Rest
         </button>
       </div>
 
@@ -136,6 +150,27 @@ export function CharacterCommands({ character, sessionId, onUpdate }: CharacterC
           className={tintButtonClass('green')}
         >
           +XP
+        </button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <span className={cx(text.label, 'w-12 text-ink-faint')}>Luck</span>
+        <Stepper value={luckAmount} onChange={setLuckAmount} min={1} max={99} label="amount" />
+        <button
+          type="button"
+          disabled={pending || character.luck_tokens <= 0}
+          onClick={() => void run(() => adjustCharacterLuck(character.id, -luckAmount, sessionId))}
+          className={tintButtonClass('red')}
+        >
+          −Luck
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => void run(() => adjustCharacterLuck(character.id, luckAmount, sessionId))}
+          className={tintButtonClass('purple')}
+        >
+          +Luck
         </button>
       </div>
 

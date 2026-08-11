@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { cx } from '../../lib/cx'
-import { text } from '../../lib/typography'
+import { Button } from '../ui/Button'
 import { ColumnCard } from '../ui/ColumnCard'
 import { EmptyState } from '../ui/EmptyState'
 import { ErrorBanner } from '../ui/ErrorBanner'
@@ -195,16 +194,7 @@ export function JournalDesktopLayout({
             {characters.length === 0 && (
               <EmptyState icon="party" title="No party yet" description="Characters you add to this campaign show up here." />
             )}
-            <button
-              type="button"
-              onClick={onNewCharacter}
-              className={cx(
-                text.caption,
-                'rounded-[10px] border border-dashed border-line-hover px-3 py-2 text-center text-ink-faint hover:border-purple hover:text-purple',
-              )}
-            >
-              + New Character
-            </button>
+            <Button type="button" variant="dashed" onClick={onNewCharacter}>+ New Character</Button>
           </ColumnCard>
           <ColumnCard headerLeft="Tools">
             <ToolsDock onOpenDice={onOpenDice} diceDisabled={!sessionActive} onOpenRules={onOpenRules} onOpenMaps={onOpenMaps} />

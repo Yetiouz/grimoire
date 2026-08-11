@@ -3,11 +3,12 @@ import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'ghost'
+  variant?: 'primary' | 'ghost' | 'dashed'
 }
 
 /**
- * Two variants only (style guide §5). Radius is `rounded-button` (11px)
+ * Three variants (style guide §5 documents the original two; `dashed`
+ * added 2026-08-11). Radius is `rounded-button` (11px)
  * — a deliberate, named decision, not full-round: buttons read as
  * buttons; pills (see Badge) read as tags. See the style-guide page's
  * Button section for both shapes side by side.
@@ -32,6 +33,17 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
  * The focus-visible ring isn't in the style guide (the landing page
  * never needed keyboard-focus styling on a marketing CTA) — it's a
  * small, necessary addition for a real interactive control.
+ *
+ * `dashed`: the "add a new one" placeholder-tile look (Character
+ * Builder's entry point on the Party card). Started as a one-off
+ * hand-rolled `<button>` in `JournalDesktopLayout`/`MobileJournalView`
+ * — a visual review caught that it skipped every shared guarantee this
+ * component exists to give (44px touch target, `rounded-button` instead
+ * of a stray arbitrary radius, the uppercase label treatment every
+ * other button gets), so it was promoted to a real variant here instead
+ * of leaving two drifting hand-rolled copies. Keeps its dashed border
+ * and faint-to-purple hover as the visual cue that it adds a new item
+ * rather than acting on an existing one.
  */
 export function Button({ variant = 'primary', className, disabled, ...props }: ButtonProps) {
   return (
@@ -45,6 +57,8 @@ export function Button({ variant = 'primary', className, disabled, ...props }: B
           'bg-purple text-white shadow-[0_0_0_1px_rgba(155,92,255,0.25),0_8px_24px_-8px_rgba(155,92,255,0.55)] hover:-translate-y-px hover:bg-purple-hover',
         variant === 'ghost' &&
           'border border-line bg-transparent text-ink hover:border-line-hover hover:bg-panel2',
+        variant === 'dashed' &&
+          'border border-dashed border-line-hover bg-transparent text-ink-faint hover:border-purple hover:text-purple',
         disabled && 'pointer-events-none cursor-not-allowed opacity-40',
         className,
       )}

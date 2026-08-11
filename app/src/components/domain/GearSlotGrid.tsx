@@ -1,5 +1,6 @@
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
+import { Icon } from '../ui/Icon'
 
 interface GearSlotGridProps {
   /** Freeform equipment lines from `characters.sheet.equipment`. These
@@ -25,7 +26,18 @@ interface GearSlotGridProps {
 
 /** The mockup's `.slots` chip grid, minus the numbering it can't
  * honestly claim. Caller (`CharacterSheet`) renders the real
- * `gear_current`/`gear_max` count as its own section label above this. */
+ * `gear_current`/`gear_max` count as its own section label above this.
+ *
+ * Icon badge added 2026-08-11 (reorganized Character Sheet mockup
+ * review, "can I see slots with icons of what it is") — every chip
+ * gets the same closed-set `gear` glyph (Icon.tsx's `Backpack`), not a
+ * per-item weapon/armor/tool icon: `items` are freeform text with no
+ * structured item-type field to key a per-item icon off of (the
+ * doc-comment above already explains why this grid won't fabricate
+ * per-slot numbering for the same reason — there's nothing in the data
+ * to be precise about). A single consistent badge still gives every
+ * entry a visual anchor without claiming to know what any one item
+ * actually is. */
 export function GearSlotGrid({ items, onRemove, removeDisabled, className }: GearSlotGridProps) {
   return (
     <div className={cx('grid grid-cols-1 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(240px,1fr))]', className)}>
@@ -33,11 +45,14 @@ export function GearSlotGrid({ items, onRemove, removeDisabled, className }: Gea
         <div
           key={index}
           className={cx(
-            'flex items-center justify-between gap-2 rounded-[9px] border border-line-soft bg-panel2 px-3 py-2',
+            'flex items-start gap-2.5 rounded-[9px] border border-line-soft bg-panel2 px-3 py-2',
             text.bodySecondary,
           )}
         >
-          <span className="min-w-0 break-words">{item}</span>
+          <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-line-soft bg-panel">
+            <Icon name="gear" className="h-4 w-4" />
+          </span>
+          <span className="min-w-0 flex-1 break-words">{item}</span>
           {onRemove && (
             <button
               type="button"
@@ -45,7 +60,10 @@ export function GearSlotGrid({ items, onRemove, removeDisabled, className }: Gea
               onClick={() => onRemove(index)}
               aria-label={`Drop ${item}`}
               title="Drop this item"
-              className={cx(text.label, 'shrink-0 text-ink-faint hover:text-red disabled:pointer-events-none disabled:opacity-40')}
+              className={cx(
+                text.label,
+                'mt-0.5 shrink-0 text-ink-faint hover:text-red disabled:pointer-events-none disabled:opacity-40',
+              )}
             >
               Drop
             </button>

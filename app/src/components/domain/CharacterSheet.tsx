@@ -48,6 +48,10 @@ function formatGold(gold: { gp?: number; sp?: number; cp?: number }): string {
   return parts.length > 0 ? parts.join(' ') : '0 gp'
 }
 
+function clampPct(current: number, max: number): number {
+  return max > 0 ? Math.max(0, Math.min(100, (current / max) * 100)) : 0
+}
+
 // The mockup's `.sec-label` (mono, uppercase, purple) — composed
 // directly rather than starting from `text.label` (which bakes in
 // `text-ink-faint`) and overriding the color: both are Tailwind text-*
@@ -80,7 +84,54 @@ function AbilityScoreTile({ label, score }: { label: string; score: AbilityScore
     <div className="rounded-[10px] border border-line-soft bg-panel2 px-2.5 py-2 text-center">
       <p className={cx(text.label, 'text-ink-faint')}>{label}</p>
       <p className={cx(text.numeric, 'mt-1')}>{score.score}</p>
-      <p className={cx(text.caption, 'text-ink-dim')}>{formatMod(score.mod)}</p>
+      {/* Color-coded per CharacterBuilder's own established rule
+       * (`mod >= 0` -> green, else red — see its ability-score tiles):
+       * `text.caption` deliberately doesn't bake in a color (see
+       * typography.ts), so swapping it here is a plain, unconflicted
+       * utility override, not a two-color-utility clash. */}
+      <p className={cx(text.caption, score.mod >= 0 ? 'text-green' : 'text-red')}>{formatMod(score.mod)}</p>
+    </div>
+  )
+}
+
+/** One tile in the vitals strip (HP/AC/Gear/XP/Gold/Luck) — moved up
+ * from being buried in the header's meta line (Gold/XP) or not shown
+ * in the Sheet at all (HP/AC/Gear lived only on PlayerCard) into one
+ * scannable row at the top of the overlay, per the reorganized
+ * Character Sheet mockup review. `value` takes a pre-formatted string
+ * for Gold ("20 gp 4 sp") and Luck ("1 token") since neither has a
+ * single numeric "current" the way HP/Gear/XP do; those three pass a
+ * bare number plus an optional `max` for the "5 / 5" pairing and the
+ * progress bar. No bar at all when `barColorClass` is omitted (AC has
+ * no max to show progress toward; Gold/Luck aren't a fill-toward-a-cap
+ * kind of stat). */
+function VitalTile({
+  label,
+  value,
+  max,
+  barPct,
+  barColorClass,
+  accentClass,
+}: {
+  label: string
+  value: string | number
+  max?: number
+  barPct?: number
+  barColorClass?: string
+  accentClass?: string
+}) {
+  return (
+    <div className="rounded-xl border border-line-soft bg-panel2 px-3 py-2.5">
+      <p className={cx(text.label, 'text-ink-faint')}>{label}</p>
+      <p className={cx('mt-1 font-mono tabular-nums text-numeric font-semibold', accentClass ?? 'text-ink')}>
+        {value}
+        {max != null && <span className="ml-1 text-caption font-medium text-ink-dim">/ {max}</span>}
+      </p>
+      {barColorClass && (
+        <div className="mt-2 h-[5px] overflow-hidden rounded-full bg-line">
+          <div className={cx('h-full rounded-full', barColorClass)} style={{ width: `${barPct ?? 0}%` }} />
+        </div>
+      )}
     </div>
   )
 }
@@ -97,6 +148,15 @@ function AbilityScoreTile({ label, score }: { label: string; score: AbilityScore
  * (only Kimbo has `covenant_duties`/`active_blessing`, only Kimbo and
  * LaLa have `spells`, only LaLa has `familiar`), and nothing here
  * fabricates a placeholder for an absent one.
+ *
+ * Reorganized 2026-08-11 per the mockup review: the header now carries
+ * only the character's name (was also carrying a class/level/alignment
+ * meta line, which read as crowded and was moved to its own row); a
+ * new vitals strip (HP/AC/Gear/XP/Gold/Luck) surfaces the numbers that
+ * used to be scattered (some in the old header meta line, some not
+ * shown in the Sheet at all — only on PlayerCard) as one scannable row
+ * up top; ability modifiers are now color-coded green/red, matching
+ * CharacterBuilder's own established rule instead of a flat ink-dim.
  */
 export function CharacterSheet({ character, sessionId, onClose, onUpdate }: CharacterSheetProps) {
   const open = character !== null
@@ -120,22 +180,67 @@ export function CharacterSheet({ character, sessionId, onClose, onUpdate }: Char
         character && (
           <div className="min-w-0">
             <h2 className={cx(text.h2, 'truncate')}>{character.name}</h2>
-            <p className={cx(text.caption, 'mt-1 text-ink-faint')}>
-              {character.class_title} {character.level}
-              {character.alignment_title && ` · ${character.alignment_title}`}
-              {' · XP '}
-              <span className="tabular-nums text-ink">
-                {character.xp_current}/{character.xp_needed}
-              </span>
-              {' · '}
-              <span className="tabular-nums text-ink">{formatGold(gold)}</span>
-            </p>
           </div>
         )
       }
     >
       {character && (
         <div>
+          {/* Identity bar: class/level/alignment, moved out of the
+           * header meta line. `class_title` is stored as one opaque
+           * string ("Human Knight of St. Ydris" — see lib/characters.ts'
+           * CreateCharacterInput doc comment on why ancestry has no
+           * column of its own), so it renders as a single segment here
+           * rather than splitting "Human" from "Knight of St. Ydris" —
+           * there's no delimiter in the data to split on safely. */}
+          <div className="mb-5 flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line-soft pb-4 font-mono text-caption text-ink-dim">
+            <span className="font-semibold text-ink">{character.class_title}</span>
+            <span className="text-ink-faint">·</span>
+            <span>
+              Level <span className="font-semibold text-ink">{character.level}</span>
+            </span>
+            {character.alignment_title && (
+              <>
+                <span className="text-ink-faint">·</span>
+                <span>{character.alignment_title}</span>
+              </>
+            )}
+          </div>
+
+          {/* Vitals strip */}
+          <div className="mb-7 grid grid-cols-3 gap-2.5 sm:grid-cols-6">
+            <VitalTile
+              label="HP"
+              value={character.hp_current}
+              max={character.hp_max}
+              barPct={clampPct(character.hp_current, character.hp_max)}
+              barColorClass="bg-green"
+            />
+            <VitalTile label="AC" value={character.ac} />
+            {character.gear_current != null && character.gear_max != null && (
+              <VitalTile
+                label="Gear"
+                value={character.gear_current}
+                max={character.gear_max}
+                barPct={clampPct(character.gear_current, character.gear_max)}
+                barColorClass="bg-purple"
+              />
+            )}
+            <VitalTile
+              label="XP"
+              value={character.xp_current}
+              max={character.xp_needed}
+              barPct={clampPct(character.xp_current, character.xp_needed)}
+              barColorClass="bg-cyan"
+            />
+            <VitalTile label="Gold" value={formatGold(gold)} accentClass="text-yellow" />
+            <VitalTile
+              label="Luck"
+              value={`${character.luck_tokens} token${character.luck_tokens === 1 ? '' : 's'}`}
+              accentClass="text-purple"
+            />
+          </div>
+
           {ABILITY_ORDER.some(({ key }) => abilities[key]) && (
             <>
               <p className={sectionLabelClass}>Abilities</p>

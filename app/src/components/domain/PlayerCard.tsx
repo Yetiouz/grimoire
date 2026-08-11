@@ -16,15 +16,15 @@ interface PlayerCardProps {
    * card. A `variant` prop rather than a second component: the compact
    * card needs the exact same data reads (gold/sheet/isDown/isAwaiting/
    * hpPct) as the full card, and keeping both in one file means a
-   * future field (when torch/luck data eventually lands) only needs
-   * wiring once instead of being kept in sync across two files.
+   * future field (when torch data eventually lands) only needs wiring
+   * once instead of being kept in sync across two files.
    *
    * The mockup's compact card also shows a torch bar with a live mm:ss
-   * countdown and a luck chip — neither is built here. Both need schema
-   * this app doesn't have yet (no light-tracking or luck-token column
-   * on `characters`), same reasoning the full card's own header comment
-   * already gives for omitting torch/luck icons there. See the mobile
-   * layout slice's "what this will not build" list.
+   * countdown — not built here. That still needs schema this app
+   * doesn't have yet (no light-tracking column on `characters`); see
+   * the mobile layout slice's "what this will not build" list. (Luck
+   * *is* built now — migration 0022 added `luck_tokens` — see the
+   * `statSpans` LUCK entry below.)
    */
   variant?: 'full' | 'compact'
   className?: string
@@ -52,9 +52,12 @@ interface PlayerCardProps {
  * either: that needs initiative-order data from the (unbuilt) Encounter
  * slice.
  *
- * No torch/luck icons — no light-tracking or luck-token data exists in
- * the schema. Only the bless icon, and only when `sheet.active_blessing`
- * is a real, present string.
+ * No torch icon — no light-tracking data exists in the schema. Luck
+ * *does* now (migration 0022, `characters.luck_tokens`) — added to
+ * `statSpans` below alongside HP/AC/BAG/GP, same "only real data,
+ * always shown since the column is never null" treatment GP already
+ * gets. Only the bless icon, and only when `sheet.active_blessing` is
+ * a real, present string.
  */
 export function PlayerCard({ character, onClick, variant = 'full', className }: PlayerCardProps) {
   const gold = readCharacterGold(character.gold)
@@ -88,6 +91,10 @@ export function PlayerCard({ character, onClick, variant = 'full', className }: 
           <span className="text-ink-faint">GP</span> <b className="font-semibold tabular-nums text-ink">{gold.gp}</b>
         </span>
       )}
+      <span>
+        <span className="text-ink-faint">LUCK</span>{' '}
+        <b className="font-semibold tabular-nums text-purple">{character.luck_tokens}</b>
+      </span>
     </>
   )
 

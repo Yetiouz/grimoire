@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
+import { Button } from '../ui/Button'
 import { EmptyState } from '../ui/EmptyState'
 import { Skeleton, SkeletonGroup } from '../ui/Skeleton'
 import { Icon } from '../ui/Icon'
@@ -325,16 +326,7 @@ export function MobileJournalView({
             </div>
           ) : activeView === 'party' ? (
             <div className="flex flex-col gap-2 p-4">
-              <button
-                type="button"
-                onClick={onNewCharacter}
-                className={cx(
-                  text.caption,
-                  'rounded-[10px] border border-dashed border-line-hover px-3 py-2 text-center text-ink-faint hover:border-purple hover:text-purple',
-                )}
-              >
-                + New Character
-              </button>
+              <Button type="button" variant="dashed" onClick={onNewCharacter}>+ New Character</Button>
               {characters.length > 0 ? (
                 characters.map((character) => (
                   <PlayerCard key={character.id} character={character} onClick={() => onOpenCharacter(character)} />
