@@ -16,6 +16,7 @@ import { JournalComposer } from './JournalComposer'
 import { PlayerCard } from './PlayerCard'
 import { WorldTabs } from './WorldTabs'
 import { MapsPanel } from './MapsPanel'
+import { CampaignInviteModal } from './CampaignInvite'
 import type { LogEntryKind } from '../ui/LogEntryRow'
 import type { GmTurnResult } from '../../lib/gm'
 import type { FeedItem } from '../../lib/feed'
@@ -95,6 +96,15 @@ interface MobileJournalViewProps {
    * `JournalDesktopLayout`'s own copy of this prop. */
   onNewCharacter: () => void
   onOpenDice: () => void
+  /** Gates the Tools tab's "Invite" tile (2026-08-11, "fix the Campaign
+   * tools tile" — that tile used to be a dead `settings`-icon stub
+   * pointing nowhere). Same `campaign.owner === user.id` check
+   * `JournalScreen` already computes once and threads to the desktop
+   * header's `CampaignInvite` — this is the mobile Tools tab's own
+   * trigger for the identical `CampaignInviteModal`, not a second
+   * feature, so it reuses the same prop rather than re-deriving
+   * ownership here. */
+  isOwner: boolean
 }
 
 /** Titles for the view header below. Tapping the lit tab again also
@@ -113,11 +123,20 @@ const VIEW_TITLES: Record<MobileView, string> = {
  * (the earlier separate-overlay plan for NPCs/Factions/Treasure). That
  * destination now lives under the Quests tab's own tab row instead (see
  * `WorldTabs`), so a second disabled tile pointing nowhere here would
- * just be confusing — per the owner's call when this redirect happened. */
+ * just be confusing — per the owner's call when this redirect happened.
+ *
+ * `Campaign` dropped the same way (2026-08-11, "fix the Campaign tools
+ * tile"): it was the last remaining dead stub in this grid, a
+ * `settings`-icon tile pointing nowhere. Rather than inventing a
+ * campaign-settings destination that doesn't exist yet, it's replaced
+ * below by a real, owner-gated `Invite` tile — the one campaign-level
+ * action this app actually has today (see `CampaignInviteModal`). A
+ * non-owner simply doesn't get a third tile rather than seeing one more
+ * disabled button they could never use — same reasoning as dropping
+ * `world` outright instead of leaving it disabled. */
 const TOOL_TILES: Array<{ icon: IconName; label: string }> = [
   { icon: 'rules', label: 'Rules' },
   { icon: 'search', label: 'Search' },
-  { icon: 'settings', label: 'Campaign' },
 ]
 
 function ToolTile({ icon, label, onClick }: { icon: IconName; label: string; onClick?: () => void }) {
@@ -158,7 +177,9 @@ function ToolTile({ icon, label, onClick }: { icon: IconName; label: string; onC
  * ahead-of-the-feature pattern (Rules/Search/Campaign — none had a real
  * destination yet, same as `ToolsDock`'s own Rules stub on desktop).
  * Rules and Search (2026-08-10) now open real destinations
- * (`RulesChat`/`CampaignSearch`); Campaign stays a stub.
+ * (`RulesChat`/`CampaignSearch`); Campaign (2026-08-11) is gone,
+ * replaced by an owner-gated Invite tile — see `TOOL_TILES`'s own
+ * comment.
  *
  * Maps (slice 8) renders `MapsPanel` directly, not wrapped in `Overlay`
  * the way `DiceRoller`/`CharacterSheet`/`RulesChat` are on both mobile
@@ -205,6 +226,7 @@ export function MobileJournalView({
   onOpenCharacter,
   onNewCharacter,
   onOpenDice,
+  isOwner,
 }: MobileJournalViewProps) {
   const [activeView, setActiveView] = useState<MobileView | null>(null)
   const [activeFilters, setActiveFilters] = useState<Set<FilterKind>>(() => new Set(ALL_FILTER_KINDS))
@@ -212,6 +234,11 @@ export function MobileJournalView({
   // the seed state, independent of JournalDesktopLayout's — same
   // always-mounted-siblings reasoning as that component's copy.
   const [noteSeed, setNoteSeed] = useState<{ body: string } | null>(null)
+  // Owner-only Invite modal (2026-08-11) — its own open state, same
+  // "two different buttons, two different open flags" split
+  // `CampaignInviteModal`'s own doc comment documents against the
+  // desktop header's copy.
+  const [inviteOpen, setInviteOpen] = useState(false)
 
   function handleSelect(view: MobileView) {
     // Tap the already-open tab again -> home, per the mobile-vision
@@ -344,6 +371,7 @@ export function MobileJournalView({
                   onClick={tile.label === 'Rules' ? onOpenRules : tile.label === 'Search' ? onOpenSearch : undefined}
                 />
               ))}
+              {isOwner && <ToolTile icon="invite" label="Invite" onClick={() => setInviteOpen(true)} />}
             </div>
           ) : campaignId ? (
             <div className="p-4">
@@ -374,6 +402,10 @@ export function MobileJournalView({
       )}
 
       <MobileTabBar active={activeView} onSelect={handleSelect} onOpenDice={onOpenDice} diceDisabled={!sessionOpen} />
+
+      {isOwner && campaignId && (
+        <CampaignInviteModal campaignId={campaignId} open={inviteOpen} onClose={() => setInviteOpen(false)} />
+      )}
     </div>
   )
 }

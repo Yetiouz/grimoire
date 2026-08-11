@@ -19,6 +19,7 @@ import {
   Sparkle,
   Sparkles,
   StickyNote,
+  UserPlus,
   Users,
   Volume2,
   VolumeX,
@@ -42,9 +43,12 @@ import { cx } from '../../lib/cx'
  *
  * `search`/`menu`/`map`/`rules` added for the visual-reconciliation
  * pass's two-bar header and tools dock (player-view-mockup.html v10) —
- * `search` and `menu` are non-functional stubs for now (no search index
- * or nav menu exists yet), `map`/`rules` label the two other disabled
- * dock stub buttons alongside the real `dice` one.
+ * `search` and `menu` started as non-functional stubs (no search index
+ * or nav menu existed yet); both are wired to real destinations now
+ * (`search` since 2026-08-10's `CampaignSearch`, `menu` since
+ * 2026-08-11's header dropdown — see `JournalHeader.tsx`).
+ * `map`/`rules` label the two other disabled dock stub buttons
+ * alongside the real `dice` one.
  *
  * `back`/`quest`/`world` added for the mobile layout slice
  * (`mobile-view-mockup.html`): `back` labels the collapsed mobile
@@ -54,10 +58,7 @@ import { cx } from '../../lib/cx'
  * labels the bottom tab bar's Quests tab (no existing icon fit — not
  * reusing `journal`, which already means the scene log specifically);
  * `world` labels one of the four Tools-grid stub tiles (Rules/Search/
- * Campaign/World), alongside the already-existing `rules`/`search` and
- * `settings` (reused for the Campaign tile — a settings glyph already
- * fits "campaign management" without adding a fifth one-off icon for a
- * destination that, like the other three, doesn't exist yet).
+ * Campaign/World).
  *
  * `saveNote` added for the "save as note" quick action on journal
  * entries (2026-08-09): a distinct glyph from `journal` (which already
@@ -85,6 +86,15 @@ import { cx } from '../../lib/cx'
  * "Send"/"Log" as plain text; replaced with this glyph for both modes
  * (see `JournalComposer.tsx`) since a paper-plane icon already reads as
  * "submit this" regardless of which of the two words it used to be.
+ *
+ * `invite` added for the mobile Tools grid's owner-only "Invite" tile
+ * (2026-08-11, "fix the Campaign tools tile" — that tile used to be a
+ * dead `settings`-icon stub pointing nowhere; a genuinely new action,
+ * not a relabeling of an existing one, so it earns its own glyph rather
+ * than reusing `settings` or `party` — `party` already means "the
+ * roster," and this means "bring someone new into it," which `settings`
+ * doesn't capture either). Distinct from `party`'s `Users` for exactly
+ * that reason: one person joining the roster, not the roster itself.
  */
 const icons = {
   hp: Heart,
@@ -111,6 +121,7 @@ const icons = {
   speak: Volume2,
   voiceOff: VolumeX,
   send: Send,
+  invite: UserPlus,
 } as const
 
 export type IconName = keyof typeof icons

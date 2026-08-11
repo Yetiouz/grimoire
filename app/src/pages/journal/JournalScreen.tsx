@@ -489,6 +489,7 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
           onOpenCharacter={setOpenCharacter}
           onNewCharacter={() => setBuilderOpen(true)}
           onOpenDice={() => setDiceOpen(true)}
+          isOwner={isOwner}
         />
       </div>
 
