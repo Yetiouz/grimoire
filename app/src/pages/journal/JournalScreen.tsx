@@ -4,6 +4,7 @@ import { JournalDesktopLayout } from '../../components/domain/JournalDesktopLayo
 import { ALL_FILTER_KINDS } from '../../lib/journalFilters'
 import type { FilterKind } from '../../lib/journalFilters'
 import { JournalHeader } from '../../components/domain/JournalHeader'
+import { CampaignInvite } from '../../components/domain/CampaignInvite'
 import { CharacterSheet } from '../../components/domain/CharacterSheet'
 import { CharacterBuilder } from '../../components/domain/CharacterBuilder'
 import { DiceRoller } from '../../components/domain/DiceRoller'
@@ -29,14 +30,24 @@ import type { LogEntryKind } from '../../components/ui/LogEntryRow'
 interface JournalScreenProps {
   campaign: Campaign
   authorName: string
+  /** Whether the signed-in user is this campaign's `owner` column
+   * (2026-08-11, join-by-code pass) — computed once in `App.tsx`,
+   * where the real `user` object lives, and threaded down here rather
+   * than re-derived from `authorName` (a display string, not an
+   * identity check). Gates the header's Invite control: any member can
+   * already read/play a campaign (RLS is membership-scoped, not
+   * ownership-scoped, and always has been), but only the owner can
+   * mint or view its `join_code` — see `ensure_campaign_join_code`'s
+   * own owner check in migration 0023. */
+  isOwner: boolean
   onBack: () => void
 }
 
-/** Last-resort fallback for `actorColor` when no character record has
- * loaded yet (e.g. the very first log while `characters` is still
- * null) — not the everyday case anymore. Real per-character color now
- * comes from `characters.color` (migration 0005), closing the gap this
- * constant used to paper over entirely. */
+/** Last-resort fallback for `actorColor` when the signed-in member has
+ * no claimed character yet (a brand-new player who joined but hasn't
+ * built a PC, or narration's own case below) — not the everyday case
+ * anymore for an established player. Real per-character color comes
+ * from `characters.color` (migration 0005) via `myCharacter`, below. */
 const FALLBACK_PLAYER_COLOR = '#9b5cff'
 
 /** Slice 17: the header's "who's running this" word, keyed off the real
@@ -67,13 +78,14 @@ const GM_MODE_LABEL: Record<string, string> = { solo: 'Solo', ai: 'AI GM', human
  * and with it the save-as-note wiring on desktop. This is the split
  * version restored from fe59ee3, plus the one thing 889164e had
  * legitimately added on top: the `configureAiSpeech` effect below. */
-export function JournalScreen({ campaign, authorName, onBack }: JournalScreenProps) {
+export function JournalScreen({ campaign, authorName, isOwner, onBack }: JournalScreenProps) {
   const {
     sessions, setSessions,
     entries, setEntries,
     characters, setCharacters,
     quests,
     npcs, factions, treasure, notes, npcStatBlocks,
+    myMembership,
     error, setError,
     load,
   } = useJournalScreenData(campaign.id)
@@ -133,14 +145,34 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     return () => configureAiSpeech(null)
   }, [campaign.id, ttsAvailable, aiVoiceOn])
 
-  // Solo v1 has exactly one in-play PC (Kimbo) — using the single
-  // `active` character's color is correct for that case without
-  // inventing a real auth-user-to-character lookup (matching
-  // `campaign_members.user_id` through to `characters.member_id`) that
-  // multi-player campaigns will eventually need. Flagged rather than
-  // built, since nothing in this slice's scope requires it yet.
-  const activeCharacter = characters?.find((character) => character.status === 'active') ?? null
-  const playerColor = activeCharacter?.color ?? FALLBACK_PLAYER_COLOR
+  // The signed-in member's own `campaign_members.id` for this campaign,
+  // once `useJournalScreenData`'s parallel load resolves it — null only
+  // while loading (every legitimate visitor here already has a real
+  // membership row; RLS wouldn't have let `campaign` reach this screen
+  // otherwise).
+  const myMembershipId = myMembership?.id ?? null
+
+  // Character ownership (2026-08-11, join-by-code pass — "I may want to
+  // play a different character with my friends"). Solo v1 used to just
+  // grab "the" active character, on the reasoning that there was only
+  // ever one real player in a campaign at all, so no auth-user-to-
+  // character lookup existed (flagged, not built, in the comment this
+  // replaces). Now that a second real person can actually join
+  // (migration 0023), that assumption breaks: `myCharacter` is the
+  // character whose `member_id` traces back to MY OWN membership row —
+  // AND has `status === 'active'`, since the existing imported data
+  // (Kimbo/Constantine/LaLa) all share one owner's `member_id` from the
+  // 0004 import, so `status` is still what actually distinguishes which
+  // one that owner is playing right now, not `member_id` alone.
+  // `activeCharacter` keeps its old name and broader fallback (mine,
+  // else any active PC in the campaign) for the call sites that just
+  // want "a" relevant character to show (DiceRoller, MobileJournalView)
+  // — but attribution (`handleLog`, below) uses `myCharacter` directly,
+  // never the fallback, so an unclaimed player's own entries are never
+  // misattributed to someone else's character name or color.
+  const myCharacter = characters?.find((character) => character.member_id === myMembershipId && character.status === 'active') ?? null
+  const activeCharacter = myCharacter ?? characters?.find((character) => character.status === 'active') ?? null
+  const playerColor = myCharacter?.color ?? FALLBACK_PLAYER_COLOR
 
   const openSession = sessions?.find((session) => session.ended_at === null) ?? null
 
@@ -288,7 +320,13 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
       sessionId: openSession.id,
       kind,
       body,
-      actorName: kind === 'narration' ? 'GM' : authorName,
+      // Attribution now follows the claimed character, once one exists
+      // (2026-08-11) — `myCharacter`, never the broader `activeCharacter`
+      // fallback, so a player with no character yet keeps their own
+      // real name/the fallback tone instead of borrowing someone else's
+      // identity. Narration keeps its own long-standing 'GM' special
+      // case, untouched.
+      actorName: kind === 'narration' ? 'GM' : (myCharacter?.name ?? authorName),
       actorColor: kind === 'narration' ? undefined : playerColor,
     })
     // Echo own actions locally instead of refetching — the RPC already
@@ -350,6 +388,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
         campaignName={campaign.name}
         sessionMeta={sessionMeta}
         sessionAction={sessionAction}
+        inviteAction={isOwner ? <CampaignInvite campaignId={campaign.id} /> : undefined}
         onBack={onBack}
         onOpenSearch={() => setSearchOpen(true)}
       />
@@ -459,6 +498,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
         campaignId={campaign.id}
         system={campaign.system}
         sessionId={openSession?.id ?? null}
+        memberId={myMembershipId}
         onCreated={handleCharacterCreated}
       />
 

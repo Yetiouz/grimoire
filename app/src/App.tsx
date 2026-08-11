@@ -37,7 +37,21 @@ function AuthGate() {
   }
 
   if (campaign) {
-    return <JournalScreen campaign={campaign} authorName={authorName(user)} onBack={() => setCampaign(null)} />
+    return (
+      <JournalScreen
+        campaign={campaign}
+        authorName={authorName(user)}
+        // Real ownership check (2026-08-11, join-by-code pass) —
+        // `campaign.owner` is the real `campaigns.owner` uuid column,
+        // `user.id` the signed-in Supabase auth user's own id, both
+        // already on hand here. Gates `JournalHeader`'s Invite control;
+        // see `JournalScreen.tsx`'s own doc comment on the `isOwner`
+        // prop for why this is computed here rather than passed down
+        // as a display string the way `authorName` is.
+        isOwner={campaign.owner === user.id}
+        onBack={() => setCampaign(null)}
+      />
+    )
   }
 
   // CampaignList owns its own PageHeader (same self-contained pattern

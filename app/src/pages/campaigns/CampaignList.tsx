@@ -8,7 +8,7 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Skeleton, SkeletonGroup } from '../../components/ui/Skeleton'
 import { text } from '../../lib/typography'
-import { createCampaign, listCampaignsWithLastEntry } from '../../lib/campaigns'
+import { createCampaign, joinCampaignByCode, listCampaignsWithLastEntry } from '../../lib/campaigns'
 import type { Campaign, CampaignWithLastEntry } from '../../lib/campaigns'
 
 interface CampaignListProps {
@@ -28,13 +28,28 @@ function formatLastEntry(iso: string | null): string {
 
 /** Screen 1 of Journal v1 (SPEC): Panel cards, each showing name +
  * last-entry time; "New Campaign" opens a Modal with a name field only
- * — `system` stays hidden, defaulted to 'shadowdark' server-side. */
+ * — `system` stays hidden, defaulted to 'shadowdark' server-side.
+ *
+ * "Have an invite code?" (2026-08-11, migration 0023, "I may want to
+ * play a different character with my friends") is the redeeming half
+ * of `CampaignInvite.tsx`'s owner-side control — a second small button
+ * next to New Campaign, since joining someone else's campaign and
+ * starting your own are the two ways a signed-in user with no
+ * campaigns yet actually gets somewhere from this screen. Reuses the
+ * same `Modal`/`TextInput` shape as New Campaign for consistency
+ * rather than inventing a second pattern for "type a short string,
+ * confirm."
+ */
 export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
   const [campaigns, setCampaigns] = useState<CampaignWithLastEntry[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [name, setName] = useState('')
   const [creating, setCreating] = useState(false)
+  const [joinModalOpen, setJoinModalOpen] = useState(false)
+  const [joinCode, setJoinCode] = useState('')
+  const [joining, setJoining] = useState(false)
+  const [joinError, setJoinError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     // Deliberately no synchronous setState in here — error-clearing on
@@ -75,13 +90,31 @@ export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
     }
   }
 
+  async function handleJoin() {
+    const trimmed = joinCode.trim()
+    if (!trimmed) return
+    setJoining(true)
+    setJoinError(null)
+    try {
+      const joined = await joinCampaignByCode(trimmed)
+      setJoinModalOpen(false)
+      setJoinCode('')
+      onOpenCampaign(joined)
+    } catch (err) {
+      setJoinError(err instanceof Error ? err.message : 'That code did not match a campaign.')
+    } finally {
+      setJoining(false)
+    }
+  }
+
   return (
     <div>
       {/* CampaignList now owns its own header (same self-contained
        * pattern JournalScreen uses) instead of App rendering a generic
-       * one from outside — titleAction puts "New Campaign" in the same
-       * row as the h1, right-aligned next to it, rather than as its own
-       * row below the header. */}
+       * one from outside — titleAction puts "New Campaign" (and, as of
+       * 2026-08-11, "Have an invite code?") in the same row as the h1,
+       * right-aligned next to it, rather than as its own row below the
+       * header. */}
       <PageHeader
         left={<span className={text.label}>Grimoire</span>}
         right={
@@ -90,7 +123,14 @@ export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
           </button>
         }
         title="Campaigns"
-        titleAction={<Button onClick={() => setModalOpen(true)}>New Campaign</Button>}
+        titleAction={
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={() => setJoinModalOpen(true)}>
+              Have an invite code?
+            </Button>
+            <Button onClick={() => setModalOpen(true)}>New Campaign</Button>
+          </div>
+        }
       />
 
       <div className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-8">
@@ -116,7 +156,7 @@ export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
           <EmptyState
             icon="journal"
             title="No campaigns yet"
-            description="Start one to begin the first session."
+            description="Start one to begin the first session, or join one with an invite code."
             action={<Button onClick={() => setModalOpen(true)}>New Campaign</Button>}
           />
         )}
@@ -148,6 +188,28 @@ export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
               onChange={(event: { target: { value: string } }) => setName(event.target.value)}
               placeholder="The Black Road"
               disabled={creating}
+            />
+          </Modal>
+        )}
+
+        {joinModalOpen && (
+          <Modal
+            title="Join a campaign"
+            onCancel={() => {
+              setJoinModalOpen(false)
+              setJoinCode('')
+              setJoinError(null)
+            }}
+            onConfirm={() => void handleJoin()}
+            confirmLabel={joining ? 'Joining…' : 'Join'}
+          >
+            <TextInput
+              label="Invite code"
+              value={joinCode}
+              onChange={(event: { target: { value: string } }) => setJoinCode(event.target.value)}
+              placeholder="e.g. 7F3K9QAB"
+              disabled={joining}
+              error={joinError ?? undefined}
             />
           </Modal>
         )}

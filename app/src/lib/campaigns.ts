@@ -4,6 +4,7 @@ import type { Tables } from './database.types'
 export type Campaign = Tables<'campaigns'>
 export type CampaignSession = Tables<'sessions'>
 export type JournalEntry = Tables<'journal_entries'>
+export type CampaignMember = Tables<'campaign_members'>
 
 /** A campaign plus its most recent journal entry's timestamp, for the
  * campaign list's "name + last-entry time" card (SPEC's Journal v1
@@ -14,8 +15,9 @@ export interface CampaignWithLastEntry extends Campaign {
 
 /** Campaigns the signed-in user is a member of. RLS already scopes this
  * to membership (`campaigns_select_member`) — no explicit
- * `.eq('owner', ...)` here, which also wouldn't be correct once M2
- * adds non-owner members. */
+ * `.eq('owner', ...)` here, correctly covers both owned campaigns and,
+ * as of migration 0023's join-by-code flow, campaigns joined as a
+ * plain player too. */
 export async function listCampaigns(): Promise<Campaign[]> {
   const { data, error } = await supabase.from('campaigns').select('*').order('created_at', { ascending: false })
   if (error) throw error
@@ -77,6 +79,51 @@ export async function listJournalEntries(campaignId: string): Promise<JournalEnt
  * to 'shadowdark' server-side per SPEC — no UI passes it in v1. */
 export async function createCampaign(name: string): Promise<Campaign> {
   const { data, error } = await supabase.rpc('create_campaign', { p_name: name })
+  if (error) throw error
+  return data
+}
+
+/** The signed-in user's own `campaign_members` row for this campaign,
+ * or null if they somehow have none (shouldn't happen for anyone who
+ * legitimately reached a screen that calls this — `CampaignList` only
+ * ever hands out campaigns RLS already scoped to membership). No
+ * `.eq('user_id', ...)` needed: `campaign_members_select_own`'s RLS
+ * policy already restricts every read on this table to the caller's
+ * own row, so this can't accidentally leak another member's row even
+ * without an explicit filter. Added 2026-08-11 alongside the join-by-
+ * code flow (migration 0023) — this is the piece that lets the app
+ * tell "my character" apart from "a character," see
+ * `JournalScreen.tsx`'s own doc comment on `myCharacter`. */
+export async function getMyMembership(campaignId: string): Promise<CampaignMember | null> {
+  const { data, error } = await supabase
+    .from('campaign_members')
+    .select('*')
+    .eq('campaign_id', campaignId)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
+/** Wraps `ensure_campaign_join_code` — owner-only server-side, lazily
+ * mints this campaign's one persistent invite code on first call and
+ * just returns it on every call after (idempotent, so opening the
+ * Invite dialog repeatedly never rotates a code already handed out).
+ * See migration 0023's header comment for why this is one reusable
+ * code per campaign rather than a per-person invite. */
+export async function ensureCampaignJoinCode(campaignId: string): Promise<string> {
+  const { data, error } = await supabase.rpc('ensure_campaign_join_code', { p_campaign_id: campaignId })
+  if (error) throw error
+  return data
+}
+
+/** Wraps `join_campaign_by_code` — the other half of
+ * `ensureCampaignJoinCode`. Any authenticated user can call this with
+ * any campaign's code; the RPC adds them as `role: 'player'` (or is a
+ * harmless no-op if they're already a member) and returns the campaign
+ * row, so the caller can navigate straight into it the same way
+ * `createCampaign` already does. */
+export async function joinCampaignByCode(code: string): Promise<Campaign> {
+  const { data, error } = await supabase.rpc('join_campaign_by_code', { p_code: code })
   if (error) throw error
   return data
 }

@@ -11,6 +11,15 @@ interface JournalHeaderProps {
    * action, header owns the layout" split PageHeader's `titleAction`
    * already uses. */
   sessionAction: ReactNode
+  /** The owner-only "Invite" control (`CampaignInvite.tsx`, 2026-08-11)
+   * — same "host owns the action, header owns the layout" split as
+   * `sessionAction` above. Optional and rendered before it in the same
+   * right-hand group: `JournalScreen` only passes this when the
+   * signed-in user is the campaign owner (the RPC behind it enforces
+   * that server-side too, but there's no reason to show a button a
+   * player could never use). Omit entirely for a player's own view of
+   * someone else's campaign. */
+  inviteAction?: ReactNode
   onBack: () => void
   /** Opens `CampaignSearch` (2026-08-10) — the pill used to be a plain,
    * unclickable div ("structure ships ahead of the feature," no search
@@ -43,8 +52,9 @@ interface JournalHeaderProps {
  * exists yet, so it alone stays disabled).
  *
  * Campaign bar: name stacked above session meta on the left, session
- * action pinned to the right (2026-08-10 rewrite — owner reported the
- * mobile header "messed up": the previous shape put name and meta+
+ * action (plus, as of 2026-08-11, the owner-only Invite control right
+ * before it) pinned to the right (2026-08-10 rewrite — owner reported
+ * the mobile header "messed up": the previous shape put name and meta+
  * action side by side in one `flex-wrap` row, which read fine on
  * desktop but on a narrow phone had nowhere to wrap the overflowing
  * meta+action group EXCEPT down to a new line starting at the left
@@ -61,9 +71,10 @@ interface JournalHeaderProps {
  * the budget meter down into `JournalComposer`. Neither is why the
  * layout broke — this row's original side-by-side shape was already
  * fragile on mobile before either was added — but both leaving is why
- * this rewrite has only the session action left to place.)
+ * this rewrite has only the session action left to place, plus now
+ * Invite alongside it.)
  */
-export function JournalHeader({ campaignName, sessionMeta, sessionAction, onBack, onOpenSearch }: JournalHeaderProps) {
+export function JournalHeader({ campaignName, sessionMeta, sessionAction, inviteAction, onBack, onOpenSearch }: JournalHeaderProps) {
   return (
     <header className="border-b border-line">
       <div className="flex items-center justify-between gap-4 border-b border-line-soft px-4 py-2">
@@ -101,15 +112,19 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, onBack
         </div>
       </div>
       {/* v11: campaign name + session meta stack on the left rail; the
-        * session control group (SessionAction) pins to the right — no
-        * `flex-wrap` here, so the buttons never drop out from under the
-        * title on a narrow phone (see the component doc comment). */}
+        * session control group (plus Invite, when given) pins to the
+        * right — no `flex-wrap` here, so the buttons never drop out
+        * from under the title on a narrow phone (see the component doc
+        * comment). */}
       <div className="flex items-center justify-between gap-3 px-4 py-2">
         <div className="min-w-0">
           <h1 className={cx(text.h3, 'truncate')}>{campaignName}</h1>
           <p className={cx(text.label, 'mt-0.5 truncate')}>{sessionMeta}</p>
         </div>
-        <div className="shrink-0">{sessionAction}</div>
+        <div className="flex shrink-0 items-center gap-2">
+          {inviteAction}
+          {sessionAction}
+        </div>
       </div>
     </header>
   )

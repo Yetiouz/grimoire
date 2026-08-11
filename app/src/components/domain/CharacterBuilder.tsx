@@ -21,6 +21,21 @@ interface CharacterBuilderProps {
    * creation data instead of prose). */
   system: string | null
   sessionId: string | null
+  /** The signed-in caller's own `campaign_members.id` for this campaign
+   * (2026-08-11, join-by-code + character-ownership pass) — passed
+   * straight through to `createCharacter` as `memberId` so whoever
+   * builds a character here is automatically claiming it for
+   * themselves. This is a deliberate simplification, not the only
+   * possible shape: the schema (`create_character`'s own `p_member_id`
+   * param) also supports a GM staging an unclaimed PC (`member_id =
+   * null`) ahead of a real player joining, same convention the
+   * imported LaLa/Constantine rows already modeled — but this wizard
+   * doesn't expose that as a choice yet, since nothing asked for it.
+   * Null while the caller's own membership row hasn't loaded yet
+   * (`JournalScreen`'s `myMembershipId`); every legitimate visitor to
+   * this screen has a real membership row by the time they'd actually
+   * reach the Review step and click Create. */
+  memberId: string | null
   onCreated: (character: Character) => void
 }
 
@@ -109,7 +124,7 @@ const STEP_LABEL: Record<StepKey, string> = {
  * freeform add/remove list, the exact same shape `sheet.equipment`
  * (and `CharacterCommands`' own "Add item" control) already use.
  */
-export function CharacterBuilder({ open, onClose, campaignId, system, sessionId, onCreated }: CharacterBuilderProps) {
+export function CharacterBuilder({ open, onClose, campaignId, system, sessionId, memberId, onCreated }: CharacterBuilderProps) {
   const module = useMemo(() => getRulesModule(system), [system])
 
   const [level, setLevel] = useState<0 | 1>(1)
@@ -358,6 +373,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         hpMax: Math.max(1, computedHpMax),
         ac,
         level,
+        memberId,
         background: backgroundText.trim() || null,
         alignmentTitle,
         gearMax,

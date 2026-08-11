@@ -242,6 +242,7 @@ export type Database = {
           created_at: string
           gm_mode: string
           id: string
+          join_code: string | null
           name: string
           owner: string
           system: string
@@ -251,6 +252,7 @@ export type Database = {
           created_at?: string
           gm_mode?: string
           id?: string
+          join_code?: string | null
           name: string
           owner: string
           system?: string
@@ -260,6 +262,7 @@ export type Database = {
           created_at?: string
           gm_mode?: string
           id?: string
+          join_code?: string | null
           name?: string
           owner?: string
           system?: string
@@ -1183,6 +1186,7 @@ export type Database = {
           created_at: string
           gm_mode: string
           id: string
+          join_code: string | null
           name: string
           owner: string
           system: string
@@ -1262,6 +1266,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      ensure_campaign_join_code: {
+        Args: { p_campaign_id: string }
+        Returns: string
       }
       gm_budget_since: {
         Args: { p_campaign_id: string; p_since: string }
@@ -1348,6 +1356,25 @@ export type Database = {
           p_transcript?: Json
         }
         Returns: string
+      }
+      join_campaign_by_code: {
+        Args: { p_code: string }
+        Returns: {
+          canon: string | null
+          created_at: string
+          gm_mode: string
+          id: string
+          join_code: string | null
+          name: string
+          owner: string
+          system: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "campaigns"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       log_journal_entry: {
         Args: {
