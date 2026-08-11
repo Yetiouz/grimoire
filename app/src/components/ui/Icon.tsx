@@ -13,6 +13,7 @@ import {
   MessageSquare,
   ScrollText,
   Search,
+  Send,
   Settings,
   Shield,
   Sparkle,
@@ -23,6 +24,7 @@ import {
   VolumeX,
   X,
 } from 'lucide-react'
+import type { CSSProperties } from 'react'
 import { cx } from '../../lib/cx'
 
 /**
@@ -77,6 +79,12 @@ import { cx } from '../../lib/cx'
  * two-states-one-glyph choice above is for a different reason (there,
  * the glyph stays the same on purpose; here, the state IS the thing
  * being communicated, so it shouldn't).
+ *
+ * `send` added for the journal composer's submit button (2026-08-11,
+ * "change log send buttons to a send icon") — the button used to read
+ * "Send"/"Log" as plain text; replaced with this glyph for both modes
+ * (see `JournalComposer.tsx`) since a paper-plane icon already reads as
+ * "submit this" regardless of which of the two words it used to be.
  */
 const icons = {
   hp: Heart,
@@ -102,6 +110,7 @@ const icons = {
   saveNote: StickyNote,
   speak: Volume2,
   voiceOff: VolumeX,
+  send: Send,
 } as const
 
 export type IconName = keyof typeof icons
@@ -127,6 +136,19 @@ interface IconProps {
    * that already says the same thing — it renders aria-hidden then.
    * Given, it renders as an accessible image (role="img"). */
   label?: string
+  /** Escape hatch for a runtime, per-instance color that beats
+   * `stateColorClass` — added 2026-08-11 for the journal composer's
+   * send button, whose background is one of several chip colors picked
+   * at runtime (`selected.hex`), so the icon needs the same guaranteed
+   * contrast color (`#0a0a0c`) that button already sets on itself via
+   * inline style, same "arbitrary runtime color Tailwind can't
+   * generate a class for" reasoning `senderColor`/`selected.hex`
+   * already use elsewhere. Forwarded straight to the underlying
+   * lucide `<LucideIcon>`, after `stateColorClass`'s `className` so it
+   * wins regardless of stylesheet order (inline style always beats a
+   * class). Omit for every ordinary icon — this only exists for the
+   * one caller that needs to fight the default. */
+  style?: CSSProperties
 }
 
 /** The only sanctioned way to render an icon in Grimoire — see the style
@@ -134,13 +156,14 @@ interface IconProps {
  * the same 24px grid and the same stroke weight (lucide's own defaults,
  * hardcoded here rather than exposed as props, so no call site can
  * quietly drift off them). */
-export function Icon({ name, state = 'default', className, label }: IconProps) {
+export function Icon({ name, state = 'default', className, label, style }: IconProps) {
   const LucideIcon = icons[name]
   return (
     <LucideIcon
       size={24}
       strokeWidth={2}
       className={cx(stateColorClass[state], className)}
+      style={style}
       aria-hidden={label ? undefined : true}
       role={label ? 'img' : undefined}
       aria-label={label}

@@ -3,6 +3,7 @@ import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { TextInput } from '../ui/TextInput'
 import { Button } from '../ui/Button'
+import { Icon } from '../ui/Icon'
 import type { LogEntryKind } from '../ui/LogEntryRow'
 import type { GmTurnResult } from '../../lib/gm'
 import { GmReply } from './GmReply'
@@ -228,6 +229,12 @@ export function JournalComposer({
     }
   }
 
+  // Accessible name for the icon-only submit button below — same text
+  // the button used to render before the 2026-08-11 icon swap ("change
+  // log send buttons to a send icon"). Kept as a variable since both
+  // `aria-label` and `title` want the exact same string.
+  const submitLabel = aiMode ? 'Send' : 'Log'
+
   return (
     <div className={cx('flex flex-col gap-2', className)}>
       <div className="flex items-center gap-2">
@@ -329,6 +336,8 @@ export function JournalComposer({
         <Button
           onClick={() => void handleSubmit()}
           disabled={disabled || !body.trim()}
+          aria-label={submitLabel}
+          title={submitLabel}
           // The send button wears the selection's color (mockup B, every
           // choice in both rows — dark label for contrast on every hue).
           // Inline for the same stylesheet-order reason as the input
@@ -341,13 +350,27 @@ export function JournalComposer({
             boxShadow: `0 0 0 1px ${selected.hex}40, 0 8px 24px -8px ${selected.hex}8c`,
           }}
         >
-          {/* "Send", not "Ask" (2026-08-10, owner's follow-up on the
-            * chip-row redesign) — this button only ever reads "Ask"/
-            * "Send" for the GM/Rules chips (aiMode), which only exist in
-            * `AI_GM_CHOICES`; Party/Notes still read "Log", the direct-
-            * write path via `onLog` rather than a dispatched-and-
-            * answered turn. */}
-          {aiMode ? 'Send' : 'Log'}
+          {/* Icon swap (2026-08-11, "change log send buttons to a send
+            * icon") — this used to render the word "Send" (aiMode: GM/
+            * Rules) or "Log" (Party/Notes/every NON_AI_CHOICES entry) as
+            * plain text. A single paper-plane glyph now covers both,
+            * since "submit this" reads the same regardless of which of
+            * the two words it used to be — the distinction those words
+            * carried (asking the AI vs. writing straight to the journal)
+            * is still fully conveyed by the chip row above and the
+            * button's own color, not lost by dropping the label here.
+            * `style` (not `state`) sets the icon's color: it must match
+            * the button's own hardcoded `#0a0a0c` contrast color exactly,
+            * which none of `Icon`'s three closed `IconState` tones are —
+            * see the `style` prop's doc comment on `Icon.tsx` for why an
+            * inline-style escape hatch was added rather than stretching
+            * `IconState` to cover a runtime, per-selection color.
+            * `aria-label`/`title` moved to the `Button` itself above
+            * (this icon stays `aria-hidden`, no `label` prop) — same
+            * "accessible name lives on the outer control, not the glyph"
+            * pattern `LogEntryRow`'s speak/saveNote icon buttons already
+            * use. */}
+          <Icon name="send" style={{ color: '#0a0a0c' }} />
         </Button>
       </div>
     </div>
