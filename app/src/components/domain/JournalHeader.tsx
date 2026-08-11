@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
@@ -21,6 +22,13 @@ interface JournalHeaderProps {
    * someone else's campaign. */
   inviteAction?: ReactNode
   onBack: () => void
+  /** Wired into the hamburger menu's "Sign out" item (2026-08-11 —
+   * "make the hamburger button usable"). The campaign-list screen has
+   * had its own Sign out link since v1; this screen never did, which
+   * meant leaving a campaign entirely required navigating back to
+   * campaigns first. `JournalScreen` passes the same `signOut` call
+   * `App.tsx`'s `AuthGate` already wires to `CampaignList`. */
+  onSignOut: () => void
   /** Opens `CampaignSearch` (2026-08-10) — the pill used to be a plain,
    * unclickable div ("structure ships ahead of the feature," no search
    * index existed to point it at). Optional only for the same reason
@@ -48,8 +56,21 @@ interface JournalHeaderProps {
  * doesn't already have on that bar. Search opens `CampaignSearch`
  * (2026-08-10 — it and the hamburger menu shipped as structural stubs
  * only, per the work order's "may be non-functional stubs for now, but
- * the structure ships"; the menu still has no real target, no nav menu
- * exists yet, so it alone stays disabled).
+ * the structure ships").
+ *
+ * The hamburger (2026-08-11, "make the hamburger button usable — on
+ * mobile I can't get to campaigns") now opens a real menu: "Back to
+ * Campaigns" (same `onBack` the logo tap already calls — the logo is a
+ * 24px unlabeled image with no visible affordance that it's tappable,
+ * which is exactly why it wasn't discoverable on a phone) and "Sign
+ * out" (this screen never had one — `CampaignList` has had its own
+ * since v1, but leaving a campaign used to require navigating back to
+ * campaigns FIRST). Built as a small `role="menu"` popover anchored to
+ * the button rather than reusing `Overlay`: `Overlay` is a full-screen
+ * backdrop dialog for real content (Search, Rules) — two nav links
+ * don't need to cover the screen, and a lightweight anchored popover is
+ * the shape a "hamburger menu" actually implies. Closes on outside
+ * click, Escape, or picking an item.
  *
  * Campaign bar: name stacked above session meta on the left, session
  * action (plus, as of 2026-08-11, the owner-only Invite control right
@@ -74,7 +95,31 @@ interface JournalHeaderProps {
  * this rewrite has only the session action left to place, plus now
  * Invite alongside it.)
  */
-export function JournalHeader({ campaignName, sessionMeta, sessionAction, inviteAction, onBack, onOpenSearch }: JournalHeaderProps) {
+export function JournalHeader({ campaignName, sessionMeta, sessionAction, inviteAction, onBack, onSignOut, onOpenSearch }: JournalHeaderProps) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // Outside-click + Escape to close — same two dismissal paths
+  // `Overlay` gives every full-screen dialog in this app, scaled down
+  // for a small anchored popover (no backdrop element to click, since a
+  // backdrop would defeat the point of a lightweight menu, so this
+  // listens on the document instead).
+  useEffect(() => {
+    if (!menuOpen) return
+    function handlePointerDown(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenuOpen(false)
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [menuOpen])
+
   return (
     <header className="border-b border-line">
       <div className="flex items-center justify-between gap-4 border-b border-line-soft px-4 py-2">
@@ -100,15 +145,53 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, invite
             <Icon name="search" />
             <span>Search the campaign…</span>
           </button>
-          <button
-            type="button"
-            disabled
-            aria-label="Menu (coming soon)"
-            title="Coming soon"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-button border border-line bg-panel text-ink-dim opacity-50"
-          >
-            <Icon name="menu" />
-          </button>
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-label="Menu"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              className={cx(
+                'inline-flex h-11 w-11 items-center justify-center rounded-button border border-line bg-panel text-ink-dim hover:border-line-hover hover:text-ink',
+                menuOpen && 'border-line-hover text-ink',
+              )}
+            >
+              <Icon name="menu" />
+            </button>
+            {menuOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-card border border-line bg-panel shadow-[0_8px_24px_-8px_rgba(0,0,0,0.55)]"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    onBack()
+                  }}
+                  className={cx('flex min-h-11 w-full items-center px-4 text-left hover:bg-panel2 hover:text-ink', text.label)}
+                >
+                  Back to Campaigns
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    onSignOut()
+                  }}
+                  className={cx(
+                    'flex min-h-11 w-full items-center border-t border-line-soft px-4 text-left hover:bg-panel2 hover:text-ink',
+                    text.label,
+                  )}
+                >
+                  Sign out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       {/* v11: campaign name + session meta stack on the left rail; the

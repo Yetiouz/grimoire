@@ -50,6 +50,10 @@ function AuthGate() {
         // as a display string the way `authorName` is.
         isOwner={campaign.owner === user.id}
         onBack={() => setCampaign(null)}
+        // Same signOut this AuthGate already wires to CampaignList below
+        // — the hamburger menu (2026-08-11) is the first way to sign out
+        // from inside a campaign without navigating back first.
+        onSignOut={() => void signOut()}
       />
     )
   }

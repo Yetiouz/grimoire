@@ -41,6 +41,12 @@ interface JournalScreenProps {
    * own owner check in migration 0023. */
   isOwner: boolean
   onBack: () => void
+  /** Wired into `JournalHeader`'s hamburger menu (2026-08-11, "make the
+   * hamburger button usable"). `App.tsx`'s `AuthGate` already has
+   * `signOut` in scope for `CampaignList`; this is the same call,
+   * threaded one screen deeper so leaving a campaign no longer requires
+   * navigating back to the campaign list first. */
+  onSignOut: () => void
 }
 
 /** Last-resort fallback for `actorColor` when the signed-in member has
@@ -78,7 +84,7 @@ const GM_MODE_LABEL: Record<string, string> = { solo: 'Solo', ai: 'AI GM', human
  * and with it the save-as-note wiring on desktop. This is the split
  * version restored from fe59ee3, plus the one thing 889164e had
  * legitimately added on top: the `configureAiSpeech` effect below. */
-export function JournalScreen({ campaign, authorName, isOwner, onBack }: JournalScreenProps) {
+export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut }: JournalScreenProps) {
   const {
     sessions, setSessions,
     entries, setEntries,
@@ -390,6 +396,7 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack }: Journal
         sessionAction={sessionAction}
         inviteAction={isOwner ? <CampaignInvite campaignId={campaign.id} /> : undefined}
         onBack={onBack}
+        onSignOut={onSignOut}
         onOpenSearch={() => setSearchOpen(true)}
       />
 
