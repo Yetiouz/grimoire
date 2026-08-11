@@ -123,7 +123,19 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, invite
   return (
     <header className="border-b border-line">
       <div className="flex items-center justify-between gap-4 border-b border-line-soft px-4 py-2">
-        <button type="button" onClick={onBack} aria-label="Back to campaigns" className="block">
+        {/* 44px touch target (2026-08-11, mobile polish pass) — this
+          * was a bare `block` around a 24px-tall logo, the smallest tap
+          * target in the header even before the hamburger menu gave
+          * "back to campaigns" a second, better-labeled path. The logo
+          * stays the same visible size; only the invisible hit box
+          * grows, same `-ml-2` edge-compensation MobileJournalView's own
+          * close button already uses on the opposite edge. */}
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Back to campaigns"
+          className="-ml-2 inline-flex h-11 min-w-11 items-center justify-center rounded-button hover:bg-panel2"
+        >
           <img src="/logo.webp" alt="Grimoire" className="h-6 w-auto" />
         </button>
         <div className="flex items-center gap-2">
