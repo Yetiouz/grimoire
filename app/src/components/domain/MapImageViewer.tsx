@@ -226,14 +226,39 @@ export function MapImageViewer({ src, alt, onImageClick, children, className }: 
         {children}
       </div>
 
+      {/* 44px touch targets (2026-08-11, mobile polish pass) — these
+        * were h-7 (28px), the one hand-rolled control in this app that
+        * never went through Button/Stepper's shared 44px guarantee
+        * (CLAUDE.md: "every interactive control...guarantees the 44px
+        * touch-target minimum"). Map zoom is exactly the kind of control
+        * a phone user reaches for mid-pinch, so undersized hit targets
+        * here cost more than most. */}
       <div className="absolute bottom-2 right-2 flex gap-1 rounded-button border border-line-soft bg-panel/90 p-1 backdrop-blur">
-        <button type="button" onClick={() => stepZoom(1 / ZOOM_STEP)} disabled={zoom <= MIN_ZOOM} className={cx(text.label, 'h-7 w-7 rounded-button hover:bg-panel2 disabled:opacity-30')}>
+        <button
+          type="button"
+          onClick={() => stepZoom(1 / ZOOM_STEP)}
+          disabled={zoom <= MIN_ZOOM}
+          aria-label="Zoom out"
+          className={cx(text.label, 'inline-flex h-11 w-11 items-center justify-center rounded-button hover:bg-panel2 disabled:opacity-30')}
+        >
           −
         </button>
-        <button type="button" onClick={resetView} disabled={zoom === MIN_ZOOM && pan.x === 0 && pan.y === 0} className={cx(text.label, 'rounded-button px-2 hover:bg-panel2 disabled:opacity-30')}>
+        <button
+          type="button"
+          onClick={resetView}
+          disabled={zoom === MIN_ZOOM && pan.x === 0 && pan.y === 0}
+          aria-label="Reset zoom"
+          className={cx(text.label, 'inline-flex min-h-11 items-center justify-center rounded-button px-3 hover:bg-panel2 disabled:opacity-30')}
+        >
           Reset
         </button>
-        <button type="button" onClick={() => stepZoom(ZOOM_STEP)} disabled={zoom >= MAX_ZOOM} className={cx(text.label, 'h-7 w-7 rounded-button hover:bg-panel2 disabled:opacity-30')}>
+        <button
+          type="button"
+          onClick={() => stepZoom(ZOOM_STEP)}
+          disabled={zoom >= MAX_ZOOM}
+          aria-label="Zoom in"
+          className={cx(text.label, 'inline-flex h-11 w-11 items-center justify-center rounded-button hover:bg-panel2 disabled:opacity-30')}
+        >
           +
         </button>
       </div>

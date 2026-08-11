@@ -448,9 +448,18 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                   type="button"
                   onClick={() => setColor(hex)}
                   aria-label={`Use color ${hex}`}
-                  className={cx('h-8 w-8 rounded-full border-2', color === hex ? 'border-ink' : 'border-transparent')}
-                  style={{ backgroundColor: hex }}
-                />
+                  // 44px touch target (2026-08-11, mobile polish pass) —
+                  // these were h-8 (32px), a real tap target below
+                  // CLAUDE.md's stated 44px minimum; the swatch itself
+                  // still reads as a compact dot via the padding+ring,
+                  // not a suddenly-huge circle.
+                  className={cx(
+                    'flex h-11 w-11 items-center justify-center rounded-full',
+                    color === hex && 'ring-2 ring-ink ring-offset-2 ring-offset-bg',
+                  )}
+                >
+                  <span className="h-8 w-8 rounded-full border-2 border-transparent" style={{ backgroundColor: hex }} />
+                </button>
               ))}
             </div>
           </div>
