@@ -178,3 +178,67 @@ export async function restCharacter(characterId: string, sessionId?: string | nu
   if (error) throw error
   return data
 }
+
+// ── Character creation (BUILD_PLAN.md slice 12) ─────────────────────
+// `create_character` (migration 0021) is the creation half of the
+// commands above — every one of those mutates an existing row; nothing
+// before this migration could ever produce the row itself outside of
+// 0004's one-time Black Road import. Deliberately NOT rules-aware, same
+// as this whole file: `CharacterBuilder.tsx` (via `lib/rules/`) does
+// every Shadowdark-specific computation (stats, HP, AC, starting gear)
+// client-side and this wrapper just writes the final values, exactly
+// the "trust the client's roll" shape every other command here already
+// takes. `gearCurrent` is NOT a param — the RPC derives it from
+// `sheet.equipment`'s length itself, same linked-counter invariant
+// `addCharacterGear`/`removeCharacterGear` maintain going forward.
+
+export interface CreateCharacterInput {
+  campaignId: string
+  name: string
+  /** Composed by the caller as "{Ancestry} {Class}" (or "{Ancestry}
+   * (0-level)" pre-class) — matches how Kimbo/Constantine/LaLa are
+   * already stored; ancestry has no column of its own (see `lib/rules/`
+   * doc comments for why). */
+  classTitle: string
+  hpMax: number
+  ac: number
+  level?: number
+  memberId?: string | null
+  background?: string | null
+  /** Composed by the caller as "{Alignment} {Title}" (e.g. "Neutral
+   * Seeker") when a title is known, or just the bare alignment word for
+   * a 0-level character — matches the existing imported rows exactly. */
+  alignmentTitle?: string | null
+  xpNeeded?: number | null
+  gearMax?: number | null
+  gold?: CharacterGold
+  abilities?: CharacterAbilities
+  sheet?: CharacterSheetData
+  status?: string
+  color?: string | null
+  sessionId?: string | null
+}
+
+export async function createCharacter(input: CreateCharacterInput): Promise<Character> {
+  const { data, error } = await supabase.rpc('create_character', {
+    p_campaign_id: input.campaignId,
+    p_name: input.name,
+    p_class_title: input.classTitle,
+    p_hp_max: input.hpMax,
+    p_ac: input.ac,
+    p_level: input.level ?? 1,
+    p_member_id: input.memberId ?? undefined,
+    p_background: input.background ?? undefined,
+    p_alignment_title: input.alignmentTitle ?? undefined,
+    p_xp_needed: input.xpNeeded ?? undefined,
+    p_gear_max: input.gearMax ?? undefined,
+    p_gold: input.gold ?? {},
+    p_abilities: input.abilities ?? {},
+    p_sheet: input.sheet ?? {},
+    p_status: input.status ?? 'active',
+    p_color: input.color ?? undefined,
+    p_session_id: input.sessionId ?? undefined,
+  })
+  if (error) throw error
+  return data
+}

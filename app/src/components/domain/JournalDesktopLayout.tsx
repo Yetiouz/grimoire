@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { cx } from '../../lib/cx'
+import { text } from '../../lib/typography'
 import { ColumnCard } from '../ui/ColumnCard'
 import { ErrorBanner } from '../ui/ErrorBanner'
 import { Skeleton, SkeletonGroup } from '../ui/Skeleton'
@@ -54,6 +56,11 @@ interface JournalDesktopLayoutProps {
    * above. */
   sessionPaused?: boolean
   onOpenCharacter: (character: Character) => void
+  /** Opens `CharacterBuilder` (2026-08-11) — rendered as a plain button
+   * inside the Party card, always available once `characters` has
+   * loaded, party-empty or not (see this file's own doc comment on why
+   * the Party card's mount condition changed to make that true). */
+  onNewCharacter: () => void
   onOpenDice: () => void
   /** Slice 8 (Maps overlay) — threaded straight to `ToolsDock`, same as
    * `MobileJournalView`'s own copy of this prop. Not gated behind
@@ -129,6 +136,7 @@ export function JournalDesktopLayout({
   sessionActive,
   sessionPaused,
   onOpenCharacter,
+  onNewCharacter,
   onOpenDice,
   onOpenMaps,
   gmEnabled,
@@ -165,12 +173,32 @@ export function JournalDesktopLayout({
       {/* LEFT: Party card + Tools card (v11: members grouped in one
         * card, tools in their own card below it) — each a ColumnCard,
         * the card-shell layout primitive (CLAUDE.md). */}
-      {characters !== null && characters.length > 0 && (
+      {/* 2026-08-11: was gated on `characters.length > 0` — which hid
+        * the Party card, and with it the only way to reach the new
+        * Character Builder, on any campaign with an empty party (every
+        * brand-new campaign, by definition). Gating on `!== null`
+        * alone keeps the card mounted once the load resolves either
+        * way, with a short empty-state line standing in for the
+        * PlayerCard list when there's nothing to show yet. */}
+      {characters !== null && (
         <div className="flex min-h-0 flex-col gap-3">
           <ColumnCard headerLeft="Party" bodyClassName="gap-2" className="xl:flex-1">
             {characters.map((character) => (
               <PlayerCard key={character.id} character={character} onClick={() => onOpenCharacter(character)} />
             ))}
+            {characters.length === 0 && (
+              <p className={cx(text.caption, 'px-1 py-2 text-ink-faint')}>No characters yet.</p>
+            )}
+            <button
+              type="button"
+              onClick={onNewCharacter}
+              className={cx(
+                text.caption,
+                'rounded-[10px] border border-dashed border-line-hover px-3 py-2 text-center text-ink-faint hover:border-purple hover:text-purple',
+              )}
+            >
+              + New Character
+            </button>
           </ColumnCard>
           <ColumnCard headerLeft="Tools">
             <ToolsDock onOpenDice={onOpenDice} diceDisabled={!sessionActive} onOpenRules={onOpenRules} onOpenMaps={onOpenMaps} />

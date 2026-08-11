@@ -89,6 +89,10 @@ interface MobileJournalViewProps {
    * the gate" convention `onOpenRules` already follows. */
   onOpenSearch?: () => void
   onOpenCharacter: (character: Character) => void
+  /** Opens `CharacterBuilder` (2026-08-11) — rendered as a button at
+   * the top of the Party tab, same always-available shape as
+   * `JournalDesktopLayout`'s own copy of this prop. */
+  onNewCharacter: () => void
   onOpenDice: () => void
 }
 
@@ -198,6 +202,7 @@ export function MobileJournalView({
   onOpenRules,
   onOpenSearch,
   onOpenCharacter,
+  onNewCharacter,
   onOpenDice,
 }: MobileJournalViewProps) {
   const [activeView, setActiveView] = useState<MobileView | null>(null)
@@ -320,6 +325,16 @@ export function MobileJournalView({
             </div>
           ) : activeView === 'party' ? (
             <div className="flex flex-col gap-2 p-4">
+              <button
+                type="button"
+                onClick={onNewCharacter}
+                className={cx(
+                  text.caption,
+                  'rounded-[10px] border border-dashed border-line-hover px-3 py-2 text-center text-ink-faint hover:border-purple hover:text-purple',
+                )}
+              >
+                + New Character
+              </button>
               {characters.length > 0 ? (
                 characters.map((character) => (
                   <PlayerCard key={character.id} character={character} onClick={() => onOpenCharacter(character)} />

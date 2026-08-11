@@ -5,6 +5,7 @@ import { ALL_FILTER_KINDS } from '../../lib/journalFilters'
 import type { FilterKind } from '../../lib/journalFilters'
 import { JournalHeader } from '../../components/domain/JournalHeader'
 import { CharacterSheet } from '../../components/domain/CharacterSheet'
+import { CharacterBuilder } from '../../components/domain/CharacterBuilder'
 import { DiceRoller } from '../../components/domain/DiceRoller'
 import { MapsOverlay } from '../../components/domain/MapsOverlay'
 import { SessionAction } from '../../components/domain/SessionAction'
@@ -94,6 +95,11 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
   // solo or GM'd. Always wired, matching CampaignSearch's own "no
   // separate index, just the data already on screen" design.
   const [searchOpen, setSearchOpen] = useState(false)
+  // Character Builder (BUILD_PLAN.md slice 12) — same "always wired,
+  // no gm_mode/feature-flag gate" shape as search above: any campaign
+  // member or the GM can start a build, per the owner's call, so this
+  // isn't conditional on anything the way `onOpenRules` is.
+  const [builderOpen, setBuilderOpen] = useState(false)
   // BOB_queue task 1: which kinds show in the desktop feed — every chip
   // lit by default. Independent from MobileJournalView's own copy of
   // this same state; desktop and mobile were never asked to mirror each
@@ -307,6 +313,13 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
     setOpenCharacter(updated)
   }
 
+  // Echo the row `create_character` returned straight into the party
+  // rail — same "echo what the RPC returned, don't refetch" pattern
+  // every other command on this screen already uses.
+  function handleCharacterCreated(created: Character) {
+    setCharacters((prev) => [...(prev ?? []), created])
+  }
+
   const sessionAction = (
     <SessionAction
       open={Boolean(openSession)}
@@ -364,6 +377,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
         sessionActive={sessionActive}
         sessionPaused={sessionPaused}
         onOpenCharacter={setOpenCharacter}
+        onNewCharacter={() => setBuilderOpen(true)}
         onOpenDice={() => setDiceOpen(true)}
         onOpenMaps={() => setMapsOpen(true)}
         gmEnabled={aiGmActive}
@@ -427,6 +441,7 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
           onOpenRules={aiGmActive ? () => setRulesOpen(true) : undefined}
           onOpenSearch={() => setSearchOpen(true)}
           onOpenCharacter={setOpenCharacter}
+          onNewCharacter={() => setBuilderOpen(true)}
           onOpenDice={() => setDiceOpen(true)}
         />
       </div>
@@ -436,6 +451,15 @@ export function JournalScreen({ campaign, authorName, onBack }: JournalScreenPro
         sessionId={openSession?.id ?? null}
         onClose={() => setOpenCharacter(null)}
         onUpdate={handleCharacterUpdate}
+      />
+
+      <CharacterBuilder
+        open={builderOpen}
+        onClose={() => setBuilderOpen(false)}
+        campaignId={campaign.id}
+        system={campaign.system}
+        sessionId={openSession?.id ?? null}
+        onCreated={handleCharacterCreated}
       />
 
       <RulesChat open={rulesOpen} campaignId={campaign.id} onClose={() => setRulesOpen(false)} />
