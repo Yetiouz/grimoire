@@ -29,7 +29,12 @@ function AuthGate() {
   const [campaign, setCampaign] = useState<Campaign | null>(null)
 
   if (loading) {
-    return <div className={cx('flex min-h-screen items-center justify-center', text.bodySecondary)}>Loading…</div>
+    // `min-h-svh`, not `min-h-screen` — same mobile-address-bar-chrome
+    // fix `SignIn.tsx` and the landing page's hero already documented
+    // and applied; this loading screen was the one place in the real
+    // (non-style-guide) app that still had the old `100vh` class,
+    // which can leave a few px of scroll on a page that visually fits.
+    return <div className={cx('flex min-h-svh items-center justify-center', text.bodySecondary)}>Loading…</div>
   }
 
   if (!user) {
