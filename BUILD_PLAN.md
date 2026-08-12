@@ -23,7 +23,7 @@ Ordered so each slice replaces a real file the user maintains by hand today, and
 12. **Character builder** — for the family campaign's new players.
 13. **Encounter mode + zone scenes**: initiative order on the party rail (cards reorder, active glows, round chip — the rail was built for this), dying/stabilizing timers on PlayerCard down-states, Close/Near/Far scene tab.
 14. **Multiplayer**: invites, roles, presence, realtime. Constantine's and LaLa's players join for real; two-account playtest is the gate.
-15. **GM prep + handouts.**
+15. **GM prep + handouts.** Broken into 4 independent slices (see `grimoire-phase15-gm-prep-handouts-scope.md` in the project): Locations/Places tracker, threat/faction clocks, GM reference (persona + house rules), player-safe handout maps. Slice 1 (Locations/Places, migration `0024_locations`) shipped 2026-08-12. The other 3 are still ahead.
 
 ## Domain component list
 
