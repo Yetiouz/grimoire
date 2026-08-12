@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
@@ -35,6 +36,23 @@ export function Modal({
   inline = false,
   className,
 }: ModalProps) {
+  // Escape-to-cancel — Overlay.tsx already does this (and documents it
+  // as matching the original mockup's own keydown handler); Modal never
+  // had the equivalent, so every confirm dialog built on it (New
+  // Campaign, Join Campaign, Invite a friend) was Escape-deaf even
+  // though its sibling primitive wasn't. Mapped to `onCancel`, same as
+  // a backdrop click — Modal's cancel side is never destructive by
+  // itself (it's always "close without doing the confirm action"), so
+  // there's no case here where Escape needs a confirmation step first.
+  useEffect(() => {
+    if (!open) return
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onCancel()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open, onCancel])
+
   if (!open) return null
 
   const dialog = (

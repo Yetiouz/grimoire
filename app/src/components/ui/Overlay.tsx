@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
@@ -80,6 +80,8 @@ interface OverlayProps {
  * "what this will not build" list.
  */
 export function Overlay({ open, onClose, header, children, width = 'default', tall = false, variant = 'dialog', className }: OverlayProps) {
+  const panelRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (!open) return
     function handleKeyDown(event: KeyboardEvent) {
@@ -88,6 +90,23 @@ export function Overlay({ open, onClose, header, children, width = 'default', ta
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [open, onClose])
+
+  // Move focus into the panel on open, and back to whatever had it
+  // before (the trigger button, in every real call site) on close — a
+  // keyboard or screen-reader user activating a trigger otherwise lands
+  // nowhere: focus just stays wherever it was, behind the new backdrop,
+  // with no indication anything opened. Not a full focus trap (Tab can
+  // still walk out to the backdrop/body) — that's a bigger change than
+  // this pass's scope; this is the smaller, well-established "focus
+  // moves in, focus comes back" half of dialog behavior.
+  useEffect(() => {
+    if (!open) return
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    panelRef.current?.focus()
+    return () => {
+      previouslyFocused?.focus?.()
+    }
+  }, [open])
 
   if (!open) return null
 
@@ -120,9 +139,11 @@ export function Overlay({ open, onClose, header, children, width = 'default', ta
       onClick={onClose}
     >
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
-        className={cx('flex w-full flex-col overflow-hidden bg-panel', panelShapeClass, className)}
+        tabIndex={-1}
+        className={cx('flex w-full flex-col overflow-hidden bg-panel outline-none', panelShapeClass, className)}
         // Structural param type instead of React.MouseEvent, same
         // pattern Modal already uses — keeps this file free of a React
         // type import purely for one stopPropagation call.
