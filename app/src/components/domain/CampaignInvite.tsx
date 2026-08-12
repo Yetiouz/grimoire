@@ -41,8 +41,13 @@ export function CampaignInviteModal({ campaignId, open, onClose }: CampaignInvit
   // it would refetch on every render once a code exists instead of just
   // reusing the cached one already in state.
   useEffect(() => {
-    if (!open || code) return
+    if (!open) return
+    // Reset the confirm button's label on every open, even when `code`
+    // is already cached from a prior open — otherwise a stale
+    // "Copied!" from last time leaks into a fresh open and reads as
+    // "you already copied this," which isn't true this time around.
     setCopied(false)
+    if (code) return
     setLoading(true)
     setError(null)
     let cancelled = false
