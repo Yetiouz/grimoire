@@ -24,7 +24,7 @@ import type { GmCheck, ResolveSource } from '../../lib/checks'
 import type { CampaignSession } from '../../lib/campaigns'
 import type { Character } from '../../lib/characters'
 import type { Quest } from '../../lib/quests'
-import type { Faction, Note, Npc, NpcStatBlock, Treasure } from '../../lib/world'
+import type { Faction, Note, Npc, NpcStatBlock, Treasure, Location, LocationSecret } from '../../lib/world'
 
 interface MobileJournalViewProps {
   loading: boolean
@@ -39,7 +39,12 @@ interface MobileJournalViewProps {
   /** `WorldTabs`' 5th tab (2026-08-10) — same threaded-straight-through
    * treatment as `npcs`/`factions`/`treasure`. */
   notes: Note[]
+  /** BUILD_PLAN.md item 15 slice 1 (2026-08-12) — same
+   * threaded-straight-through treatment as `npcs`/`factions`/`treasure`/
+   * `notes`. */
+  locations: Location[]
   npcStatBlocks: Map<string, NpcStatBlock>
+  locationSecrets: Map<string, LocationSecret>
   sessions: CampaignSession[]
   /** BOB_queue task 1: the already-merged, already-sorted feed — see
    * lib/feed.ts's buildFeed(). Was `entries: JournalEntry[]` before
@@ -206,7 +211,9 @@ export function MobileJournalView({
   factions,
   treasure,
   notes,
+  locations,
   npcStatBlocks,
+  locationSecrets,
   sessions,
   items,
   sessionOpen,
@@ -326,7 +333,9 @@ export function MobileJournalView({
           factions={factions}
           treasure={treasure}
           notes={notes}
+          locations={locations}
           npcStatBlocks={npcStatBlocks}
+          locationSecrets={locationSecrets}
           justifyTabs
           className="min-h-0 flex-1 px-4 pb-4 pt-3"
         />

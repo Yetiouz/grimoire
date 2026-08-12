@@ -7,7 +7,7 @@ import { WorldPreviewRow } from './WorldPreviewRow'
 import { WorldDetailOverlay } from './WorldDetailOverlay'
 import type { WorldSelection } from './WorldDetailOverlay'
 import type { Quest } from '../../lib/quests'
-import type { Npc, Faction, Treasure, Note, NpcStatBlock } from '../../lib/world'
+import type { Npc, Faction, Treasure, Note, NpcStatBlock, Location, LocationSecret } from '../../lib/world'
 
 interface WorldTabsProps {
   quests: Quest[]
@@ -20,6 +20,10 @@ interface WorldTabsProps {
    * `listCampaignNotes`'s own doc comment for why that's the one list
    * here that isn't creation-order). */
   notes: Note[]
+  /** BUILD_PLAN.md item 15 slice 1 (2026-08-12): the 6th tab, backed by
+   * migration `0024_locations` — replaces `world.md`'s Settlements/
+   * Regions/Adventure Sites list. */
+  locations: Location[]
   /** Keyed by `npc_id` — build with
    * `new Map(statBlockRows.map(row => [row.npc_id, row]))` from
    * `listNpcStatBlocks`. Empty for a non-owner viewer (RLS-filtered), so
@@ -27,6 +31,9 @@ interface WorldTabsProps {
    * that map's own doc comment for why no separate `isGm` flag is
    * threaded through here. */
   npcStatBlocks: Map<string, NpcStatBlock>
+  /** Same shape as `npcStatBlocks`, keyed by `location_id` — see
+   * `listLocationSecrets`' own doc comment. */
+  locationSecrets: Map<string, LocationSecret>
   /** Mobile's request (2026-08-10, owner: "expand the buttons... so the
    * tabs are justified but keep the same space between them") — mobile's
    * wider tab row otherwise left visible slack after 5 short labels the
@@ -41,7 +48,7 @@ interface WorldTabsProps {
   className?: string
 }
 
-type WorldTab = 'quests' | 'npcs' | 'factions' | 'treasure' | 'notes'
+type WorldTab = 'quests' | 'npcs' | 'factions' | 'treasure' | 'notes' | 'locations'
 
 /** Mockup-approved labels (`quest-log-tabs-fit-options-mockup.html`,
  * variant C — the owner's pick): short words, no icons, chosen because
@@ -57,6 +64,7 @@ const TABS: Array<{ key: WorldTab; label: string }> = [
   { key: 'factions', label: 'Factions' },
   { key: 'treasure', label: 'Loot' },
   { key: 'notes', label: 'Notes' },
+  { key: 'locations', label: 'Places' },
 ]
 
 /**
@@ -89,7 +97,7 @@ const TABS: Array<{ key: WorldTab; label: string }> = [
  * both groups read the same `quest.status` string `deriveStatusIndicator`
  * already parses for the dot.
  */
-export function WorldTabs({ quests, npcs, factions, treasure, notes, npcStatBlocks, justifyTabs, className }: WorldTabsProps) {
+export function WorldTabs({ quests, npcs, factions, treasure, notes, locations, npcStatBlocks, locationSecrets, justifyTabs, className }: WorldTabsProps) {
   const [activeTab, setActiveTab] = useState<WorldTab>('quests')
   const [selection, setSelection] = useState<WorldSelection | null>(null)
 
@@ -229,6 +237,21 @@ export function WorldTabs({ quests, npcs, factions, treasure, notes, npcStatBloc
             ))
           ) : (
             <EmptyState icon="journal" title="No notes yet" description="Notes logged for this campaign show up here." />
+          ))}
+
+        {activeTab === 'locations' &&
+          (locations.length > 0 ? (
+            locations.map((location) => (
+              <WorldPreviewRow
+                key={location.id}
+                title={location.name}
+                indicator={deriveStatusIndicator(location.status)}
+                preview={location.summary || null}
+                onClick={() => setSelection({ kind: 'location', item: location, secret: locationSecrets.get(location.id) })}
+              />
+            ))
+          ) : (
+            <EmptyState icon="map" title="No places yet" description="Locations logged for this campaign show up here." />
           ))}
       </div>
 

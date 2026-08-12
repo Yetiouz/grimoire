@@ -6,6 +6,8 @@ export type NpcStatBlock = Tables<'npc_stat_blocks'>
 export type Faction = Tables<'factions'>
 export type Treasure = Tables<'treasure'>
 export type Note = Tables<'campaign_notes'>
+export type Location = Tables<'locations'>
+export type LocationSecret = Tables<'location_secrets'>
 
 /** NPCs in a campaign, in creation order — this table has no
  * `sort_order` column (unlike `quests`), so `created_at` is the closest
@@ -87,6 +89,40 @@ export async function listTreasure(campaignId: string): Promise<Treasure[]> {
     .select('*')
     .eq('campaign_id', campaignId)
     .order('created_at', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+/** Locations in a campaign, in creation order — same "no explicit
+ * sort column, `created_at` is the closest real order" reasoning as
+ * `listNpcs`. Migration `0024_locations` (BUILD_PLAN.md item 15, "GM
+ * prep + handouts", slice 1 of 4): replaces `world.md`'s Settlements/
+ * Regions/Adventure Sites, which had no in-app equivalent before this.
+ *
+ * Never includes GM-hidden content — same table-level split as
+ * `npcs`/`npc_stat_blocks` (see `listNpcStatBlock`'s doc comment for
+ * why a row-level RLS policy needs a real second table, not a
+ * client-side "just don't render it" trick). `world.md`'s explicit
+ * "Known" vs. "Hidden" sections per location are exactly the same
+ * shape as an NPC's public fields vs. its combat stat block. */
+export async function listLocations(campaignId: string): Promise<Location[]> {
+  const { data, error } = await supabase
+    .from('locations')
+    .select('*')
+    .eq('campaign_id', campaignId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+/** Every GM-only location secret visible to the signed-in user for a
+ * whole campaign in one call — same reasoning and same RLS-driven
+ * ambiguity as `listNpcStatBlocks` (a non-owner's query hits
+ * `location_secrets_select_gm` and comes back `[]`, not an error, so
+ * this is naturally empty for a player and the real rows for the GM —
+ * no separate `getCampaignRole` check needed at the call site). */
+export async function listLocationSecrets(campaignId: string): Promise<LocationSecret[]> {
+  const { data, error } = await supabase.from('location_secrets').select('*').eq('campaign_id', campaignId)
   if (error) throw error
   return data
 }

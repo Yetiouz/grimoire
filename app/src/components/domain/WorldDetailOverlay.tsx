@@ -5,8 +5,9 @@ import { NpcCard } from './NpcCard'
 import { FactionCard } from './FactionCard'
 import { TreasureRow } from './TreasureRow'
 import { NoteCard } from './NoteCard'
+import { LocationCard } from './LocationCard'
 import type { Quest } from '../../lib/quests'
-import type { Faction, Note, Npc, NpcStatBlock, Treasure } from '../../lib/world'
+import type { Faction, Note, Npc, NpcStatBlock, Treasure, Location, LocationSecret } from '../../lib/world'
 
 /** What `WorldPreviewRow`'s `onClick` in `WorldTabs` sets — one resolved
  * entity plus which of the five detail shapes it needs (`note` added
@@ -24,6 +25,7 @@ export type WorldSelection =
   | { kind: 'faction'; item: Faction }
   | { kind: 'treasure'; item: Treasure }
   | { kind: 'note'; item: Note }
+  | { kind: 'location'; item: Location; secret?: LocationSecret }
 
 const KIND_LABEL: Record<WorldSelection['kind'], string> = {
   quest: 'Quest',
@@ -31,6 +33,7 @@ const KIND_LABEL: Record<WorldSelection['kind'], string> = {
   faction: 'Faction',
   treasure: 'Treasure',
   note: 'Note',
+  location: 'Place',
 }
 
 function renderSelection(selection: WorldSelection) {
@@ -45,6 +48,8 @@ function renderSelection(selection: WorldSelection) {
       return <TreasureRow treasure={selection.item} />
     case 'note':
       return <NoteCard note={selection.item} />
+    case 'location':
+      return <LocationCard location={selection.item} secret={selection.secret} />
   }
 }
 

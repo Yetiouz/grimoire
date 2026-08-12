@@ -5,8 +5,8 @@ import { listCharacters } from '../lib/characters'
 import type { Character } from '../lib/characters'
 import { listQuests } from '../lib/quests'
 import type { Quest } from '../lib/quests'
-import { listCampaignNotes, listFactions, listNpcStatBlocks, listNpcs, listTreasure } from '../lib/world'
-import type { Faction, Note, Npc, NpcStatBlock, Treasure } from '../lib/world'
+import { listCampaignNotes, listFactions, listLocationSecrets, listLocations, listNpcStatBlocks, listNpcs, listTreasure } from '../lib/world'
+import type { Faction, Location, LocationSecret, Note, Npc, NpcStatBlock, Treasure } from '../lib/world'
 
 /**
  * `JournalScreen`'s core data fetch — sessions, entries, characters,
@@ -54,7 +54,13 @@ export function useJournalScreenData(campaignId: string) {
   const [factions, setFactions] = useState<Faction[] | null>(null)
   const [treasure, setTreasure] = useState<Treasure[] | null>(null)
   const [notes, setNotes] = useState<Note[] | null>(null)
+  const [locations, setLocations] = useState<Location[] | null>(null)
   const [npcStatBlocks, setNpcStatBlocks] = useState<Map<string, NpcStatBlock>>(new Map())
+  // Locations tracker (BUILD_PLAN.md item 15 slice 1) — same
+  // Map<location_id, LocationSecret> shape and same RLS-driven "empty
+  // for a player, real rows for the GM" ambiguity as npcStatBlocks
+  // above; see listLocationSecrets' own doc comment.
+  const [locationSecrets, setLocationSecrets] = useState<Map<string, LocationSecret>>(new Map())
   const [myMembership, setMyMembership] = useState<CampaignMember | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -69,7 +75,9 @@ export function useJournalScreenData(campaignId: string) {
         factionRows,
         treasureRows,
         noteRows,
+        locationRows,
         statBlockRows,
+        locationSecretRows,
         membership,
       ] = await Promise.all([
         listSessions(campaignId),
@@ -80,7 +88,9 @@ export function useJournalScreenData(campaignId: string) {
         listFactions(campaignId),
         listTreasure(campaignId),
         listCampaignNotes(campaignId),
+        listLocations(campaignId),
         listNpcStatBlocks(campaignId),
+        listLocationSecrets(campaignId),
         getMyMembership(campaignId),
       ])
       setSessions(sessionRows)
@@ -91,7 +101,9 @@ export function useJournalScreenData(campaignId: string) {
       setFactions(factionRows)
       setTreasure(treasureRows)
       setNotes(noteRows)
+      setLocations(locationRows)
       setNpcStatBlocks(new Map(statBlockRows.map((row) => [row.npc_id, row])))
+      setLocationSecrets(new Map(locationSecretRows.map((row) => [row.location_id, row])))
       setMyMembership(membership)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong loading the journal.')
@@ -108,7 +120,7 @@ export function useJournalScreenData(campaignId: string) {
     entries, setEntries,
     characters, setCharacters,
     quests, setQuests,
-    npcs, factions, treasure, notes, npcStatBlocks,
+    npcs, factions, treasure, notes, locations, npcStatBlocks, locationSecrets,
     myMembership,
     error, setError,
     load,

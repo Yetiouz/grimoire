@@ -695,6 +695,80 @@ export type Database = {
           },
         ]
       }
+      location_secrets: {
+        Row: {
+          campaign_id: string
+          location_id: string
+          notes: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          location_id: string
+          notes?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          location_id?: string
+          notes?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_secrets_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_secrets_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: true
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      locations: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          status: string | null
+          summary: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          kind?: string
+          name: string
+          status?: string | null
+          summary?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          status?: string | null
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "locations_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       npc_stat_blocks: {
         Row: {
           campaign_id: string
