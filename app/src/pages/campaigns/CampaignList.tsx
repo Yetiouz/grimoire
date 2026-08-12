@@ -46,6 +46,7 @@ export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
   const [modalOpen, setModalOpen] = useState(false)
   const [name, setName] = useState('')
   const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
   const [joinModalOpen, setJoinModalOpen] = useState(false)
   const [joinCode, setJoinCode] = useState('')
   const [joining, setJoining] = useState(false)
@@ -78,13 +79,21 @@ export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
     const trimmed = name.trim()
     if (!trimmed) return
     setCreating(true)
+    setCreateError(null)
     try {
       const created = await createCampaign(trimmed)
       setModalOpen(false)
       setName('')
       onOpenCampaign(created)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create the campaign.')
+      // Local to the modal (matching handleJoin's joinError), not the
+      // page-level `error`/ErrorBanner — that banner renders behind the
+      // Modal's own opaque backdrop, so a failure reported through it
+      // while this modal is still open was invisible: the button just
+      // silently reverted from "Creating…" to "Create" with no visible
+      // reason why. Bug found auditing the Join modal, which already
+      // got this right, against Create, which didn't.
+      setCreateError(err instanceof Error ? err.message : 'Could not create the campaign.')
     } finally {
       setCreating(false)
     }
@@ -178,6 +187,7 @@ export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
             onCancel={() => {
               setModalOpen(false)
               setName('')
+              setCreateError(null)
             }}
             onConfirm={() => void handleCreate()}
             confirmLabel={creating ? 'Creating…' : 'Create'}
@@ -188,6 +198,7 @@ export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
               onChange={(event: { target: { value: string } }) => setName(event.target.value)}
               placeholder="The Black Road"
               disabled={creating}
+              error={createError ?? undefined}
             />
           </Modal>
         )}

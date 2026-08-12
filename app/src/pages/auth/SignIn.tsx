@@ -37,6 +37,30 @@ export function SignIn() {
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [githubLoading, setGithubLoading] = useState(false)
+  const [githubError, setGithubError] = useState<string | null>(null)
+
+  // The email path below already catches and surfaces its own errors
+  // (`error`/the TextInput's error prop) — GitHub's button called
+  // `signInWithGitHub()` with a bare `void`, so a real failure (OAuth
+  // misconfigured, provider disabled, network error before the
+  // redirect fires) became a silent unhandled rejection: the button
+  // just... did nothing, with no way to tell why. `signInWithGitHub`
+  // itself already throws on error (see useAuth.ts), it just had no
+  // catch at this call site.
+  async function handleGithubSignIn() {
+    setGithubLoading(true)
+    setGithubError(null)
+    try {
+      await signInWithGitHub()
+      // No setGithubLoading(false) on success — a successful call
+      // redirects the browser away from this page entirely, so there's
+      // nothing left here to un-load.
+    } catch (err) {
+      setGithubError(err instanceof Error ? err.message : 'Could not start GitHub sign-in.')
+      setGithubLoading(false)
+    }
+  }
 
   async function handleEmailSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -70,7 +94,14 @@ export function SignIn() {
       <h1 className={text.display}>Grimoire</h1>
       <p className={text.bodySecondary}>Sign in to open your campaigns.</p>
 
-      <Button onClick={() => void signInWithGitHub()}>Continue with GitHub</Button>
+      <Button onClick={() => void handleGithubSignIn()} disabled={githubLoading}>
+        {githubLoading ? 'Redirecting…' : 'Continue with GitHub'}
+      </Button>
+      {githubError && (
+        <p className={cx(text.caption, 'max-w-xs text-red')} role="alert">
+          {githubError}
+        </p>
+      )}
 
       <div className="flex w-full max-w-xs items-center gap-3" aria-hidden="true">
         <span className="h-px flex-1 bg-line" />
