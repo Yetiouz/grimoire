@@ -60,10 +60,16 @@ interface JournalHeaderProps {
  * breakpoint-specific size override, so mark and text stay in this
  * same proportion at every viewport width). The gap between the mark
  * and the text block (`gap-2`) and the gap between the two stacked
- * lines (`mt-px` on the session-meta line) were both hand-tuned
- * against the live render rather than picked up front -- worth
- * knowing before nudging either again, since "more/less space" here
- * is reading the actual rendered gap, not a formula.
+ * lines (`-mt-px`, a deliberate NEGATIVE margin on the session-meta
+ * line -- text.label's own line-height leading was still reading as
+ * visible space even once the margin hit Tailwind's smallest positive
+ * step) were both hand-tuned against the live render rather than
+ * picked up front -- worth knowing before nudging either again, since
+ * "more/less space" here is reading the actual rendered gap, not a
+ * formula. logo.webp itself also carries hand-tuned padding now, not
+ * just a tight crop -- 10px of transparent margin added back on the
+ * left/right only (top/bottom stayed at the original crop's 6px) once
+ * the fully-tight crop read as too cramped horizontally.
  * min-w-0 down the chain (button, text block, both lines) so a very
  * long campaign name truncates instead of pushing search/session
  * controls/hamburger off-screen — same `PlayerCard` truncation
@@ -129,7 +135,7 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, onOpen
           <img src="/logo.webp" alt="" className="h-10 w-auto shrink-0" />
           <div className="min-w-0 text-left">
             <h1 className={cx(text.h3, 'truncate')}>{campaignName}</h1>
-            <p className={cx(text.label, 'mt-px truncate')}>{sessionMeta}</p>
+            <p className={cx(text.label, '-mt-px truncate')}>{sessionMeta}</p>
           </div>
         </button>
         <div className="flex shrink-0 items-center gap-2">
