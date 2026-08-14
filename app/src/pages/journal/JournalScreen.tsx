@@ -17,6 +17,8 @@ import { CampaignSearch } from '../../components/domain/CampaignSearch'
 import type { FeedItem } from '../../lib/feed'
 import { useJournalFeed } from '../../hooks/useJournalFeed'
 import { useJournalScreenData } from '../../hooks/useJournalScreenData'
+import { useCampaignRealtime } from '../../hooks/useCampaignRealtime'
+import { useCampaignPresence } from '../../hooks/useCampaignPresence'
 import { useGmJournalHandlers } from '../../hooks/useGmJournalHandlers'
 import { useAiVoicePreference } from '../../hooks/useAiVoicePreference'
 import { endSession, logJournalEntry, pauseSession, resumeSession, startSession } from '../../lib/campaigns'
@@ -97,6 +99,15 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
     error, setError,
     load,
   } = useJournalScreenData(campaign.id)
+
+  // BUILD_PLAN.md item 14 (realtime/presence, 2026-08-14) — the two
+  // hooks that turn this screen from "reload the page to see what
+  // anyone else did" into an actually-live shared session. Both take
+  // the exact same setters/ids `useJournalScreenData` above already
+  // exposes; see each hook's own doc comment for why they're split
+  // rather than folded into that data hook.
+  useCampaignRealtime(campaign.id, setSessions, setEntries, setCharacters)
+  const onlineMemberIds = useCampaignPresence(campaign.id, myMembership?.id ?? null)
 
   const [startingSession, setStartingSession] = useState(false)
   const [endingSession, setEndingSession] = useState(false)
@@ -410,6 +421,7 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
         * JournalDesktopLayout.tsx. */}
       <JournalDesktopLayout
         characters={characters}
+        onlineMemberIds={onlineMemberIds}
         quests={quests}
         npcs={npcs}
         factions={factions}
@@ -477,6 +489,7 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
           }
           activeCharacter={activeCharacter}
           characters={characters ?? []}
+          onlineMemberIds={onlineMemberIds}
           quests={quests ?? []}
           npcs={npcs ?? []}
           factions={factions ?? []}

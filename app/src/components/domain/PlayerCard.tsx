@@ -28,6 +28,17 @@ interface PlayerCardProps {
    */
   variant?: 'full' | 'compact'
   className?: string
+  /**
+   * BUILD_PLAN.md item 14 (realtime/presence, 2026-08-14) —
+   * `useCampaignPresence`'s online set, already narrowed to "is THIS
+   * character's `member_id` currently connected" by the caller (see
+   * `JournalDesktopLayout`/`MobileJournalView`), not the raw set
+   * itself — this component has no reason to know about member ids in
+   * general. `undefined`/`false` both render nothing; there's no
+   * "unknown" state worth drawing, since the presence hook always
+   * resolves to a real (possibly empty) set once mounted.
+   */
+  isOnline?: boolean
 }
 
 /**
@@ -58,8 +69,14 @@ interface PlayerCardProps {
  * always shown since the column is never null" treatment GP already
  * gets. Only the bless icon, and only when `sheet.active_blessing` is
  * a real, present string.
+ *
+ * Online dot (BUILD_PLAN.md item 14, 2026-08-14): a small green ring on
+ * the avatar's corner when `isOnline` is true, meaning this character's
+ * owning member currently has a live connection to this campaign (see
+ * `useCampaignPresence`). Purely additive over everything above — the
+ * dot is the only thing this slice changes about the card.
  */
-export function PlayerCard({ character, onClick, variant = 'full', className }: PlayerCardProps) {
+export function PlayerCard({ character, onClick, variant = 'full', className, isOnline }: PlayerCardProps) {
   const gold = readCharacterGold(character.gold)
   const sheet = readCharacterSheet(character.sheet)
   const isAwaiting = character.status !== 'active'
@@ -125,7 +142,15 @@ export function PlayerCard({ character, onClick, variant = 'full', className }: 
         )}
         {...sharedInteractionProps}
       >
-        <PortraitAvatar name={character.name} color={character.color ?? '#9b5cff'} size="md" />
+        <div className="relative shrink-0">
+          <PortraitAvatar name={character.name} color={character.color ?? '#9b5cff'} size="md" />
+          {isOnline && (
+            <span
+              className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-green ring-2 ring-panel"
+              title="Online now"
+            />
+          )}
+        </div>
         <div className="min-w-0 flex-1">
           <p className={cx(text.body, 'truncate font-semibold leading-tight')}>{character.name}</p>
           <div className={cx('mt-1 flex flex-wrap gap-3', text.caption, 'text-ink-dim')}>{statSpans}</div>
@@ -151,7 +176,15 @@ export function PlayerCard({ character, onClick, variant = 'full', className }: 
       {...sharedInteractionProps}
     >
       <div className="mb-2 flex items-center gap-2">
-        <PortraitAvatar name={character.name} color={character.color ?? '#9b5cff'} size="sm" />
+        <div className="relative shrink-0">
+          <PortraitAvatar name={character.name} color={character.color ?? '#9b5cff'} size="sm" />
+          {isOnline && (
+            <span
+              className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-green ring-2 ring-panel"
+              title="Online now"
+            />
+          )}
+        </div>
         <div className="min-w-0">
           <p className={cx(text.body, 'truncate font-semibold leading-tight')}>{character.name}</p>
           <p className={cx(text.caption, 'truncate uppercase tracking-eyebrow text-ink-faint')}>

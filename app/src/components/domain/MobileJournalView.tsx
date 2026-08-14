@@ -30,6 +30,10 @@ interface MobileJournalViewProps {
   loading: boolean
   activeCharacter: Character | null
   characters: Character[]
+  /** BUILD_PLAN.md item 14 (realtime/presence, 2026-08-14) — same
+   * straight-through threading as `JournalDesktopLayout`'s own copy of
+   * this prop; see that file's doc comment. */
+  onlineMemberIds?: Set<string>
   quests: Quest[]
   /** BUILD_PLAN.md slice 9 (`WorldTabs`) — same data `JournalDesktopLayout`
    * takes, threaded here for the Quests tab's now-tabbed content. */
@@ -220,6 +224,7 @@ export function MobileJournalView({
   loading,
   activeCharacter,
   characters,
+  onlineMemberIds,
   quests,
   npcs,
   factions,
@@ -298,6 +303,7 @@ export function MobileJournalView({
           variant="compact"
           onClick={() => onOpenCharacter(activeCharacter)}
           className="mx-4 mt-3 shrink-0"
+          isOnline={activeCharacter.member_id != null && (onlineMemberIds?.has(activeCharacter.member_id) ?? false)}
         />
       )}
 
@@ -391,7 +397,12 @@ export function MobileJournalView({
                 * it last. Same order now on both. */}
               {characters.length > 0 ? (
                 characters.map((character) => (
-                  <PlayerCard key={character.id} character={character} onClick={() => onOpenCharacter(character)} />
+                  <PlayerCard
+                    key={character.id}
+                    character={character}
+                    onClick={() => onOpenCharacter(character)}
+                    isOnline={character.member_id != null && (onlineMemberIds?.has(character.member_id) ?? false)}
+                  />
                 ))
               ) : (
                 <EmptyState icon="party" title="No party yet" description="Characters you add to this campaign show up here." />

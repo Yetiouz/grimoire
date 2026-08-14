@@ -22,6 +22,16 @@ import type { Faction, Note, Npc, NpcStatBlock, Treasure, Location, LocationSecr
 
 interface JournalDesktopLayoutProps {
   characters: Character[] | null
+  /** BUILD_PLAN.md item 14 (realtime/presence, 2026-08-14) —
+   * `useCampaignPresence`'s raw `Set<memberId>`, threaded straight
+   * through to each `PlayerCard` below (matched there against
+   * `character.member_id`) rather than narrowed here — this layout has
+   * no reason to pre-compute per-character booleans `JournalScreen`
+   * doesn't already need for anything else. Optional only because
+   * `MobileJournalView`'s own copy of this same prop is (see that
+   * file) — always passed a real (possibly empty) set from
+   * `JournalScreen` in practice. */
+  onlineMemberIds?: Set<string>
   quests: Quest[] | null
   /** BUILD_PLAN.md slice 9 (`WorldTabs`) — loaded alongside `quests` by
    * `useJournalScreenData`, threaded straight through the same way
@@ -136,6 +146,7 @@ interface JournalDesktopLayoutProps {
  */
 export function JournalDesktopLayout({
   characters,
+  onlineMemberIds,
   quests,
   npcs,
   factions,
@@ -218,7 +229,12 @@ export function JournalDesktopLayout({
         <div className="flex min-h-0 flex-col gap-3">
           <ColumnCard headerLeft="Party" bodyClassName="gap-2" className="xl:flex-1">
             {characters.map((character) => (
-              <PlayerCard key={character.id} character={character} onClick={() => onOpenCharacter(character)} />
+              <PlayerCard
+                key={character.id}
+                character={character}
+                onClick={() => onOpenCharacter(character)}
+                isOnline={character.member_id != null && (onlineMemberIds?.has(character.member_id) ?? false)}
+              />
             ))}
             {characters.length === 0 && (
               <EmptyState icon="party" title="No party yet" description="Characters you add to this campaign show up here." />
