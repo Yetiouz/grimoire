@@ -46,18 +46,24 @@ interface JournalHeaderProps {
  * brand mark beside a two-line text block (campaign name, then session
  * meta right under it — the pre-Option-B stacked shape, just moved
  * in next to a bigger logo instead of alone under a floating one). The
- * mark is sized to visually span both lines and then some (`h-11` as
- * of a same-day size-up from this pass's original `h-9` — up from the
- * single-line `h-6` original before that) rather than the earlier
- * hero-row's single-line height — a real, deliberate size change this
- * time, not the "same size everywhere, no responsive drift" guarantee
- * the previous round's doc comment described (that guarantee still
- * holds: nothing here carries a breakpoint-specific size override, so
- * mark and text stay in this same proportion at every viewport
- * width). `h-11` also isn't an arbitrary number here — it's the same
- * 44px this app already uses everywhere else for a touch target
- * (search, hamburger, SessionAction's own buttons), so the mark now
- * reads as sized to match its neighbors, not just "big."
+ * mark is sized to visually span both lines and then some (`h-10` as
+ * of a settling-down pass through h-9 -> h-11 -> h-10, on top of a
+ * same-day crop of the source file itself -- logo.webp used to carry
+ * a lot of dead transparent canvas around the glyph, so the same
+ * height class kept reading smaller than intended; once that got
+ * fixed the glyph filled its box enough that h-11 read a "tad" too
+ * big and came back down) rather than the earlier hero-row's
+ * single-line height — a real, deliberate size change from that
+ * original single-line mark, not the "same size everywhere, no
+ * responsive drift" guarantee the previous round's doc comment
+ * described (that guarantee still holds: nothing here carries a
+ * breakpoint-specific size override, so mark and text stay in this
+ * same proportion at every viewport width). The gap between the mark
+ * and the text block (`gap-2`) and the gap between the two stacked
+ * lines (`mt-px` on the session-meta line) were both hand-tuned
+ * against the live render rather than picked up front -- worth
+ * knowing before nudging either again, since "more/less space" here
+ * is reading the actual rendered gap, not a formula.
  * min-w-0 down the chain (button, text block, both lines) so a very
  * long campaign name truncates instead of pushing search/session
  * controls/hamburger off-screen — same `PlayerCard` truncation
@@ -118,12 +124,12 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, onOpen
           type="button"
           onClick={onBack}
           aria-label="Back to campaigns"
-          className="-ml-2 flex min-h-11 min-w-0 items-center gap-1.5 rounded-button py-1.5 pl-2 pr-3 hover:bg-panel2"
+          className="-ml-2 flex min-h-11 min-w-0 items-center gap-2 rounded-button py-1.5 pl-2 pr-3 hover:bg-panel2"
         >
-          <img src="/logo.webp" alt="" className="h-11 w-auto shrink-0" />
+          <img src="/logo.webp" alt="" className="h-10 w-auto shrink-0" />
           <div className="min-w-0 text-left">
             <h1 className={cx(text.h3, 'truncate')}>{campaignName}</h1>
-            <p className={cx(text.label, 'mt-0.5 truncate')}>{sessionMeta}</p>
+            <p className={cx(text.label, 'mt-px truncate')}>{sessionMeta}</p>
           </div>
         </button>
         <div className="flex shrink-0 items-center gap-2">
