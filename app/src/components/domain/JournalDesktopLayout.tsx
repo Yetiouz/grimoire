@@ -192,10 +192,15 @@ export function JournalDesktopLayout({
     // "expand the party frame so the gold can fit on the same line as the
     // other stats") — PlayerCard's stat row (HP/AC/BAG/GP) was wrapping
     // GP onto its own line at 16rem once a character had gear-slot data to
-    // show alongside HP/AC. The center journal's minmax(0,1fr) is
+    // show alongside HP/AC.
+    // Left column widened again 18rem -> 20rem (2026-08-14, owner: "widen
+    // the party panel so luck is not on a line by itself") — migration
+    // 0022's LUCK stat (added to PlayerCard's statSpans alongside HP/AC/
+    // BAG/GP) reintroduced the exact same wrapping problem one stat later;
+    // same fix, same column. The center journal's minmax(0,1fr) is
     // unchanged; both side columns' extra width comes entirely out of its
     // flexible share.
-    <div className="hidden flex-1 grid-cols-1 gap-3 p-4 xl:grid xl:min-h-0 xl:grid-cols-[18rem_minmax(0,1fr)_26rem]">
+    <div className="hidden flex-1 grid-cols-1 gap-3 p-4 xl:grid xl:min-h-0 xl:grid-cols-[20rem_minmax(0,1fr)_26rem]">
       {/* LEFT: Party card + Tools card (v11: members grouped in one
         * card, tools in their own card below it) — each a ColumnCard,
         * the card-shell layout primitive (CLAUDE.md). */}
