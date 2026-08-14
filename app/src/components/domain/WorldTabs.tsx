@@ -56,8 +56,23 @@ type WorldTab = 'quests' | 'npcs' | 'factions' | 'treasure' | 'notes' | 'locatio
  * reliably fit the desktop Quest Log column's real width in one row
  * without a horizontal scroll. "People" -> "NPCs" (2026-08-10, owner's
  * follow-up call) — still short enough to fit alongside the other three
- * plus the new 5th "Notes" tab; the tab row already scrolls horizontally
- * (`overflow-x-auto`) if a narrower viewport ever can't fit all five. */
+ * plus the 5th "Notes" tab.
+ *
+ * 2026-08-14 polish-audit fix: adding the 6th "Places" tab (slice 1 of
+ * BUILD_PLAN item 15) pushed the row past the desktop column's width on
+ * ordinary viewports, not just narrow ones — and the row's
+ * `overflow-x-auto` fallback below hides its own scrollbar
+ * (`scrollbarWidth: 'none'`), so the new tab just silently scrolled out
+ * of view with no visual cue it existed (confirmed live: the DOM had a
+ * working "Places" button the whole time, findable via the accessibility
+ * tree, invisible on screen). Desktop's tab row (`justifyTabs` false)
+ * now wraps to a 2nd line instead of scrolling — every tab stays
+ * discoverable without a scroll gesture. Mobile's `justifyTabs` row
+ * keeps the original scroll-with-hidden-scrollbar behavior: it's a
+ * full-width `flex-1` segmented control by design (see `justifyTabs`'
+ * own doc comment above), where wrapping would break the "justified"
+ * look, and mobile's wider row has more room per tab than desktop's
+ * tight 26rem column. */
 const TABS: Array<{ key: WorldTab; label: string }> = [
   { key: 'quests', label: 'Quests' },
   { key: 'npcs', label: 'NPCs' },
@@ -111,7 +126,13 @@ export function WorldTabs({ quests, npcs, factions, treasure, notes, locations, 
 
   return (
     <div className={cx('flex min-h-0 flex-1 flex-col', className)}>
-      <div className="flex shrink-0 gap-1.5 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+      <div
+        className={cx(
+          'flex shrink-0 gap-1.5 pb-2',
+          justifyTabs ? 'overflow-x-auto' : 'flex-wrap',
+        )}
+        style={justifyTabs ? { scrollbarWidth: 'none' } : undefined}
+      >
         {TABS.map((tab) => (
           <button
             key={tab.key}
