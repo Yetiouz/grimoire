@@ -39,6 +39,16 @@ interface PlayerCardProps {
    * resolves to a real (possibly empty) set once mounted.
    */
   isOnline?: boolean
+  /**
+   * Encounter mode phase 2 (BUILD_PLAN.md item 13, 2026-08-14) — true
+   * when `turn_order.combatants[active_index]` is THIS character (the
+   * caller matches `character.id` against `JournalScreen`'s own
+   * `activeTurnCharacterId`, same "narrow before handing down" shape
+   * `isOnline` above already established for presence). `undefined`/
+   * `false` both render nothing, same as `isOnline` — no encounter
+   * running is the common case, not an "unknown" state worth drawing.
+   */
+  isActiveTurn?: boolean
 }
 
 /**
@@ -59,9 +69,17 @@ interface PlayerCardProps {
  * `hp_current <= 0` gets the mockup's `.pcard.down` border/background
  * treatment — real, derivable from data already on hand — but not its
  * down-timer countdown line, which needs stabilize-DC/rounds-remaining
- * data this schema doesn't carry. No `active-turn`/turn-badge state
- * either: that needs initiative-order data from the (unbuilt) Encounter
- * slice.
+ * data this schema doesn't carry (Encounter mode phase 3, not built
+ * yet).
+ *
+ * Active-turn ring (Encounter mode phase 2, 2026-08-14): a purple
+ * `ring` around the whole card plus a small "Active" caption next to the
+ * name when `isActiveTurn` is true — a ring rather than reusing the
+ * online dot's corner-badge shape, since this needs to read clearly even
+ * when `isDown`'s red border is also present (a downed character can
+ * still technically be up in the initiative order). The caption is a
+ * deliberate second signal alongside the ring, not decoration — color
+ * alone shouldn't be the only way this state reads.
  *
  * No torch icon — no light-tracking data exists in the schema. Luck
  * *does* now (migration 0022, `characters.luck_tokens`) — added to
@@ -76,7 +94,7 @@ interface PlayerCardProps {
  * `useCampaignPresence`). Purely additive over everything above — the
  * dot is the only thing this slice changes about the card.
  */
-export function PlayerCard({ character, onClick, variant = 'full', className, isOnline }: PlayerCardProps) {
+export function PlayerCard({ character, onClick, variant = 'full', className, isOnline, isActiveTurn }: PlayerCardProps) {
   const gold = readCharacterGold(character.gold)
   const sheet = readCharacterSheet(character.sheet)
   const isAwaiting = character.status !== 'active'
@@ -138,6 +156,7 @@ export function PlayerCard({ character, onClick, variant = 'full', className, is
           activatable &&
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
           isDown && 'border-red/55 bg-red/5',
+          isActiveTurn && 'ring-2 ring-purple ring-offset-2 ring-offset-bg',
           className,
         )}
         {...sharedInteractionProps}
@@ -152,7 +171,10 @@ export function PlayerCard({ character, onClick, variant = 'full', className, is
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className={cx(text.body, 'truncate font-semibold leading-tight')}>{character.name}</p>
+          <p className={cx(text.body, 'truncate font-semibold leading-tight')}>
+            {character.name}
+            {isActiveTurn && <span className={cx(text.caption, 'ml-2 font-mono uppercase text-purple')}>Active</span>}
+          </p>
           <div className={cx('mt-1 flex flex-wrap gap-3', text.caption, 'text-ink-dim')}>{statSpans}</div>
           <div className="mt-2 h-[6px] overflow-hidden rounded-full bg-line">
             <div className={cx('h-full rounded-full', isDown ? 'bg-red' : 'bg-green')} style={{ width: `${hpPct}%` }} />
@@ -171,6 +193,7 @@ export function PlayerCard({ character, onClick, variant = 'full', className, is
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
         isDown && 'border-red/55 bg-red/5',
         isAwaiting && 'opacity-45',
+        isActiveTurn && 'ring-2 ring-purple ring-offset-2 ring-offset-bg',
         className,
       )}
       {...sharedInteractionProps}
@@ -186,7 +209,10 @@ export function PlayerCard({ character, onClick, variant = 'full', className, is
           )}
         </div>
         <div className="min-w-0">
-          <p className={cx(text.body, 'truncate font-semibold leading-tight')}>{character.name}</p>
+          <p className={cx(text.body, 'truncate font-semibold leading-tight')}>
+            {character.name}
+            {isActiveTurn && <span className={cx(text.caption, 'ml-2 font-mono uppercase text-purple')}>Active</span>}
+          </p>
           <p className={cx(text.caption, 'truncate uppercase tracking-eyebrow text-ink-faint')}>
             {character.class_title} {character.level}
             {isAwaiting && ` · ${character.status}`}

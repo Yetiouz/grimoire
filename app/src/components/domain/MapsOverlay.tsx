@@ -1,7 +1,9 @@
+import type { Dispatch, SetStateAction } from 'react'
 import { text } from '../../lib/typography'
 import { Overlay } from '../ui/Overlay'
 import { MapsPanel } from './MapsPanel'
 import type { Character } from '../../lib/characters'
+import type { TurnOrder } from '../../lib/encounters'
 
 interface MapsOverlayProps {
   open: boolean
@@ -13,6 +15,12 @@ interface MapsOverlayProps {
   /** BUILD_PLAN.md item 8 (2026-08-14) — threaded straight to
    * `MapsPanel`'s own new prop of the same name, for its Scene tab. */
   characters: Character[]
+  /** Encounter mode phase 2 (BUILD_PLAN.md item 13, 2026-08-14) —
+   * threaded straight to `MapsPanel`'s own new props of the same names;
+   * see that component's own doc comment. */
+  sessionId: string | null
+  turnOrder: TurnOrder | null
+  onTurnOrderChange: Dispatch<SetStateAction<TurnOrder | null>>
   onClose: () => void
 }
 
@@ -33,10 +41,17 @@ interface MapsOverlayProps {
  * Mobile doesn't use this wrapper — `MobileJournalView` renders
  * `MapsPanel` directly under its own "Maps" bottom tab, which already
  * has its own header-with-close chrome; see `MapsPanel`'s doc comment. */
-export function MapsOverlay({ open, campaignId, isOwner, characters, onClose }: MapsOverlayProps) {
+export function MapsOverlay({ open, campaignId, isOwner, characters, sessionId, turnOrder, onTurnOrderChange, onClose }: MapsOverlayProps) {
   return (
     <Overlay open={open} onClose={onClose} header={<h2 className={text.h2}>Maps</h2>} width="wide" tall>
-      <MapsPanel campaignId={campaignId} isOwner={isOwner} characters={characters} />
+      <MapsPanel
+        campaignId={campaignId}
+        isOwner={isOwner}
+        characters={characters}
+        sessionId={sessionId}
+        turnOrder={turnOrder}
+        onTurnOrderChange={onTurnOrderChange}
+      />
     </Overlay>
   )
 }

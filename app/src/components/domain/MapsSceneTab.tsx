@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { Button } from '../ui/Button'
 import { EmptyState } from '../ui/EmptyState'
 import { PortraitAvatar } from '../ui/PortraitAvatar'
+import { EncounterPanel } from './EncounterPanel'
 import { clearScene, listScenePositions, setScenePosition } from '../../lib/maps'
 import type { ScenePosition, SceneZone } from '../../lib/maps'
 import type { Character } from '../../lib/characters'
+import type { TurnOrder } from '../../lib/encounters'
 
 interface MapsSceneTabProps {
   campaignId: string
@@ -17,6 +20,13 @@ interface MapsSceneTabProps {
    * plain consumer of the same `characters` prop every other panel
    * already gets. */
   characters: Character[]
+  /** Encounter mode phase 2 (BUILD_PLAN.md item 13, 2026-08-14) — threaded
+   * straight to `EncounterPanel`, the only consumer here; see that
+   * component's own doc comment for what each one gates. */
+  isOwner: boolean
+  sessionId: string | null
+  turnOrder: TurnOrder | null
+  onTurnOrderChange: Dispatch<SetStateAction<TurnOrder | null>>
   onError: (message: string) => void
 }
 
@@ -33,9 +43,10 @@ const ZONES: Array<{ zone: SceneZone; label: string }> = [
  * deliberately deferred to land with Encounter mode (item 13). Owner's
  * call, asked directly: ship a standalone zone tracker now rather than
  * wait on item 13's bigger lift -- real and usable today, independent
- * of initiative/monster cards/HP toggles, which a later Encounter-mode
- * slice can layer on top of this same `scene_positions` table rather
- * than replace it.
+ * of initiative/monster cards/HP toggles, which Encounter mode phase 2
+ * (same day, `EncounterPanel` below) layers on top of this same
+ * `scene_positions` table rather than replacing it -- per the scope
+ * doc's decision #3, this tab is that feature's "turn tracker home."
  *
  * One radio-style zone picker per active character -- same
  * `role="radiogroup"`/`role="radio"` pill pattern `JournalComposer`'s
@@ -56,7 +67,7 @@ const ZONES: Array<{ zone: SceneZone; label: string }> = [
  * `MapsRegionTab`'s own markers are fetched locally for the same
  * reason (see that file's doc comment).
  */
-export function MapsSceneTab({ campaignId, characters, onError }: MapsSceneTabProps) {
+export function MapsSceneTab({ campaignId, characters, isOwner, sessionId, turnOrder, onTurnOrderChange, onError }: MapsSceneTabProps) {
   const [positions, setPositions] = useState<ScenePosition[] | null>(null)
   const [savingCharacterId, setSavingCharacterId] = useState<string | null>(null)
   const [clearing, setClearing] = useState(false)
@@ -179,6 +190,15 @@ export function MapsSceneTab({ campaignId, characters, onError }: MapsSceneTabPr
           )
         })}
       </div>
+
+      <EncounterPanel
+        campaignId={campaignId}
+        isOwner={isOwner}
+        sessionId={sessionId}
+        turnOrder={turnOrder}
+        onTurnOrderChange={onTurnOrderChange}
+        onError={onError}
+      />
     </div>
   )
 }

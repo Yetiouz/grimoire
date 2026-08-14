@@ -9,6 +9,8 @@ import { MapsSceneTab } from './MapsSceneTab'
 import { getMapImageUrls, getPartyPosition, listCampaignMaps } from '../../lib/maps'
 import type { CampaignMap, CampaignMapPosition, MapKind } from '../../lib/maps'
 import type { Character } from '../../lib/characters'
+import type { TurnOrder } from '../../lib/encounters'
+import type { Dispatch, SetStateAction } from 'react'
 
 interface MapsPanelProps {
   campaignId: string
@@ -18,7 +20,8 @@ interface MapsPanelProps {
    * own working map, always, vs. the handout when one exists and
    * they're not the owner). See migration `0026_map_handouts`' own doc
    * comment for why this is the first owner-only gate anywhere in the
-   * maps command layer. */
+   * maps command layer. Also threaded to `MapsSceneTab` (Encounter mode
+   * phase 2) for its own GM-only encounter controls. */
   isOwner: boolean
   /** BUILD_PLAN.md item 8 (2026-08-14) — threaded straight to
    * `MapsSceneTab`, the only tab that needs it (Region/Site work off
@@ -26,6 +29,16 @@ interface MapsPanelProps {
    * call sites (`MapsOverlay`, `MobileJournalView`) already have
    * `characters` in scope from `JournalScreen`'s own load. */
   characters: Character[]
+  /** Encounter mode phase 2 (BUILD_PLAN.md item 13, 2026-08-14) —
+   * threaded straight to `MapsSceneTab`'s own `EncounterPanel`.
+   * `sessionId` is the open session, if any (for `end_encounter`'s
+   * journal echo); `turnOrder`/`onTurnOrderChange` are lifted all the
+   * way to `JournalScreen` (not fetched here) so `PlayerCard`'s
+   * active-turn ring stays in sync outside this overlay too — see
+   * `useCampaignRealtime`'s own doc comment. */
+  sessionId: string | null
+  turnOrder: TurnOrder | null
+  onTurnOrderChange: Dispatch<SetStateAction<TurnOrder | null>>
 }
 
 const TAB_ORDER: Array<{ key: MapKind; label: string; live: boolean }> = [
@@ -72,10 +85,11 @@ function MapsTabButton({
 
 /**
  * Region + Site + Scene tabs (BUILD_PLAN.md slice 8, "Maps overlay").
- * Region and Site are real; Scene stays an honest stub — Close/Near/Far
- * zone positioning ships with Encounter mode, not this pass. Approved as
- * an HTML mockup before any of this was written (mockup-before-code
- * gate, same discipline Slice 17's CheckCard variants went through).
+ * All three are real now — Scene got its Close/Near/Far zone tracker
+ * 2026-08-14 and Encounter mode's turn tracker (item 13 phase 2) the same
+ * day, see `MapsSceneTab`'s own doc comment. Approved as an HTML mockup
+ * before any of this was written (mockup-before-code gate, same
+ * discipline Slice 17's CheckCard variants went through).
  *
  * Shared between two call sites rather than built twice: `MapsOverlay`
  * wraps this in `Overlay` for the desktop `ToolsDock` entry point, and
@@ -103,7 +117,7 @@ function MapsTabButton({
  * non-owner viewer sees by default; see `MapsRegionTab`/`MapsSiteTab`'s
  * own doc comments for the display-swap logic.
  */
-export function MapsPanel({ campaignId, isOwner, characters }: MapsPanelProps) {
+export function MapsPanel({ campaignId, isOwner, characters, sessionId, turnOrder, onTurnOrderChange }: MapsPanelProps) {
   const [maps, setMaps] = useState<CampaignMap[] | null>(null)
   const [position, setPosition] = useState<CampaignMapPosition | null>(null)
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({})
@@ -211,7 +225,15 @@ export function MapsPanel({ campaignId, isOwner, characters }: MapsPanelProps) {
             onError={setError}
           />
         ) : (
-          <MapsSceneTab campaignId={campaignId} characters={characters} onError={setError} />
+          <MapsSceneTab
+            campaignId={campaignId}
+            characters={characters}
+            isOwner={isOwner}
+            sessionId={sessionId}
+            turnOrder={turnOrder}
+            onTurnOrderChange={onTurnOrderChange}
+            onError={setError}
+          />
         )}
       </div>
     </div>
