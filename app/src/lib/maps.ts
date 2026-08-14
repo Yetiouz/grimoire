@@ -4,6 +4,7 @@ import type { Tables } from './database.types'
 export type CampaignMap = Tables<'campaign_maps'>
 export type CampaignMapPosition = Tables<'campaign_map_position'>
 export type CampaignMapMarker = Tables<'campaign_map_markers'>
+export type ScenePosition = Tables<'scene_positions'>
 
 /** `campaign_maps.kind` is `text` with a check constraint, not a real
  * enum (migration `maps_overlay_v1`) — this is the client-side mirror of
@@ -17,6 +18,11 @@ export type MapKind = 'region' | 'site' | 'scene'
  * lives on (region/site), not what the marker itself represents.
  * Defaults to `'poi'` server-side when omitted. */
 export type MarkerKind = 'poi' | 'npc' | 'danger' | 'custom'
+
+/** `scene_positions.zone` is `text` with a check constraint, not a real
+ * enum (migration `0029_scene_positions`) -- same client-side-mirror
+ * reasoning as `MapKind`/`MarkerKind` above. */
+export type SceneZone = 'close' | 'near' | 'far'
 
 const MAP_BUCKET = 'campaign-maps'
 
@@ -289,4 +295,47 @@ export async function getMapImageUrls(paths: string[]): Promise<Record<string, s
     if (entry.signedUrl && entry.path) result[entry.path] = entry.signedUrl
   }
   return result
+}
+
+// -- Scene tab (BUILD_PLAN.md item 8, 2026-08-14) -----------------------
+// A standalone Close/Near/Far zone tracker, one row per character --
+// see migration `0029_scene_positions.sql`'s own doc comment for why
+// this isn't folded into `campaign_map_position` above (that's a
+// single shared party pin; a scene needs one zone PER character).
+
+/** Every character's current zone for this campaign -- not filtered to
+ * `status === 'active'` here (that's a display decision, made by
+ * `MapsSceneTab` the same way `JournalDesktopLayout`'s Party card
+ * already filters its own `characters` prop, not something this read
+ * bakes in). A character with no row yet has simply never been placed
+ * this scene -- absence, not a `near` default, despite the column's own
+ * `default 'near'` (that default only ever fires on an explicit insert
+ * with no zone supplied, which `setScenePosition` below never does). */
+export async function listScenePositions(campaignId: string): Promise<ScenePosition[]> {
+  const { data, error } = await supabase.from('scene_positions').select('*').eq('campaign_id', campaignId)
+  if (error) throw error
+  return data
+}
+
+/** Wraps `set_scene_position` -- upserts one character's zone. Any
+ * member can call this for any character, matching every other
+ * character command's "trust any member equally" convention (the GM
+ * moving a monster's target or a player repositioning their own PC are
+ * both just "someone at the table says where things are now"). */
+export async function setScenePosition(campaignId: string, characterId: string, zone: SceneZone): Promise<ScenePosition> {
+  const { data, error } = await supabase.rpc('set_scene_position', {
+    p_campaign_id: campaignId,
+    p_character_id: characterId,
+    p_zone: zone,
+  })
+  if (error) throw error
+  return data
+}
+
+/** Wraps `clear_scene` -- drops every character's zone for this
+ * campaign, back to a genuinely blank tracker rather than everyone
+ * silently resetting to one zone (see that RPC's own doc comment). */
+export async function clearScene(campaignId: string): Promise<void> {
+  const { error } = await supabase.rpc('clear_scene', { p_campaign_id: campaignId })
+  if (error) throw error
 }

@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Tables } from './database.types'
+import type { Json, Tables } from './database.types'
 
 export type Campaign = Tables<'campaigns'>
 export type CampaignSession = Tables<'sessions'>
@@ -145,9 +145,50 @@ export async function startSession(campaignId: string, title?: string): Promise<
  * practice, not just a theoretical one: there was no way to just stop
  * for the night without immediately opening a new, empty next session.
  * Throws if there's no open session — callers should only offer this
- * when one exists. */
-export async function endSession(campaignId: string): Promise<CampaignSession> {
-  const { data, error } = await supabase.rpc('end_session', { p_campaign_id: campaignId })
+ * when one exists.
+ *
+ * `recapNote` (BUILD_PLAN.md item 7, 2026-08-14, migration
+ * `0028_session_recap.sql`) — the optional freeform "next time" note
+ * from `EndSessionReview`. Passed straight through; `end_session`
+ * itself is what combines it with a server-computed XP/gold/HP/gear
+ * roll-up into one `system` journal_entries row, not this wrapper —
+ * see that migration's own doc comment for why the aggregation lives
+ * there and not here. */
+export async function endSession(campaignId: string, recapNote?: string): Promise<CampaignSession> {
+  const { data, error } = await supabase.rpc('end_session', { p_campaign_id: campaignId, p_recap_note: recapNote || undefined })
+  if (error) throw error
+  return data
+}
+
+/** Raw `campaign_events` rows since a given timestamp, for
+ * `EndSessionReview`'s client-side recap preview (BUILD_PLAN.md item
+ * 7, 2026-08-14) — narrowed to the character/clock event kinds that
+ * preview actually aggregates, not every kind the ledger tracks (no
+ * reason to ship `map_marker_added`/`party_position_updated` rows down
+ * to a component that only reads five specific kinds). Deliberately a
+ * thin, generic read — `payload`'s shape differs per `kind`, and
+ * that's the caller's problem to sort out (see `EndSessionReview`'s
+ * own `isRecord`/`asInt` guards), not something this function tries to
+ * union-type. RLS (`campaign_events_select_member`) is what actually
+ * scopes this to campaigns the caller belongs to; `campaignId` here is
+ * just which one to ask about. */
+export async function listCampaignEventsSince(
+  campaignId: string,
+  sinceIso: string,
+): Promise<Array<{ kind: string; payload: Json }>> {
+  const { data, error } = await supabase
+    .from('campaign_events')
+    .select('kind, payload')
+    .eq('campaign_id', campaignId)
+    .gte('created_at', sinceIso)
+    .in('kind', [
+      'character_xp_changed',
+      'character_gold_changed',
+      'character_hp_changed',
+      'character_gear_added',
+      'character_gear_removed',
+      'clock_advanced',
+    ])
   if (error) throw error
   return data
 }
