@@ -536,7 +536,7 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
 
       <CampaignSearch open={searchOpen} items={feedItems} sessions={sessions ?? []} onClose={() => setSearchOpen(false)} />
 
-      <MapsOverlay open={mapsOpen} campaignId={campaign.id} onClose={() => setMapsOpen(false)} />
+      <MapsOverlay open={mapsOpen} campaignId={campaign.id} isOwner={isOwner} onClose={() => setMapsOpen(false)} />
 
       <DiceRoller
         open={diceOpen}

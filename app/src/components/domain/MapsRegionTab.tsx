@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
+import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { Button } from '../ui/Button'
 import { TextInput } from '../ui/TextInput'
@@ -14,11 +15,13 @@ import type { MapPositionUpdate } from './MapPositionSidebar'
 import {
   addMapMarker,
   clearCampaignMap,
+  clearMapHandout,
   listMapMarkers,
   removeMapMarker,
   setPartyPosition,
   updateMapMarker,
   uploadCampaignMap,
+  uploadMapHandout,
 } from '../../lib/maps'
 import type { CampaignMap, CampaignMapMarker, CampaignMapPosition, MarkerKind } from '../../lib/maps'
 
@@ -26,6 +29,11 @@ interface MapsRegionTabProps {
   campaignId: string
   map: CampaignMap | null
   imageUrl: string | undefined
+  /** The signed URL for `map.handout_storage_path`, resolved by
+   * `MapsPanel` the same way `imageUrl` is (slice 4). `undefined` when
+   * no handout is set for this map, regardless of viewer role. */
+  handoutImageUrl: string | undefined
+  isOwner: boolean
   position: CampaignMapPosition | null
   onPositionUpdate: (position: CampaignMapPosition) => void
   onMapUploaded: (map: CampaignMap) => void
@@ -62,13 +70,54 @@ interface MapsRegionTabProps {
  * arms one-shot marker-placement so the next click drops a marker
  * instead — same distinction `MapImageViewer` itself doesn't need to
  * know about, since it only ever reports "the map was clicked here."
+ *
+ * Player handouts (BUILD_PLAN.md item 15 slice 4, 2026-08-14): a
+ * campaign_maps row can now carry an optional, owner-only, player-
+ * facing variant image alongside its working image (migration
+ * `0026_map_handouts`). Markers/pins are shared across both — they're
+ * plain `campaign_map_markers` rows keyed by percentage coordinates
+ * (`MapImageViewer`'s own 0-100 convention), not attached to either
+ * image specifically, so they render correctly over whichever one is
+ * showing as long as the handout art is framed to roughly match the
+ * working map (not enforced here — a mismatched handout would just
+ * show pins in the "wrong" spot, a content problem, not a bug).
  */
-export function MapsRegionTab({ campaignId, map, imageUrl, position, onPositionUpdate, onMapUploaded, onMapCleared, onError }: MapsRegionTabProps) {
+export function MapsRegionTab({
+  campaignId,
+  map,
+  imageUrl,
+  handoutImageUrl,
+  isOwner,
+  position,
+  onPositionUpdate,
+  onMapUploaded,
+  onMapCleared,
+  onError,
+}: MapsRegionTabProps) {
   const [movingPin, setMovingPin] = useState(false)
 
   const [label, setLabel] = useState(map?.label ?? '')
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Slice 4's handout upload — its own in-flight flag and file input,
+  // independent of the working map's `uploading`/`fileInputRef` above,
+  // since the two uploads are unrelated actions an owner can trigger in
+  // either order.
+  const [handoutUploading, setHandoutUploading] = useState(false)
+  const handoutFileInputRef = useRef<HTMLInputElement>(null)
+
+  // What actually renders in the viewer below: the owner always sees
+  // their own working map (markers, pins, everything they're actively
+  // prepping) — a handout swap would be actively unhelpful for the
+  // person editing it. A non-owner sees the handout when one exists,
+  // falling back to the working map when it doesn't (today's behavior,
+  // unchanged, rather than hiding the map entirely for lack of a
+  // curated variant). See migration `0026_map_handouts`'s own doc
+  // comment: this is a display default, not an RLS-enforced secret —
+  // both paths are equally readable by any member under the hood.
+  const displayImageUrl = isOwner ? imageUrl : (handoutImageUrl ?? imageUrl)
+  const showingHandout = !isOwner && Boolean(handoutImageUrl)
 
   const [markers, setMarkers] = useState<CampaignMapMarker[]>([])
   const [placingMarker, setPlacingMarker] = useState(false)
@@ -159,12 +208,40 @@ export function MapsRegionTab({ campaignId, map, imageUrl, position, onPositionU
 
   async function handleDeleteMap() {
     try {
-      await clearCampaignMap(campaignId, 'region', map?.storage_path)
+      // Deleting the whole map drops its handout too (same DB row) —
+      // pass both storage paths so the bucket cleanup covers both, not
+      // just the working image.
+      await clearCampaignMap(campaignId, 'region', map?.storage_path, map?.handout_storage_path ?? undefined)
       onMapCleared('region')
       setMarkers([])
       setSelectedMarkerId(null)
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Could not delete the map.')
+    }
+  }
+
+  function handleHandoutFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file || !map) return
+    setHandoutUploading(true)
+    uploadMapHandout(campaignId, 'region', file)
+      .then(onMapUploaded)
+      .catch((err: unknown) => onError(err instanceof Error ? err.message : 'Could not upload the handout image.'))
+      .finally(() => setHandoutUploading(false))
+  }
+
+  // No rethrow (unlike `handleSavePosition`'s deliberate one) — matches
+  // `handleDeleteMap`'s own swallow-and-report shape just above, since
+  // both feed `DeleteMapButton`'s `onConfirm`, which has no `.catch` of
+  // its own at the call site (only a `.finally` to reset its confirm
+  // row); an unswallowed rejection here would surface as an unhandled
+  // promise rejection instead of the `onError` banner.
+  async function handleClearHandout() {
+    try {
+      onMapUploaded(await clearMapHandout(campaignId, 'region', map?.handout_storage_path ?? undefined))
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Could not remove the handout.')
     }
   }
 
@@ -186,9 +263,15 @@ export function MapsRegionTab({ campaignId, map, imageUrl, position, onPositionU
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_280px] xl:items-start">
         <div className="flex flex-col gap-2">
-          {map && imageUrl ? (
+          {map && displayImageUrl ? (
             <>
-              <MapImageViewer src={imageUrl} alt={map.label} onImageClick={(x, y) => void handleMapClick(x, y)}>
+              {showingHandout && (
+                <span className={cx(text.caption, 'inline-flex w-fit items-center gap-1.5 rounded-full border border-green/45 px-2.5 py-0.5 uppercase tracking-eyebrow text-green')}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-green" />
+                  Player map
+                </span>
+              )}
+              <MapImageViewer src={displayImageUrl} alt={map.label} onImageClick={(x, y) => void handleMapClick(x, y)}>
                 {position?.x != null && position?.y != null && (
                   <MapPin x={position.x} y={position.y} color="var(--color-purple)" pulsing label="Party position" />
                 )}
@@ -233,6 +316,33 @@ export function MapsRegionTab({ campaignId, map, imageUrl, position, onPositionU
               {map && <DeleteMapButton onConfirm={handleDeleteMap} />}
             </div>
           </div>
+
+          {/* Owner-only handout controls (slice 4) — only offered once a
+            * working map exists, matching `set_map_handout`'s own
+            * requirement that a handout is a variant of an existing map,
+            * not a way to create one from nothing. */}
+          {isOwner && map && (
+            <div className="flex flex-col gap-2 rounded-card border border-line-soft bg-panel px-3 py-2.5">
+              <span className={cx(text.label, 'text-ink-faint')}>Player handout</span>
+              <p className={cx(text.caption, 'text-ink-dim')}>
+                {map.handout_storage_path
+                  ? 'Players see this instead of the map above.'
+                  : 'Not set — players currently see the same map you do.'}
+              </p>
+              {map.handout_storage_path && handoutImageUrl && (
+                <img src={handoutImageUrl} alt="Player handout preview" className="h-20 w-full rounded-button border border-line-soft object-cover" />
+              )}
+              <input ref={handoutFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleHandoutFileChange} />
+              <div className="flex flex-wrap items-center gap-3">
+                <Button variant="ghost" onClick={() => handoutFileInputRef.current?.click()} disabled={handoutUploading}>
+                  {handoutUploading ? 'Uploading…' : map.handout_storage_path ? 'Replace handout' : 'Upload handout'}
+                </Button>
+                {map.handout_storage_path && (
+                  <DeleteMapButton onConfirm={handleClearHandout} label="Remove handout" confirmText="Remove this handout? Players will see the working map again." />
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

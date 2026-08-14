@@ -4,6 +4,16 @@ import { cx } from '../../lib/cx'
 
 interface DeleteMapButtonProps {
   onConfirm: () => Promise<void>
+  /** Button copy (default 'Delete map'). Added for slice 4's handout
+   * controls (2026-08-14) — `MapsRegionTab`/`MapsSiteTab` now have TWO
+   * delete affordances in the same panel (the working map, and its
+   * optional handout), and "Delete map" twice on one screen with no way
+   * to tell which is which would be a real usability bug, not just
+   * inconsistent copy. */
+  label?: string
+  /** Confirmation-row copy (default "Delete this map? This can't be
+   * undone."). */
+  confirmText?: string
 }
 
 /**
@@ -17,22 +27,28 @@ interface DeleteMapButtonProps {
  * whole page, so an inline row matches every other confirmation surface
  * in this app instead (e.g. the travel position edit row's own
  * open/closed toggle).
+ *
+ * Generic enough to reuse for handout deletion too (slice 4) despite
+ * the component's name — `onConfirm` is the only thing that actually
+ * differs (`clearCampaignMap` vs `clearMapHandout`), so this stays one
+ * component with copy props rather than forking into two nearly
+ * identical ones.
  */
-export function DeleteMapButton({ onConfirm }: DeleteMapButtonProps) {
+export function DeleteMapButton({ onConfirm, label = 'Delete map', confirmText = "Delete this map? This can't be undone." }: DeleteMapButtonProps) {
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   if (!confirming) {
     return (
       <button type="button" onClick={() => setConfirming(true)} className={text.label} style={{ color: 'var(--color-red)' }}>
-        Delete map
+        {label}
       </button>
     )
   }
 
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-card border border-red/35 bg-panel px-3 py-2">
-      <span className={cx(text.caption, 'text-ink-dim')}>Delete this map? This can't be undone.</span>
+      <span className={cx(text.caption, 'text-ink-dim')}>{confirmText}</span>
       <button
         type="button"
         disabled={deleting}

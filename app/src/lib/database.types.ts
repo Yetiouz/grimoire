@@ -138,6 +138,7 @@ export type Database = {
         Row: {
           campaign_id: string
           created_at: string
+          handout_storage_path: string | null
           id: string
           kind: string
           label: string
@@ -147,6 +148,7 @@ export type Database = {
         Insert: {
           campaign_id: string
           created_at?: string
+          handout_storage_path?: string | null
           id?: string
           kind: string
           label: string
@@ -156,6 +158,7 @@ export type Database = {
         Update: {
           campaign_id?: string
           created_at?: string
+          handout_storage_path?: string | null
           id?: string
           kind?: string
           label?: string
@@ -1328,6 +1331,25 @@ export type Database = {
         Args: { p_campaign_id: string; p_kind: string }
         Returns: undefined
       }
+      clear_map_handout: {
+        Args: { p_campaign_id: string; p_kind: string }
+        Returns: {
+          campaign_id: string
+          created_at: string
+          handout_storage_path: string | null
+          id: string
+          kind: string
+          label: string
+          storage_path: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "campaign_maps"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_campaign: {
         Args: { p_name: string }
         Returns: {
@@ -1710,6 +1732,26 @@ export type Database = {
         Returns: {
           campaign_id: string
           created_at: string
+          handout_storage_path: string | null
+          id: string
+          kind: string
+          label: string
+          storage_path: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "campaign_maps"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_map_handout: {
+        Args: { p_campaign_id: string; p_kind: string; p_storage_path: string }
+        Returns: {
+          campaign_id: string
+          created_at: string
+          handout_storage_path: string | null
           id: string
           kind: string
           label: string

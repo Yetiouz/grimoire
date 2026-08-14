@@ -174,12 +174,24 @@ export async function removeMapMarker(markerId: string): Promise<void> {
  * surface as an error to the caller. Mirrors `uploadCampaignMap`'s
  * storage-then-DB order, just reversed and with the DB step load-bearing
  * instead of the storage step. */
-export async function clearCampaignMap(campaignId: string, kind: MapKind, storagePath?: string): Promise<void> {
+export async function clearCampaignMap(
+  campaignId: string,
+  kind: MapKind,
+  storagePath?: string,
+  handoutStoragePath?: string,
+): Promise<void> {
   const { error } = await supabase.rpc('clear_campaign_map', { p_campaign_id: campaignId, p_kind: kind })
   if (error) throw error
-  if (storagePath) {
+  // `handoutStoragePath` (2026-08-14, slice 4): deleting the whole map
+  // row also drops its `handout_storage_path` column value, but that
+  // never cleaned up the handout's own storage OBJECT — this file's
+  // established "DB row is the source of truth, storage cleanup is
+  // best-effort" pattern, just extended to the second path a map can
+  // now have.
+  const pathsToRemove = [storagePath, handoutStoragePath].filter((p): p is string => Boolean(p))
+  if (pathsToRemove.length > 0) {
     try {
-      await supabase.storage.from(MAP_BUCKET).remove([storagePath])
+      await supabase.storage.from(MAP_BUCKET).remove(pathsToRemove)
     } catch {
       // best-effort — the DB row is already gone, which is what matters.
     }
@@ -203,14 +215,67 @@ export async function uploadCampaignMap(campaignId: string, kind: MapKind, label
   return setCampaignMap(campaignId, kind, label, path)
 }
 
+/** Wraps `set_map_handout` (migration `0026_map_handouts`) — owner-only,
+ * unlike every other write in this file. See that migration's own doc
+ * comment for why: setting the player-facing variant is the first
+ * owner-gated action anywhere in the maps command layer, while the
+ * working-map functions above stay open to any member exactly as
+ * before. Requires the working map for `kind` to already exist server-
+ * side; the RPC raises if it doesn't (a handout is a variant of an
+ * existing map, not a way to create one from nothing). */
+export async function setMapHandout(campaignId: string, kind: MapKind, storagePath: string): Promise<CampaignMap> {
+  const { data, error } = await supabase.rpc('set_map_handout', {
+    p_campaign_id: campaignId,
+    p_kind: kind,
+    p_storage_path: storagePath,
+  })
+  if (error) throw error
+  return data
+}
+
+/** Wraps `clear_map_handout` — owner-only, same best-effort storage
+ * cleanup order as `clearCampaignMap`: the DB row's `handout_storage_path`
+ * is nulled first (that's what matters — a non-owner viewer falls back
+ * to the working map the instant it's null), storage object removal is
+ * a best-effort cleanup after, never surfaced as an error. */
+export async function clearMapHandout(campaignId: string, kind: MapKind, storagePath?: string): Promise<CampaignMap> {
+  const { data, error } = await supabase.rpc('clear_map_handout', { p_campaign_id: campaignId, p_kind: kind })
+  if (error) throw error
+  if (storagePath) {
+    try {
+      await supabase.storage.from(MAP_BUCKET).remove([storagePath])
+    } catch {
+      // best-effort — the DB row's handout_storage_path is already null.
+    }
+  }
+  return data
+}
+
+/** Uploads (or replaces — same path every time, `upsert: true`) the
+ * handout variant for a `(campaign, kind)`, then records it via
+ * `setMapHandout`. Mirrors `uploadCampaignMap` below, with a distinct
+ * `-handout` path suffix so the working image and its handout never
+ * collide in the bucket and can be replaced independently. */
+export async function uploadMapHandout(campaignId: string, kind: MapKind, file: File): Promise<CampaignMap> {
+  const extMatch = /\.([a-z0-9]+)$/i.exec(file.name)
+  const ext = extMatch ? extMatch[1].toLowerCase() : 'jpg'
+  const path = `${campaignId}/${kind}-handout.${ext}`
+  const { error: uploadError } = await supabase.storage
+    .from(MAP_BUCKET)
+    .upload(path, file, { upsert: true, contentType: file.type || undefined })
+  if (uploadError) throw uploadError
+  return setMapHandout(campaignId, kind, path)
+}
+
 /** Private bucket (`campaign-maps.public = false`) — every map image
  * needs a signed URL, never a public one. Some map art here is licensed
  * rulebook content the user owns a copy of, not something safe to
  * expose via a guessable public link (same "private signed-URL map
  * storage" call SPEC.md already made for attempt 1, carried forward).
- * Batched via `createSignedUrls` rather than one call per image — at
- * most two live paths (Region + Site) today, but no reason to make it
- * N round trips as that grows. */
+ * Batched via `createSignedUrls` rather than one call per image — up
+ * to four live paths today (Region + Site, each optionally with a
+ * handout variant since migration `0026_map_handouts`), but no reason
+ * to make it N round trips as that grows. */
 export async function getMapImageUrls(paths: string[]): Promise<Record<string, string>> {
   if (paths.length === 0) return {}
   const { data, error } = await supabase.storage.from(MAP_BUCKET).createSignedUrls(paths, SIGNED_URL_TTL_SECONDS)

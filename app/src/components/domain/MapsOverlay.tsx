@@ -5,6 +5,10 @@ import { MapsPanel } from './MapsPanel'
 interface MapsOverlayProps {
   open: boolean
   campaignId: string
+  /** BUILD_PLAN.md item 15 slice 4 (2026-08-14) — threaded straight to
+   * `MapsPanel`, see that component's own doc comment for what it
+   * gates. */
+  isOwner: boolean
   onClose: () => void
 }
 
@@ -25,10 +29,10 @@ interface MapsOverlayProps {
  * Mobile doesn't use this wrapper — `MobileJournalView` renders
  * `MapsPanel` directly under its own "Maps" bottom tab, which already
  * has its own header-with-close chrome; see `MapsPanel`'s doc comment. */
-export function MapsOverlay({ open, campaignId, onClose }: MapsOverlayProps) {
+export function MapsOverlay({ open, campaignId, isOwner, onClose }: MapsOverlayProps) {
   return (
     <Overlay open={open} onClose={onClose} header={<h2 className={text.h2}>Maps</h2>} width="wide" tall>
-      <MapsPanel campaignId={campaignId} />
+      <MapsPanel campaignId={campaignId} isOwner={isOwner} />
     </Overlay>
   )
 }
