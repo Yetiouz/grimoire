@@ -294,6 +294,18 @@ export function MobileJournalView({
   )
 
   const showSelfCard = activeView === null && activeCharacter !== null
+  // Added after a live report: a brand-new player with no character
+  // yet lands on this home view and sees nothing pointing them toward
+  // character creation at all -- "+ New Character" only lives inside
+  // the Party tab, one navigation step away with no signal to go
+  // there. This fills the exact slot the self-card above would
+  // otherwise occupy once a character exists, so the home view always
+  // has *something* in that position rather than empty space that
+  // reads as "nothing to do here." Keyed off the same `activeCharacter`
+  // (solo v1's single-active-PC simplification, per `JournalScreen`'s
+  // own doc comment) the self-card above already uses -- not a new,
+  // separately-scoped "does *this* member have a character" check.
+  const showCreateCharacterNudge = activeView === null && !loading && activeCharacter === null
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -305,6 +317,20 @@ export function MobileJournalView({
           className="mx-4 mt-3 shrink-0"
           isOnline={activeCharacter.member_id != null && (onlineMemberIds?.has(activeCharacter.member_id) ?? false)}
         />
+      )}
+
+      {showCreateCharacterNudge && (
+        <button
+          type="button"
+          onClick={onNewCharacter}
+          className="mx-4 mt-3 flex shrink-0 items-center justify-between gap-3 rounded-card border border-purple/35 bg-purple/10 px-4 py-3 text-left"
+        >
+          <span>
+            <span className={cx(text.label, 'block text-purple')}>No character yet</span>
+            <span className={cx(text.caption, 'mt-0.5 block text-ink-faint')}>Tap to create one and join the party.</span>
+          </span>
+          <span className={cx(text.label, 'shrink-0 text-purple')}>+ New Character</span>
+        </button>
       )}
 
       {activeView !== null && (
