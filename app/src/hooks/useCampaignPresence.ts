@@ -21,10 +21,15 @@ import { supabase } from '../lib/supabase'
  * websocket connection itself, and Presence is built to expire a
  * member automatically on disconnect (tab close, network drop) without
  * this app having to write or clean up any "last seen" column to get
- * that. One presence key per browser TAB, not per member — the same
- * player open in two tabs shows twice in the raw presence state, which
- * is why the returned set is a `Set<string>` of member ids (dedup'd),
- * not a list of individual presences.
+ * that. `channel.track()` below is called with `key: myMembershipId`
+ * (member, not connection) precisely so two tabs open for the SAME
+ * player collapse to one online indicator rather than reading as two
+ * different people — Supabase still keeps one presence entry per
+ * underlying connection inside that key's slot (so `presenceState()`'s
+ * value for a given key is an array, sized by however many tabs that
+ * member has open), which is why this reads `Object.keys(...)` rather
+ * than counting entries — the caller only ever wants "is this member
+ * online," never "how many tabs."
  *
  * `myMembershipId` may still be null for a brief moment after mount
  * (`useJournalScreenData`'s own parallel load hasn't resolved yet) —
