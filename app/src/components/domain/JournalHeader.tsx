@@ -118,7 +118,7 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, onOpen
           type="button"
           onClick={onBack}
           aria-label="Back to campaigns"
-          className="-ml-2 flex min-h-11 min-w-0 items-center gap-2.5 rounded-button py-1.5 pl-2 pr-3 hover:bg-panel2"
+          className="-ml-2 flex min-h-11 min-w-0 items-center gap-1.5 rounded-button py-1.5 pl-2 pr-3 hover:bg-panel2"
         >
           <img src="/logo.webp" alt="" className="h-11 w-auto shrink-0" />
           <div className="min-w-0 text-left">
