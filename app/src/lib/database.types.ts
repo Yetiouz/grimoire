@@ -416,6 +416,47 @@ export type Database = {
           },
         ]
       }
+      encounter_monsters: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          hp_visible_to_players: boolean
+          id: string
+          label: string
+          stat_block: Json
+          visible_to_players: boolean
+          zone: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          hp_visible_to_players?: boolean
+          id?: string
+          label: string
+          stat_block?: Json
+          visible_to_players?: boolean
+          zone?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          hp_visible_to_players?: boolean
+          id?: string
+          label?: string
+          stat_block?: Json
+          visible_to_players?: boolean
+          zone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "encounter_monsters_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       factions: {
         Row: {
           campaign_id: string
@@ -1116,6 +1157,38 @@ export type Database = {
           },
         ]
       }
+      turn_order: {
+        Row: {
+          active_index: number
+          campaign_id: string
+          combatants: Json
+          round_number: number
+          started_at: string | null
+        }
+        Insert: {
+          active_index?: number
+          campaign_id: string
+          combatants?: Json
+          round_number?: number
+          started_at?: string | null
+        }
+        Update: {
+          active_index?: number
+          campaign_id?: string
+          combatants?: Json
+          round_number?: number
+          started_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "turn_order_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: true
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1154,6 +1227,30 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "characters"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      add_encounter_monster: {
+        Args: {
+          p_campaign_id: string
+          p_label: string
+          p_stat_block?: Json
+          p_zone?: string
+        }
+        Returns: {
+          campaign_id: string
+          created_at: string
+          hp_visible_to_players: boolean
+          id: string
+          label: string
+          stat_block: Json
+          visible_to_players: boolean
+          zone: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "encounter_monsters"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -1346,6 +1443,22 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      advance_turn: {
+        Args: { p_campaign_id: string }
+        Returns: {
+          active_index: number
+          campaign_id: string
+          combatants: Json
+          round_number: number
+          started_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "turn_order"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       amend_journal_entry: {
         Args: { p_entry_id: string; p_new_body: string }
         Returns: {
@@ -1487,7 +1600,30 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      damage_encounter_monster: {
+        Args: { p_delta: number; p_monster_id: string }
+        Returns: {
+          campaign_id: string
+          created_at: string
+          hp_visible_to_players: boolean
+          id: string
+          label: string
+          stat_block: Json
+          visible_to_players: boolean
+          zone: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "encounter_monsters"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       delete_clock: { Args: { p_clock_id: string }; Returns: undefined }
+      end_encounter: {
+        Args: { p_campaign_id: string; p_session_id?: string }
+        Returns: undefined
+      }
       end_session: {
         Args: { p_campaign_id: string; p_recap_note?: string }
         Returns: {
@@ -1762,6 +1898,22 @@ export type Database = {
         }
         Returns: Json
       }
+      roll_initiative: {
+        Args: { p_campaign_id: string }
+        Returns: {
+          active_index: number
+          campaign_id: string
+          combatants: Json
+          round_number: number
+          started_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "turn_order"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       set_campaign_map: {
         Args: {
           p_campaign_id: string
@@ -1786,6 +1938,43 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      set_character_hp_max: {
+        Args: {
+          p_character_id: string
+          p_hp_max: number
+          p_session_id?: string
+        }
+        Returns: {
+          abilities: Json
+          ac: number
+          alignment_title: string | null
+          background: string | null
+          campaign_id: string
+          class_title: string
+          color: string | null
+          created_at: string
+          gear_current: number | null
+          gear_max: number | null
+          gold: Json
+          hp_current: number
+          hp_max: number
+          id: string
+          level: number
+          luck_tokens: number
+          member_id: string | null
+          name: string
+          sheet: Json
+          status: string
+          xp_current: number
+          xp_needed: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "characters"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       set_map_handout: {
         Args: { p_campaign_id: string; p_kind: string; p_storage_path: string }
         Returns: {
@@ -1801,6 +1990,29 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "campaign_maps"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_monster_visibility: {
+        Args: {
+          p_hp_visible_to_players?: boolean
+          p_monster_id: string
+          p_visible_to_players?: boolean
+        }
+        Returns: {
+          campaign_id: string
+          created_at: string
+          hp_visible_to_players: boolean
+          id: string
+          label: string
+          stat_block: Json
+          visible_to_players: boolean
+          zone: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "encounter_monsters"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -1843,6 +2055,22 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "scene_positions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      start_encounter: {
+        Args: { p_campaign_id: string }
+        Returns: {
+          active_index: number
+          campaign_id: string
+          combatants: Json
+          round_number: number
+          started_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "turn_order"
           isOneToOne: true
           isSetofReturn: false
         }
