@@ -383,7 +383,12 @@ export function MobileJournalView({
             </div>
           ) : activeView === 'party' ? (
             <div className="flex flex-col gap-2 p-4">
-              <Button type="button" variant="dashed" onClick={onNewCharacter}>+ New Character</Button>
+              {/* + New Character moved to the end of the list (2026-08-14,
+                * owner: "New Character is at the end on desktop and at the
+                * top on mobile, we need to make them both at the end") --
+                * this tab used to put the button first, ahead of the real
+                * party; JournalDesktopLayout's own Party card always had
+                * it last. Same order now on both. */}
               {characters.length > 0 ? (
                 characters.map((character) => (
                   <PlayerCard key={character.id} character={character} onClick={() => onOpenCharacter(character)} />
@@ -391,6 +396,7 @@ export function MobileJournalView({
               ) : (
                 <EmptyState icon="party" title="No party yet" description="Characters you add to this campaign show up here." />
               )}
+              <Button type="button" variant="dashed" onClick={onNewCharacter}>+ New Character</Button>
             </div>
           ) : activeView === 'tools' ? (
             <div className={cx('grid grid-cols-2 gap-3 p-4', text.label)}>
