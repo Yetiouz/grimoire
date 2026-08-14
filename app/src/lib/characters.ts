@@ -101,6 +101,29 @@ export async function adjustCharacterHp(
   return data
 }
 
+/** Corrects `hp_max` after creation (migration 0030) -- the only field
+ * `CharacterBuilder`'s wizard can leave un-rolled with no way to fix it
+ * in-app: "Roll HP" sits on the Review step as an optional button, and
+ * nothing gates Create on having clicked it, so a character can be
+ * created at the un-rolled floor value. `adjust_character_hp` only
+ * moves `hp_current` within [0, hp_max]; this is the companion command
+ * for hp_max itself. Clamps `hp_current` down if it now exceeds the
+ * new max server-side -- never bumps it up, same no-free-healing rule
+ * `adjust_character_hp` already follows. */
+export async function setCharacterHpMax(
+  characterId: string,
+  hpMax: number,
+  sessionId?: string | null,
+): Promise<Character> {
+  const { data, error } = await supabase.rpc('set_character_hp_max', {
+    p_character_id: characterId,
+    p_hp_max: hpMax,
+    p_session_id: sessionId ?? undefined,
+  })
+  if (error) throw error
+  return data
+}
+
 export async function adjustCharacterXp(
   characterId: string,
   delta: number,

@@ -15,6 +15,7 @@ import {
   readCharacterSheet,
   removeCharacterGear,
   restCharacter,
+  setCharacterHpMax,
 } from '../../lib/characters'
 import type { Character } from '../../lib/characters'
 
@@ -82,6 +83,7 @@ const tintButtonClass = (color: 'green' | 'red' | 'purple') =>
  */
 export function CharacterCommands({ character, sessionId, onUpdate }: CharacterCommandsProps) {
   const [hpAmount, setHpAmount] = useState(1)
+  const [hpMaxDraft, setHpMaxDraft] = useState('')
   const [xpAmount, setXpAmount] = useState(1)
   const [luckAmount, setLuckAmount] = useState(1)
   const [goldGp, setGoldGp] = useState('')
@@ -139,6 +141,42 @@ export function CharacterCommands({ character, sessionId, onUpdate }: CharacterC
         >
           Rest
         </button>
+      </div>
+
+      {/* Max HP has no roll-based verb pair the way hp_current does --
+        * it's set once by CharacterBuilder (0030_set_character_hp_max.sql)
+        * and was otherwise permanently locked after creation. Added
+        * after a live report: the wizard's own "Roll HP" button lives
+        * on its Review step as an optional, ungated action, so a
+        * character can reach Create having never rolled it, landing at
+        * the bare floor value with no way to correct it in-app. This is
+        * that correction, not a general respec control -- a plain
+        * "set to this number" rather than another delta stepper, since
+        * the number being corrected usually comes from a roll made
+        * outside this UI (the in-app Dice Roller, or a physical die). */}
+      <div className="flex flex-wrap items-end gap-2">
+        <TextInput
+          label="Set Max HP"
+          type="number"
+          inputMode="numeric"
+          value={hpMaxDraft}
+          onChange={(event) => setHpMaxDraft(event.target.value)}
+          className="w-24"
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={pending || hpMaxDraft.trim() === '' || Number(hpMaxDraft) < 1}
+          onClick={() =>
+            void run(async () => {
+              const updated = await setCharacterHpMax(character.id, Number(hpMaxDraft), sessionId)
+              setHpMaxDraft('')
+              return updated
+            })
+          }
+        >
+          Set
+        </Button>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
