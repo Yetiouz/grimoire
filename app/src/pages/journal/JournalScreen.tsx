@@ -91,6 +91,7 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
     characters, setCharacters,
     quests,
     npcs, factions, treasure, notes, locations, npcStatBlocks, locationSecrets,
+    clocks, reloadClocks,
     myMembership,
     error, setError,
     load,
@@ -412,6 +413,9 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
         locations={locations}
         npcStatBlocks={npcStatBlocks}
         locationSecrets={locationSecrets}
+        clocks={clocks}
+        isOwner={isOwner}
+        reloadClocks={reloadClocks}
         sessions={sessions}
         entries={entries}
         error={error}
@@ -463,7 +467,8 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
             factions === null ||
             treasure === null ||
             notes === null ||
-            locations === null
+            locations === null ||
+            clocks === null
           }
           activeCharacter={activeCharacter}
           characters={characters ?? []}
@@ -475,6 +480,8 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
           locations={locations ?? []}
           npcStatBlocks={npcStatBlocks}
           locationSecrets={locationSecrets}
+          clocks={clocks ?? []}
+          reloadClocks={reloadClocks}
           sessions={sessions ?? []}
           items={feedItems}
           sessionOpen={sessionActive}

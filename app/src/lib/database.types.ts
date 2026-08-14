@@ -359,6 +359,60 @@ export type Database = {
           },
         ]
       }
+      clocks: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          description: string
+          faction_id: string | null
+          filled: number
+          id: string
+          name: string
+          revealed: boolean
+          segments: number
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          description?: string
+          faction_id?: string | null
+          filled?: number
+          id?: string
+          name: string
+          revealed?: boolean
+          segments: number
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          description?: string
+          faction_id?: string | null
+          filled?: number
+          id?: string
+          name?: string
+          revealed?: boolean
+          segments?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clocks_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clocks_faction_id_fkey"
+            columns: ["faction_id"]
+            isOneToOne: false
+            referencedRelation: "factions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       factions: {
         Row: {
           campaign_id: string
@@ -1229,6 +1283,27 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      adjust_clock: {
+        Args: { p_clock_id: string; p_delta: number }
+        Returns: {
+          campaign_id: string
+          created_at: string
+          description: string
+          faction_id: string | null
+          filled: number
+          id: string
+          name: string
+          revealed: boolean
+          segments: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "clocks"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       amend_journal_entry: {
         Args: { p_entry_id: string; p_new_body: string }
         Returns: {
@@ -1323,6 +1398,34 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_clock: {
+        Args: {
+          p_campaign_id: string
+          p_description?: string
+          p_faction_id?: string
+          p_name: string
+          p_segments: number
+        }
+        Returns: {
+          campaign_id: string
+          created_at: string
+          description: string
+          faction_id: string | null
+          filled: number
+          id: string
+          name: string
+          revealed: boolean
+          segments: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "clocks"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      delete_clock: { Args: { p_clock_id: string }; Returns: undefined }
       end_session: {
         Args: { p_campaign_id: string }
         Returns: {
@@ -1660,6 +1763,34 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "sessions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_clock: {
+        Args: {
+          p_clock_id: string
+          p_description: string
+          p_faction_id: string
+          p_name: string
+          p_revealed: boolean
+          p_segments: number
+        }
+        Returns: {
+          campaign_id: string
+          created_at: string
+          description: string
+          faction_id: string | null
+          filled: number
+          id: string
+          name: string
+          revealed: boolean
+          segments: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "clocks"
           isOneToOne: true
           isSetofReturn: false
         }

@@ -5,8 +5,8 @@ import { listCharacters } from '../lib/characters'
 import type { Character } from '../lib/characters'
 import { listQuests } from '../lib/quests'
 import type { Quest } from '../lib/quests'
-import { listCampaignNotes, listFactions, listLocationSecrets, listLocations, listNpcStatBlocks, listNpcs, listTreasure } from '../lib/world'
-import type { Faction, Location, LocationSecret, Note, Npc, NpcStatBlock, Treasure } from '../lib/world'
+import { listCampaignNotes, listClocks, listFactions, listLocationSecrets, listLocations, listNpcStatBlocks, listNpcs, listTreasure } from '../lib/world'
+import type { Clock, Faction, Location, LocationSecret, Note, Npc, NpcStatBlock, Treasure } from '../lib/world'
 
 /**
  * `JournalScreen`'s core data fetch — sessions, entries, characters,
@@ -61,6 +61,15 @@ export function useJournalScreenData(campaignId: string) {
   // for a player, real rows for the GM" ambiguity as npcStatBlocks
   // above; see listLocationSecrets' own doc comment.
   const [locationSecrets, setLocationSecrets] = useState<Map<string, LocationSecret>>(new Map())
+  // Threat/faction clocks (BUILD_PLAN.md item 15 slice 2) — unlike every
+  // other WorldTabs list here, this one gets its own targeted
+  // `reloadClocks` below rather than only refreshing via the full
+  // `load()`: it's the first WorldTabs table `ClockCard` mutates
+  // in-app (create/adjust/update/delete, all owner-only RPCs — see
+  // lib/world.ts), and re-running the entire parallel fetch after every
+  // +1 click would be wasteful and would also flash the whole Quest Log
+  // column's loading state for a one-row change.
+  const [clocks, setClocks] = useState<Clock[] | null>(null)
   const [myMembership, setMyMembership] = useState<CampaignMember | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -78,6 +87,7 @@ export function useJournalScreenData(campaignId: string) {
         locationRows,
         statBlockRows,
         locationSecretRows,
+        clockRows,
         membership,
       ] = await Promise.all([
         listSessions(campaignId),
@@ -91,6 +101,7 @@ export function useJournalScreenData(campaignId: string) {
         listLocations(campaignId),
         listNpcStatBlocks(campaignId),
         listLocationSecrets(campaignId),
+        listClocks(campaignId),
         getMyMembership(campaignId),
       ])
       setSessions(sessionRows)
@@ -104,10 +115,19 @@ export function useJournalScreenData(campaignId: string) {
       setLocations(locationRows)
       setNpcStatBlocks(new Map(statBlockRows.map((row) => [row.npc_id, row])))
       setLocationSecrets(new Map(locationSecretRows.map((row) => [row.location_id, row])))
+      setClocks(clockRows)
       setMyMembership(membership)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong loading the journal.')
     }
+  }, [campaignId])
+
+  // Targeted reload for `clocks` alone (see its own doc comment above) —
+  // `ClockCard`'s create/adjust/update/delete calls all end with this
+  // rather than `load()`, so a single advance doesn't re-fetch and
+  // re-render every other WorldTabs list too.
+  const reloadClocks = useCallback(async () => {
+    setClocks(await listClocks(campaignId))
   }, [campaignId])
 
   useEffect(() => {
@@ -121,6 +141,7 @@ export function useJournalScreenData(campaignId: string) {
     characters, setCharacters,
     quests, setQuests,
     npcs, factions, treasure, notes, locations, npcStatBlocks, locationSecrets,
+    clocks, reloadClocks,
     myMembership,
     error, setError,
     load,

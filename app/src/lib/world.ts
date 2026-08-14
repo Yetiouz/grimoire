@@ -8,6 +8,7 @@ export type Treasure = Tables<'treasure'>
 export type Note = Tables<'campaign_notes'>
 export type Location = Tables<'locations'>
 export type LocationSecret = Tables<'location_secrets'>
+export type Clock = Tables<'clocks'>
 
 /** NPCs in a campaign, in creation order — this table has no
  * `sort_order` column (unlike `quests`), so `created_at` is the closest
@@ -147,6 +148,99 @@ export async function listCampaignNotes(campaignId: string): Promise<Note[]> {
     .order('created_at', { ascending: false })
   if (error) throw error
   return data
+}
+
+/** Threat/faction clocks in a campaign, in creation order — same
+ * "created_at is the closest real order" reasoning as
+ * `listNpcs`/`listFactions`. Migration `0025_clocks` (BUILD_PLAN.md
+ * item 15, "GM prep + handouts", slice 2 of 4): the first `WorldTabs`
+ * table with real in-app mutation (see `createClock`/`adjustClock`/
+ * `updateClock`/`deleteClock` below) — SESSION_PROTOCOL.md has the GM
+ * reviewing and advancing these every session, unlike the other five
+ * WorldTabs tables, which are read-only, seeded-once trackers.
+ *
+ * Unlike `npcs`/`npc_stat_blocks` and `locations`/`location_secrets`,
+ * there's no separate secret table here — `clocks_select_member`'s RLS
+ * policy filters whole rows by `revealed OR role = 'owner'` on this one
+ * table, so this naturally comes back every clock for the owner and
+ * only the revealed ones for a player, with no second query needed. */
+export async function listClocks(campaignId: string): Promise<Clock[]> {
+  const { data, error } = await supabase
+    .from('clocks')
+    .select('*')
+    .eq('campaign_id', campaignId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+/** Creates a new clock — owner-only. There's no INSERT policy on
+ * `clocks` at all (RLS can't gate a write by "would this row, once
+ * inserted, belong to a campaign I own" the way it gates reads), so
+ * every clock write goes through a `SECURITY DEFINER` RPC that checks
+ * `campaign_members.role = 'owner'` itself, same convention
+ * `adjustCharacterHp`/`setCampaignMap`/`ensureCampaignJoinCode` already
+ * use. `segments` is the clock's total size (4/6/8/12-style); `filled`
+ * always starts at 0 — advance it afterward with `adjustClock`. */
+export async function createClock(
+  campaignId: string,
+  name: string,
+  segments: number,
+  description = '',
+  factionId?: string | null,
+): Promise<Clock> {
+  const { data, error } = await supabase.rpc('create_clock', {
+    p_campaign_id: campaignId,
+    p_name: name,
+    p_segments: segments,
+    p_description: description,
+    p_faction_id: factionId ?? undefined,
+  })
+  if (error) throw error
+  return data
+}
+
+/** Full-field edit (name/description/segments/faction link/revealed) —
+ * owner-only, same RPC-gated shape as `createClock`. Shrinking
+ * `segments` below the clock's current `filled` value clamps `filled`
+ * down to match server-side (`update_clock`'s `least(filled,
+ * p_segments)`), so this never needs a separate `filled` param of its
+ * own — `adjustClock` below is the only way `filled` changes on
+ * purpose. */
+export async function updateClock(
+  clockId: string,
+  fields: { name: string; description: string; segments: number; factionId: string | null; revealed: boolean },
+): Promise<Clock> {
+  const { data, error } = await supabase.rpc('update_clock', {
+    p_clock_id: clockId,
+    p_name: fields.name,
+    p_description: fields.description,
+    p_segments: fields.segments,
+    p_faction_id: fields.factionId ?? undefined,
+    p_revealed: fields.revealed,
+  })
+  if (error) throw error
+  return data
+}
+
+/** Advances (positive `delta`) or reduces (negative) a clock's filled
+ * segments — owner-only, clamped server-side to `[0, segments]` the
+ * same way `adjustCharacterHp` clamps HP to `[0, hp_max]`. This is the
+ * quick +/- control `ClockCard` uses during play; `updateClock` above
+ * is the full edit form. */
+export async function adjustClock(clockId: string, delta: number): Promise<Clock> {
+  const { data, error } = await supabase.rpc('adjust_clock', { p_clock_id: clockId, p_delta: delta })
+  if (error) throw error
+  return data
+}
+
+/** Deletes a clock outright — owner-only, for a threat that's resolved
+ * or was created by mistake. No soft-delete/archive: a fired or
+ * defused clock's outcome belongs in the journal or a campaign note as
+ * a normal play event, not as a lingering row here. */
+export async function deleteClock(clockId: string): Promise<void> {
+  const { error } = await supabase.rpc('delete_clock', { p_clock_id: clockId })
+  if (error) throw error
 }
 
 /** The signed-in user's `campaign_members.role` for one campaign — null

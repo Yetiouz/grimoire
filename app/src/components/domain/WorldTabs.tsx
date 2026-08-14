@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { EmptyState } from '../ui/EmptyState'
 import { deriveStatusIndicator, isQuestClosed } from '../../lib/statusTone'
 import { WorldPreviewRow } from './WorldPreviewRow'
 import { WorldDetailOverlay } from './WorldDetailOverlay'
+import { ClockCreateForm } from './ClockCreateForm'
+import { useClockMutations } from '../../hooks/useClockMutations'
 import type { WorldSelection } from './WorldDetailOverlay'
 import type { Quest } from '../../lib/quests'
-import type { Npc, Faction, Treasure, Note, NpcStatBlock, Location, LocationSecret } from '../../lib/world'
+import type { Npc, Faction, Treasure, Note, NpcStatBlock, Location, LocationSecret, Clock } from '../../lib/world'
 
 interface WorldTabsProps {
   quests: Quest[]
@@ -34,6 +36,30 @@ interface WorldTabsProps {
   /** Same shape as `npcStatBlocks`, keyed by `location_id` — see
    * `listLocationSecrets`' own doc comment. */
   locationSecrets: Map<string, LocationSecret>
+  /** BUILD_PLAN.md item 15 slice 2 (2026-08-14): the 7th tab. Unlike
+   * every list above, this one is mutated from inside this component
+   * (`ClockCard`/`ClockCreateForm` call `lib/world.ts`'s owner-only
+   * RPCs directly) rather than only ever read — see `reloadClocks`
+   * below for how a mutation gets back into this prop. */
+  clocks: Clock[]
+  /** Gates every clock mutation control — same `campaign.owner ===
+   * user.id` check `JournalScreen` already threads to
+   * `CampaignInvite`/the mobile Tools tab's Invite tile, reused here
+   * rather than re-derived. RLS enforces the real boundary regardless
+   * (see migration `0025_clocks`); this just decides whether a
+   * non-owner even sees the buttons. */
+  isOwner: boolean
+  /** Re-fetches `clocks` alone after a create/adjust/update/delete —
+   * `useJournalScreenData`'s targeted reload, not the full `load()`.
+   * Threaded down rather than called via a `campaignId` prop here so
+   * this component doesn't need its own copy of "how to fetch clocks"
+   * — it only ever asks the parent to refresh. */
+  reloadClocks: () => Promise<void>
+  /** `create_clock`'s first argument (see `handleCreateClock` below) —
+   * both callers (`JournalDesktopLayout`/`MobileJournalView`) already
+   * have a real campaign id in scope for other props, so this is just
+   * one more straight pass-through, not new plumbing. */
+  campaignId: string
   /** Mobile's request (2026-08-10, owner: "expand the buttons... so the
    * tabs are justified but keep the same space between them") — mobile's
    * wider tab row otherwise left visible slack after 5 short labels the
@@ -48,7 +74,7 @@ interface WorldTabsProps {
   className?: string
 }
 
-type WorldTab = 'quests' | 'npcs' | 'factions' | 'treasure' | 'notes' | 'locations'
+type WorldTab = 'quests' | 'npcs' | 'factions' | 'treasure' | 'notes' | 'locations' | 'clocks'
 
 /** Mockup-approved labels (`quest-log-tabs-fit-options-mockup.html`,
  * variant C — the owner's pick): short words, no icons, chosen because
@@ -80,6 +106,7 @@ const TABS: Array<{ key: WorldTab; label: string }> = [
   { key: 'treasure', label: 'Loot' },
   { key: 'notes', label: 'Notes' },
   { key: 'locations', label: 'Places' },
+  { key: 'clocks', label: 'Clocks' },
 ]
 
 /**
@@ -112,7 +139,7 @@ const TABS: Array<{ key: WorldTab; label: string }> = [
  * both groups read the same `quest.status` string `deriveStatusIndicator`
  * already parses for the dot.
  */
-export function WorldTabs({ quests, npcs, factions, treasure, notes, locations, npcStatBlocks, locationSecrets, justifyTabs, className }: WorldTabsProps) {
+export function WorldTabs({ quests, npcs, factions, treasure, notes, locations, npcStatBlocks, locationSecrets, clocks, isOwner, reloadClocks, campaignId, justifyTabs, className }: WorldTabsProps) {
   const [activeTab, setActiveTab] = useState<WorldTab>('quests')
   const [selection, setSelection] = useState<WorldSelection | null>(null)
 
@@ -123,6 +150,23 @@ export function WorldTabs({ quests, npcs, factions, treasure, notes, locations, 
   // nothing worth memoizing.
   const openQuests = quests.filter((quest) => !isQuestClosed(quest.status))
   const resolvedQuests = quests.filter((quest) => isQuestClosed(quest.status))
+
+  // Keeps an open clock detail overlay showing live data after a
+  // mutation, and closes it if the clock it's showing was just deleted
+  // — `clocks` (a fresh array from `reloadClocks`) is the source of
+  // truth; `selection.item` is a snapshot taken at click time that
+  // would otherwise go stale the instant `ClockCard`'s Advance/Reduce/
+  // Edit calls resolve. Only touches `selection` when it's actually
+  // showing a clock; every other tab's cards are still read-only, so
+  // their own selections never go stale this way.
+  useEffect(() => {
+    if (selection?.kind !== 'clock') return
+    const fresh = clocks.find((clock) => clock.id === selection.item.id)
+    setSelection(fresh ? { kind: 'clock', item: fresh } : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clocks])
+
+  const { handleAdjustClock, handleUpdateClock, handleDeleteClock, handleCreateClock } = useClockMutations(campaignId, reloadClocks)
 
   return (
     <div className={cx('flex min-h-0 flex-1 flex-col', className)}>
@@ -274,9 +318,36 @@ export function WorldTabs({ quests, npcs, factions, treasure, notes, locations, 
           ) : (
             <EmptyState icon="map" title="No places yet" description="Locations logged for this campaign show up here." />
           ))}
+
+        {activeTab === 'clocks' && (
+          <>
+            {clocks.length > 0 ? (
+              clocks.map((clock) => (
+                <WorldPreviewRow
+                  key={clock.id}
+                  title={clock.name}
+                  indicator={{ label: clock.revealed ? 'Revealed' : 'GM only', tone: clock.revealed ? 'positive' : 'special' }}
+                  preview={`${clock.filled}/${clock.segments} segments filled`}
+                  onClick={() => setSelection({ kind: 'clock', item: clock })}
+                />
+              ))
+            ) : (
+              <EmptyState icon="world" title="No clocks yet" description="Threat and faction clocks you track show up here." />
+            )}
+            {isOwner && <ClockCreateForm factions={factions} onCreate={handleCreateClock} />}
+          </>
+        )}
       </div>
 
-      <WorldDetailOverlay selection={selection} onClose={() => setSelection(null)} />
+      <WorldDetailOverlay
+        selection={selection}
+        onClose={() => setSelection(null)}
+        factions={factions}
+        isOwner={isOwner}
+        onAdjustClock={handleAdjustClock}
+        onUpdateClock={handleUpdateClock}
+        onDeleteClock={handleDeleteClock}
+      />
     </div>
   )
 }

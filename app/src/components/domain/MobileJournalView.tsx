@@ -24,7 +24,7 @@ import type { GmCheck, ResolveSource } from '../../lib/checks'
 import type { CampaignSession } from '../../lib/campaigns'
 import type { Character } from '../../lib/characters'
 import type { Quest } from '../../lib/quests'
-import type { Faction, Note, Npc, NpcStatBlock, Treasure, Location, LocationSecret } from '../../lib/world'
+import type { Faction, Note, Npc, NpcStatBlock, Treasure, Location, LocationSecret, Clock } from '../../lib/world'
 
 interface MobileJournalViewProps {
   loading: boolean
@@ -45,6 +45,13 @@ interface MobileJournalViewProps {
   locations: Location[]
   npcStatBlocks: Map<string, NpcStatBlock>
   locationSecrets: Map<string, LocationSecret>
+  /** BUILD_PLAN.md item 15 slice 2 (2026-08-14) — same
+   * threaded-straight-through treatment as `locations`, plus
+   * `reloadClocks` (`useJournalScreenData`'s targeted re-fetch) so
+   * `WorldTabs` can mutate clocks from here too. `isOwner` below
+   * already covers the ownership half. */
+  clocks: Clock[]
+  reloadClocks: () => Promise<void>
   sessions: CampaignSession[]
   /** BOB_queue task 1: the already-merged, already-sorted feed — see
    * lib/feed.ts's buildFeed(). Was `entries: JournalEntry[]` before
@@ -214,6 +221,8 @@ export function MobileJournalView({
   locations,
   npcStatBlocks,
   locationSecrets,
+  clocks,
+  reloadClocks,
   sessions,
   items,
   sessionOpen,
@@ -336,6 +345,10 @@ export function MobileJournalView({
           locations={locations}
           npcStatBlocks={npcStatBlocks}
           locationSecrets={locationSecrets}
+          clocks={clocks}
+          isOwner={isOwner}
+          reloadClocks={reloadClocks}
+          campaignId={campaignId ?? ''}
           justifyTabs
           className="min-h-0 flex-1 px-4 pb-4 pt-3"
         />

@@ -6,8 +6,9 @@ import { FactionCard } from './FactionCard'
 import { TreasureRow } from './TreasureRow'
 import { NoteCard } from './NoteCard'
 import { LocationCard } from './LocationCard'
+import { ClockCard } from './ClockCard'
 import type { Quest } from '../../lib/quests'
-import type { Faction, Note, Npc, NpcStatBlock, Treasure, Location, LocationSecret } from '../../lib/world'
+import type { Faction, Note, Npc, NpcStatBlock, Treasure, Location, LocationSecret, Clock } from '../../lib/world'
 
 /** What `WorldPreviewRow`'s `onClick` in `WorldTabs` sets — one resolved
  * entity plus which of the five detail shapes it needs (`note` added
@@ -26,6 +27,7 @@ export type WorldSelection =
   | { kind: 'treasure'; item: Treasure }
   | { kind: 'note'; item: Note }
   | { kind: 'location'; item: Location; secret?: LocationSecret }
+  | { kind: 'clock'; item: Clock }
 
 const KIND_LABEL: Record<WorldSelection['kind'], string> = {
   quest: 'Quest',
@@ -34,28 +36,28 @@ const KIND_LABEL: Record<WorldSelection['kind'], string> = {
   treasure: 'Treasure',
   note: 'Note',
   location: 'Place',
-}
-
-function renderSelection(selection: WorldSelection) {
-  switch (selection.kind) {
-    case 'quest':
-      return <QuestCard quest={selection.item} />
-    case 'npc':
-      return <NpcCard npc={selection.item} statBlock={selection.statBlock} />
-    case 'faction':
-      return <FactionCard faction={selection.item} />
-    case 'treasure':
-      return <TreasureRow treasure={selection.item} />
-    case 'note':
-      return <NoteCard note={selection.item} />
-    case 'location':
-      return <LocationCard location={selection.item} secret={selection.secret} />
-  }
+  clock: 'Clock',
 }
 
 interface WorldDetailOverlayProps {
   selection: WorldSelection | null
   onClose: () => void
+  /** Clock-only extras (BUILD_PLAN.md item 15 slice 2) -- the other five
+   * card types are pure display, so `ClockCard` is the only one that
+   * needs any of these. All four are `WorldTabs`' own
+   * `factions`/`isOwner`/`useClockMutations` handlers, threaded straight
+   * through unchanged -- this component doesn't own or transform them,
+   * it just closes the selected clock's id over each handler so
+   * `ClockCard` gets the plain `(delta) => Promise<void>`-shaped
+   * callbacks it actually expects. */
+  factions: Faction[]
+  isOwner: boolean
+  onAdjustClock: (clockId: string, delta: number) => Promise<void>
+  onUpdateClock: (
+    clockId: string,
+    fields: { name: string; description: string; segments: number; factionId: string | null; revealed: boolean },
+  ) => Promise<void>
+  onDeleteClock: (clockId: string) => Promise<void>
 }
 
 /**
@@ -77,7 +79,49 @@ interface WorldDetailOverlayProps {
  * own (nothing about `NpcCard`'s rendered output says "this is an NPC"
  * rather than some other card type).
  */
-export function WorldDetailOverlay({ selection, onClose }: WorldDetailOverlayProps) {
+export function WorldDetailOverlay({
+  selection,
+  onClose,
+  factions,
+  isOwner,
+  onAdjustClock,
+  onUpdateClock,
+  onDeleteClock,
+}: WorldDetailOverlayProps) {
+  // Inline rather than a top-level function (like every other card's
+  // render branch was before this slice): only the `clock` case needs
+  // anything beyond `selection` itself, and closing over this
+  // component's own props is simpler than threading five more
+  // parameters through a standalone function on every call.
+  function renderSelection(current: WorldSelection) {
+    switch (current.kind) {
+      case 'quest':
+        return <QuestCard quest={current.item} />
+      case 'npc':
+        return <NpcCard npc={current.item} statBlock={current.statBlock} />
+      case 'faction':
+        return <FactionCard faction={current.item} />
+      case 'treasure':
+        return <TreasureRow treasure={current.item} />
+      case 'note':
+        return <NoteCard note={current.item} />
+      case 'location':
+        return <LocationCard location={current.item} secret={current.secret} />
+      case 'clock':
+        return (
+          <ClockCard
+            clock={current.item}
+            factionName={factions.find((faction) => faction.id === current.item.faction_id)?.name ?? null}
+            factions={factions}
+            isOwner={isOwner}
+            onAdjust={(delta) => onAdjustClock(current.item.id, delta)}
+            onUpdateFields={(fields) => onUpdateClock(current.item.id, fields)}
+            onDelete={() => onDeleteClock(current.item.id)}
+          />
+        )
+    }
+  }
+
   return (
     <Overlay
       open={selection !== null}
