@@ -4,7 +4,7 @@ import { JournalDesktopLayout } from '../../components/domain/JournalDesktopLayo
 import { ALL_FILTER_KINDS } from '../../lib/journalFilters'
 import type { FilterKind } from '../../lib/journalFilters'
 import { JournalHeader } from '../../components/domain/JournalHeader'
-import { CampaignInvite } from '../../components/domain/CampaignInvite'
+import { CampaignInviteModal } from '../../components/domain/CampaignInvite'
 import { CharacterSheet } from '../../components/domain/CharacterSheet'
 import { CharacterBuilder } from '../../components/domain/CharacterBuilder'
 import { DiceRoller } from '../../components/domain/DiceRoller'
@@ -120,6 +120,13 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
   // solo or GM'd. Always wired, matching CampaignSearch's own "no
   // separate index, just the data already on screen" design.
   const [searchOpen, setSearchOpen] = useState(false)
+  // Owner-only Invite modal (2026-08-14, header rework round 2) — Invite
+  // moved out of JournalHeader's button row entirely and into its
+  // hamburger menu, so JournalHeader no longer owns a ready-made trigger
+  // node for it, just an onOpenInvite callback. Same lifted-state shape
+  // MobileJournalView already uses for its own Tools-tab Invite tile —
+  // not a new pattern, just this screen's own copy of it.
+  const [inviteOpen, setInviteOpen] = useState(false)
   // Character Builder (BUILD_PLAN.md slice 12) — same "always wired,
   // no gm_mode/feature-flag gate" shape as search above: any campaign
   // member or the GM can start a build, per the owner's call, so this
@@ -401,7 +408,7 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
         campaignName={campaign.name}
         sessionMeta={sessionMeta}
         sessionAction={sessionAction}
-        inviteAction={isOwner ? <CampaignInvite campaignId={campaign.id} /> : undefined}
+        onOpenInvite={isOwner ? () => setInviteOpen(true) : undefined}
         onBack={onBack}
         onSignOut={onSignOut}
         onOpenSearch={() => setSearchOpen(true)}
@@ -537,6 +544,8 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
       <CampaignSearch open={searchOpen} items={feedItems} sessions={sessions ?? []} onClose={() => setSearchOpen(false)} />
 
       <MapsOverlay open={mapsOpen} campaignId={campaign.id} isOwner={isOwner} onClose={() => setMapsOpen(false)} />
+
+      <CampaignInviteModal campaignId={campaign.id} open={inviteOpen} onClose={() => setInviteOpen(false)} />
 
       <DiceRoller
         open={diceOpen}

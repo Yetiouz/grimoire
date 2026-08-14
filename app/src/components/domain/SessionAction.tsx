@@ -31,8 +31,25 @@ interface SessionActionProps {
  * toggles between pause (yellow, ⏸) and resume (green, ▶) depending on
  * `paused` — same tint pattern as Start/Stop (`color/12` bg, `color/45`
  * border, matching `DangerBanner`'s tone treatment) rather than a third
- * new color. JournalScreen still owns every command call; this
- * component only renders state and forwards clicks.
+ * new color.
+ *
+ * Stop Session collapses to an icon-only red square below `sm:`
+ * (2026-08-14, header rework round 2 — "on mobile change stop session
+ * to an icon button also," the same crowding fix already applied to
+ * Invite/the header's button row) — same treatment pause already had
+ * everywhere, just extended to Stop. Text label returns at `sm:` and up
+ * since there's no crowding problem to solve on a wider viewport.
+ * Deliberately NOT applied to Start Session: it's a different, rarer
+ * state (this button only shows Start when nothing is running yet, not
+ * the common in-play case) and wasn't part of what was flagged, so it
+ * keeps its full text at every width rather than being changed on
+ * spec. The `ending`-state "Stopping…" text is lost on the icon-only
+ * mobile button during that async call — same tradeoff the pause
+ * button already made everywhere; only `disabled:opacity-40` signals
+ * the pending state there too, and now here.
+ *
+ * JournalScreen still owns every command call; this component only
+ * renders state and forwards clicks.
  */
 export function SessionAction({ open, paused, starting, ending, pausing, resuming, onStart, onEnd, onPause, onResume }: SessionActionProps) {
   const base = cx(
@@ -74,9 +91,11 @@ export function SessionAction({ open, paused, starting, ending, pausing, resumin
           onClick={onEnd}
           disabled={ending}
           title="Stop this session"
-          className={cx(base, 'border-red/45 bg-red/10 text-red')}
+          aria-label="Stop Session"
+          className={cx(base, 'w-11 px-0 sm:w-auto sm:px-4', 'border-red/45 bg-red/10 text-red')}
         >
-          {ending ? 'Stopping…' : 'Stop Session'}
+          <span className="sm:hidden" aria-hidden="true">■</span>
+          <span className="hidden sm:inline">{ending ? 'Stopping…' : 'Stop Session'}</span>
         </button>
       ) : (
         <button

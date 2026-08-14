@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
@@ -15,17 +14,22 @@ interface CampaignInviteModalProps {
  * be `CampaignInvite`'s own internal state (2026-08-11, "fix the
  * Campaign tools tile") — the mobile Tools tab's "Invite" tile
  * (`MobileJournalView`) needed to open the exact same modal a second,
- * independent way, and `CampaignInvite`'s original shape had no trigger
- * but its own hardcoded Button. The desktop header's ghost button and
- * the mobile tile are two different triggers for the identical
- * `ensure_campaign_join_code` flow, not two features, so this is the
- * one shared piece both now mount with their own open state.
+ * independent way. The desktop header used to mount its own wrapper
+ * (`CampaignInvite`, a ghost button + this modal) as a third trigger,
+ * but that wrapper is gone as of the 2026-08-14 header rework
+ * ("Option B" — title-led hero row, Invite folded into the hamburger
+ * menu instead of sitting in the button row): `JournalHeader` doesn't
+ * own a ready-made trigger node anymore, just an `onOpenInvite`
+ * callback, so `JournalScreen` now mounts this modal directly with its
+ * own lifted `inviteOpen` state — the exact same shape
+ * `MobileJournalView` already used for its own tile, not a new pattern.
+ * Three call sites, one modal, no duplicated fetch/copy logic.
  *
- * Owner-only in practice — both call sites gate on `isOwner` before
+ * Owner-only in practice — every call site gates on `isOwner` before
  * ever mounting this — but this component itself doesn't re-check that;
- * same "the RPC is the real security boundary, the caller just keeps a
- * dead control off screen for players who could never use it" split
- * `CampaignInvite`'s doc comment already documented. */
+ * the RPC (`ensure_campaign_join_code`, migration 0023) is the real
+ * security boundary, callers just keep a dead control off screen for
+ * players who could never use it. */
 export function CampaignInviteModal({ campaignId, open, onClose }: CampaignInviteModalProps) {
   const [code, setCode] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -97,37 +101,5 @@ export function CampaignInviteModal({ campaignId, open, onClose }: CampaignInvit
         </>
       )}
     </Modal>
-  )
-}
-
-interface CampaignInviteProps {
-  campaignId: string
-}
-
-/** Owner-only "Invite" control for the desktop header
- * (`JournalHeader`'s `inviteAction`, 2026-08-11, "I may want to play a
- * different character with my friends") — the campaign-owner side of
- * the join-by-code flow (migration 0023); `CampaignList.tsx`'s "Have an
- * invite code?" is the redeeming half. Thin wrapper around
- * `CampaignInviteModal` (see that component's own doc comment) that
- * owns just its own open/closed boolean — the mobile Tools tab's
- * "Invite" tile is the other trigger for the same modal, with its own
- * separate open state; the two never share state since they're two
- * different buttons that can each independently be tapped.
- *
- * Only rendered by the caller when `isOwner` (see `JournalScreen.tsx`)
- * — the RPC itself also enforces owner-only server-side, so this is
- * purely keeping a control off the screen for players who could never
- * use it, not the actual security boundary. */
-export function CampaignInvite({ campaignId }: CampaignInviteProps) {
-  const [open, setOpen] = useState(false)
-
-  return (
-    <>
-      <Button type="button" variant="ghost" onClick={() => setOpen(true)}>
-        Invite
-      </Button>
-      <CampaignInviteModal campaignId={campaignId} open={open} onClose={() => setOpen(false)} />
-    </>
   )
 }
