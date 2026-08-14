@@ -1,6 +1,7 @@
 import { text } from '../../lib/typography'
 import { Overlay } from '../ui/Overlay'
 import { MapsPanel } from './MapsPanel'
+import type { Character } from '../../lib/characters'
 
 interface MapsOverlayProps {
   open: boolean
@@ -9,6 +10,9 @@ interface MapsOverlayProps {
    * `MapsPanel`, see that component's own doc comment for what it
    * gates. */
   isOwner: boolean
+  /** BUILD_PLAN.md item 8 (2026-08-14) — threaded straight to
+   * `MapsPanel`'s own new prop of the same name, for its Scene tab. */
+  characters: Character[]
   onClose: () => void
 }
 
@@ -29,10 +33,10 @@ interface MapsOverlayProps {
  * Mobile doesn't use this wrapper — `MobileJournalView` renders
  * `MapsPanel` directly under its own "Maps" bottom tab, which already
  * has its own header-with-close chrome; see `MapsPanel`'s doc comment. */
-export function MapsOverlay({ open, campaignId, isOwner, onClose }: MapsOverlayProps) {
+export function MapsOverlay({ open, campaignId, isOwner, characters, onClose }: MapsOverlayProps) {
   return (
     <Overlay open={open} onClose={onClose} header={<h2 className={text.h2}>Maps</h2>} width="wide" tall>
-      <MapsPanel campaignId={campaignId} isOwner={isOwner} />
+      <MapsPanel campaignId={campaignId} isOwner={isOwner} characters={characters} />
     </Overlay>
   )
 }

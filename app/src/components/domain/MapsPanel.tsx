@@ -3,11 +3,12 @@ import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { ErrorBanner } from '../ui/ErrorBanner'
 import { Skeleton, SkeletonGroup } from '../ui/Skeleton'
-import { EmptyState } from '../ui/EmptyState'
 import { MapsRegionTab } from './MapsRegionTab'
 import { MapsSiteTab } from './MapsSiteTab'
+import { MapsSceneTab } from './MapsSceneTab'
 import { getMapImageUrls, getPartyPosition, listCampaignMaps } from '../../lib/maps'
 import type { CampaignMap, CampaignMapPosition, MapKind } from '../../lib/maps'
+import type { Character } from '../../lib/characters'
 
 interface MapsPanelProps {
   campaignId: string
@@ -19,12 +20,18 @@ interface MapsPanelProps {
    * comment for why this is the first owner-only gate anywhere in the
    * maps command layer. */
   isOwner: boolean
+  /** BUILD_PLAN.md item 8 (2026-08-14) — threaded straight to
+   * `MapsSceneTab`, the only tab that needs it (Region/Site work off
+   * map images and a shared party pin, not per-character state). Both
+   * call sites (`MapsOverlay`, `MobileJournalView`) already have
+   * `characters` in scope from `JournalScreen`'s own load. */
+  characters: Character[]
 }
 
 const TAB_ORDER: Array<{ key: MapKind; label: string; live: boolean }> = [
   { key: 'region', label: 'Region', live: true },
   { key: 'site', label: 'Site', live: true },
-  { key: 'scene', label: 'Scene', live: false },
+  { key: 'scene', label: 'Scene', live: true },
 ]
 
 function MapsTabButton({
@@ -96,7 +103,7 @@ function MapsTabButton({
  * non-owner viewer sees by default; see `MapsRegionTab`/`MapsSiteTab`'s
  * own doc comments for the display-swap logic.
  */
-export function MapsPanel({ campaignId, isOwner }: MapsPanelProps) {
+export function MapsPanel({ campaignId, isOwner, characters }: MapsPanelProps) {
   const [maps, setMaps] = useState<CampaignMap[] | null>(null)
   const [position, setPosition] = useState<CampaignMapPosition | null>(null)
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({})
@@ -204,11 +211,7 @@ export function MapsPanel({ campaignId, isOwner }: MapsPanelProps) {
             onError={setError}
           />
         ) : (
-          <EmptyState
-            icon="map"
-            title="Scene (coming soon)"
-            description="Close / Near / Far zone positioning for active encounters — ships with Encounter mode, not this pass."
-          />
+          <MapsSceneTab campaignId={campaignId} characters={characters} onError={setError} />
         )}
       </div>
     </div>
