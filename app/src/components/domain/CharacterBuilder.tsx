@@ -154,6 +154,15 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
   const [step, setStep] = useState<StepKey>('level')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Guards accidental data loss: Overlay closes on backdrop click,
+  // Escape, or its own Close button, and until now that always wiped
+  // the whole in-progress character instantly with zero confirmation
+  // (`resetAll()` ran unconditionally). Rather than a native
+  // `window.confirm()` (this app deliberately avoids those --
+  // see `DeleteMapButton`'s own doc comment), an attempted close with
+  // real progress on the line arms this inline row instead of closing
+  // right away.
+  const [confirmingClose, setConfirmingClose] = useState(false)
 
   const isZeroLevel = level === 0
   const steps: StepKey[] = isZeroLevel
@@ -292,13 +301,26 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
     if (stepIndex > 0) setStep(steps[stepIndex - 1])
   }
 
+  // Both gates below exist because of a live report: a first-time
+  // player reached Create having never engaged either "Roll HP"
+  // (Review step) or "Roll starting gold" (Gear step) -- neither was
+  // required, so nothing signaled anything was missing, and the
+  // resulting character was created at 1 HP with 0 gold and no gear.
+  // These don't force a specific roll (typing a gold amount by hand, or
+  // adding a manually-chosen item, counts too) -- they just require
+  // *some* deliberate action instead of silently passing through.
+  const goldOrGearEngaged = isZeroLevel
+    ? goldRolled || equipment.length > 0
+    : goldRolled || gold.gp.trim() !== '' || equipment.length > 0
+  const hpReady = isZeroLevel || hpRoll !== null
+
   const canContinue: Record<StepKey, boolean> = {
     level: name.trim() !== '',
     stats: statsFilled,
     ancestry: ancestryKey !== null,
     class: klass !== null,
     background: backgroundText.trim() !== '' && alignmentKey !== null && (!klass?.requiresDeity || deityName !== null),
-    gear: true,
+    gear: goldOrGearEngaged,
     review: true,
   }
 
@@ -330,6 +352,15 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
     setStatus('active')
     setStep('level')
     setError(null)
+    setConfirmingClose(false)
+  }
+
+  function requestClose() {
+    if (name.trim() !== '' || ancestryKey !== null || stepIndex > 0) {
+      setConfirmingClose(true)
+      return
+    }
+    handleClose()
   }
 
   function handleClose() {
@@ -400,7 +431,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
   return (
     <Overlay
       open={open}
-      onClose={handleClose}
+      onClose={requestClose}
       width="wide"
       tall
       header={
@@ -428,6 +459,20 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
           </span>
         ))}
       </div>
+
+      {confirmingClose && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-card border border-red/35 bg-red/10 px-3 py-2">
+          <span className={cx(text.caption, 'text-ink')}>Discard this character? Nothing is saved until you click Create.</span>
+          <div className="ml-auto flex gap-2">
+            <Button type="button" variant="ghost" onClick={() => setConfirmingClose(false)}>
+              Keep editing
+            </Button>
+            <Button type="button" onClick={handleClose}>
+              Discard
+            </Button>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4">
@@ -632,9 +677,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {knownSpells.map((spellName) => (
-                          <span key={spellName} className={cx(text.caption, 'rounded-full border border-line-soft bg-panel px-3 py-1')}>
-                            {spellName}
-                          </span>
+                          <span key={spellName} className={cx(text.caption, 'rounded-full border border-line-soft bg-panel px-3 py-1')}>{spellName}</span>
                         ))}
                       </div>
                       <div className="flex gap-2">
@@ -759,6 +802,14 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
               <Button type="button" variant="ghost" onClick={addGearItem}>Add</Button>
             </div>
           </div>
+
+          {!goldOrGearEngaged && (
+            <p className={cx(text.caption, 'text-orange')}>
+              {isZeroLevel
+                ? 'Roll starting gear above to continue.'
+                : 'Roll (or type in) starting gold, or add at least one item, to continue.'}
+            </p>
+          )}
         </div>
       )}
 
@@ -849,13 +900,18 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
       )}
 
       <div className="mt-6 flex items-center justify-between border-t border-line-soft pt-4">
-        <Button type="button" variant="ghost" onClick={stepIndex === 0 ? handleClose : goBack}>
+        <Button type="button" variant="ghost" onClick={stepIndex === 0 ? requestClose : goBack}>
           {stepIndex === 0 ? 'Cancel' : '← Back'}
         </Button>
         {step === 'review' ? (
-          <Button type="button" disabled={saving} onClick={() => void handleCreate()}>
-            {saving ? 'Creating…' : 'Create Character'}
-          </Button>
+          <div className="flex flex-col items-end gap-1">
+            {!hpReady && (
+              <span className={cx(text.caption, 'text-orange')}>Roll HP above before creating.</span>
+            )}
+            <Button type="button" disabled={saving || !hpReady} onClick={() => void handleCreate()}>
+              {saving ? 'Creating…' : 'Create Character'}
+            </Button>
+          </div>
         ) : (
           <Button type="button" disabled={!canContinue[step]} onClick={goNext}>
             Continue →
