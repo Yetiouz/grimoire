@@ -430,7 +430,7 @@ export function MobileJournalView({
             </div>
           ) : campaignId ? (
             <div className="p-4">
-              <MapsPanel campaignId={campaignId} isOwner={isOwner} />
+              <MapsPanel campaignId={campaignId} isOwner={isOwner} characters={characters} />
             </div>
           ) : (
             <div className="p-4">
