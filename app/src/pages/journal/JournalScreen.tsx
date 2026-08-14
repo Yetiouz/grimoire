@@ -10,6 +10,7 @@ import { CharacterBuilder } from '../../components/domain/CharacterBuilder'
 import { DiceRoller } from '../../components/domain/DiceRoller'
 import { MapsOverlay } from '../../components/domain/MapsOverlay'
 import { SessionAction } from '../../components/domain/SessionAction'
+import { EndSessionReview } from '../../components/domain/EndSessionReview'
 import { MobileJournalView } from '../../components/domain/MobileJournalView'
 import { RulesChat } from '../../components/domain/RulesChat'
 import { GmReference } from '../../components/domain/GmReference'
@@ -138,6 +139,11 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
   // MobileJournalView already uses for its own Tools-tab Invite tile —
   // not a new pattern, just this screen's own copy of it.
   const [inviteOpen, setInviteOpen] = useState(false)
+  // End Session Review (BUILD_PLAN.md item 7, 2026-08-14) — Stop
+  // Session no longer ends the session directly; it opens this review
+  // first (see EndSessionReview's own doc comment for why), and
+  // handleEndSession itself only runs once the GM confirms there.
+  const [endReviewOpen, setEndReviewOpen] = useState(false)
   // Character Builder (BUILD_PLAN.md slice 12) — same "always wired,
   // no gm_mode/feature-flag gate" shape as search above: any campaign
   // member or the GM can start a build, per the owner's call, so this
@@ -295,14 +301,24 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
     }
   }
 
-  async function handleEndSession() {
+  // `recapNote` (BUILD_PLAN.md item 7) flows straight through to the
+  // RPC — `end_session` itself is what turns it, plus its own
+  // server-computed XP/gold/HP/gear roll-up, into one `system` journal
+  // entry (migration `0028_session_recap.sql`). That new entry isn't
+  // echoed here the way `session` is — unlike every other command on
+  // this screen, its arrival is left to `useCampaignRealtime`'s own
+  // journal_entries subscription (already running on this screen since
+  // BUILD_PLAN item 14), the same path a second connected player's
+  // entries would take. One less thing for this handler to know about.
+  async function handleEndSession(recapNote: string) {
     if (!openSession) return
     setEndingSession(true)
     try {
-      const session = await endSession(campaign.id)
+      const session = await endSession(campaign.id, recapNote)
       // Echo the row `end_session` actually returned rather than
       // refetch — same reasoning as handleStartSession's echo.
       setSessions((prev) => (prev ?? []).map((existing) => (existing.id === session.id ? session : existing)))
+      setEndReviewOpen(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not end the session.')
     } finally {
@@ -390,7 +406,7 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
       pausing={pausingSession}
       resuming={resumingSession}
       onStart={() => void handleStartSession()}
-      onEnd={() => void handleEndSession()}
+      onEnd={() => setEndReviewOpen(true)}
       onPause={() => void handlePauseSession()}
       onResume={() => void handleResumeSession()}
     />
@@ -547,9 +563,19 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
 
       <CampaignSearch open={searchOpen} items={feedItems} sessions={sessions ?? []} onClose={() => setSearchOpen(false)} />
 
-      <MapsOverlay open={mapsOpen} campaignId={campaign.id} isOwner={isOwner} onClose={() => setMapsOpen(false)} />
+      <MapsOverlay open={mapsOpen} campaignId={campaign.id} isOwner={isOwner} characters={characters ?? []} onClose={() => setMapsOpen(false)} />
 
       <CampaignInviteModal campaignId={campaign.id} open={inviteOpen} onClose={() => setInviteOpen(false)} />
+
+      <EndSessionReview
+        open={endReviewOpen}
+        campaignId={campaign.id}
+        session={openSession}
+        characters={characters ?? []}
+        ending={endingSession}
+        onClose={() => setEndReviewOpen(false)}
+        onConfirm={(note) => void handleEndSession(note)}
+      />
 
       <DiceRoller
         open={diceOpen}
