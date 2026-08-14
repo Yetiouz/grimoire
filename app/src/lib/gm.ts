@@ -179,9 +179,14 @@ export async function listRulesChat(campaignId: string): Promise<GmChatMessage[]
 }
 
 export interface SystemPack {
-  id: string
-  slug: string
-  title: string
+  /** The table's real key alongside `system` (2026-08-14 fix: an
+   * earlier draft of this type invented an `id`/`slug` pair that don't
+   * exist on `system_packs` at all -- confirmed against
+   * `database.types.ts`'s real generated Row type after the first
+   * deploy 400'd. `section` is what's actually there, e.g. 'persona',
+   * 'house_rules', 'quick_reference', 'encounter_reference'.) */
+  section: string
+  title: string | null
   body: string
   sort_order: number
 }
@@ -203,7 +208,7 @@ export interface SystemPack {
 export async function listSystemPacks(system: string): Promise<SystemPack[]> {
   const { data, error } = await supabase
     .from('system_packs')
-    .select('id, slug, title, body, sort_order')
+    .select('section, title, body, sort_order')
     .eq('system', system)
     .order('sort_order', { ascending: true })
   if (error) throw error

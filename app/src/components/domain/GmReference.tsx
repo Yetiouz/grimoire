@@ -19,6 +19,17 @@ interface GmReferenceProps {
   onClose: () => void
 }
 
+/** `section` values are lowercase/underscored keys ('quick_reference'),
+ * not display copy — falls back to this when a row's `title` is null
+ * (the column is nullable; every real row today has one set, but a
+ * future pack added directly in SQL might not). */
+function fallbackTitle(section: string): string {
+  return section
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
 /**
  * The GM reference viewer (BUILD_PLAN.md item 15 slice 3) — reads the
  * four `system_packs` rows (persona, house rules, quick reference,
@@ -46,11 +57,17 @@ interface GmReferenceProps {
  * Content renders through the existing `Markdown` component, same
  * renderer `RulesChat`'s transcript already uses — the pack bodies are
  * plain markdown-subset prose (headers/lists/bold), not raw HTML.
+ *
+ * Tabs key off `section` (the table's real column — see `SystemPack`'s
+ * own doc comment in `lib/gm.ts` for the earlier `id`/`slug` mistake
+ * this replaced after a live 400 caught it), not `title`: `title` is
+ * nullable and purely display copy, `section` is what's actually
+ * stable/unique per row.
  */
 export function GmReference({ open, system, onClose }: GmReferenceProps) {
   const [packs, setPacks] = useState<SystemPack[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [activeSlug, setActiveSlug] = useState<string | null>(null)
+  const [activeSection, setActiveSection] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -62,7 +79,7 @@ export function GmReference({ open, system, onClose }: GmReferenceProps) {
       .then((rows) => {
         if (cancelled) return
         setPacks(rows)
-        setActiveSlug(rows[0]?.slug ?? null)
+        setActiveSection(rows[0]?.section ?? null)
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Could not load the GM reference.')
@@ -70,7 +87,7 @@ export function GmReference({ open, system, onClose }: GmReferenceProps) {
     return () => { cancelled = true }
   }, [open, system])
 
-  const activePack = packs?.find((pack) => pack.slug === activeSlug) ?? null
+  const activePack = packs?.find((pack) => pack.section === activeSection) ?? null
 
   return (
     <Overlay
@@ -107,16 +124,16 @@ export function GmReference({ open, system, onClose }: GmReferenceProps) {
           <div className="flex shrink-0 flex-wrap gap-1.5 pb-1">
             {packs.map((pack) => (
               <button
-                key={pack.id}
+                key={pack.section}
                 type="button"
-                onClick={() => setActiveSlug(pack.slug)}
+                onClick={() => setActiveSection(pack.section)}
                 className={cx(
                   text.caption,
                   'shrink-0 rounded-full border px-3 py-1.5 font-semibold uppercase tracking-eyebrow',
-                  activeSlug === pack.slug ? 'border-purple bg-purple text-white' : 'border-line-soft bg-panel2 text-ink-dim',
+                  activeSection === pack.section ? 'border-purple bg-purple text-white' : 'border-line-soft bg-panel2 text-ink-dim',
                 )}
               >
-                {pack.title}
+                {pack.title ?? fallbackTitle(pack.section)}
               </button>
             ))}
           </div>
