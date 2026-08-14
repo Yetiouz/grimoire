@@ -959,6 +959,45 @@ export type Database = {
           },
         ]
       }
+      scene_positions: {
+        Row: {
+          campaign_id: string
+          character_id: string
+          id: string
+          updated_at: string
+          zone: string
+        }
+        Insert: {
+          campaign_id: string
+          character_id: string
+          id?: string
+          updated_at?: string
+          zone?: string
+        }
+        Update: {
+          campaign_id?: string
+          character_id?: string
+          id?: string
+          updated_at?: string
+          zone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scene_positions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scene_positions_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sessions: {
         Row: {
           campaign_id: string
@@ -1350,6 +1389,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      clear_scene: { Args: { p_campaign_id: string }; Returns: undefined }
       create_campaign: {
         Args: { p_name: string }
         Returns: {
@@ -1449,7 +1489,7 @@ export type Database = {
       }
       delete_clock: { Args: { p_clock_id: string }; Returns: undefined }
       end_session: {
-        Args: { p_campaign_id: string }
+        Args: { p_campaign_id: string; p_recap_note?: string }
         Returns: {
           campaign_id: string
           ended_at: string | null
@@ -1787,6 +1827,22 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "campaign_map_position"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_scene_position: {
+        Args: { p_campaign_id: string; p_character_id: string; p_zone: string }
+        Returns: {
+          campaign_id: string
+          character_id: string
+          id: string
+          updated_at: string
+          zone: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "scene_positions"
           isOneToOne: true
           isSetofReturn: false
         }
