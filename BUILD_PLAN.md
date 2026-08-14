@@ -10,20 +10,37 @@ The user already runs a complete campaign-management system today: markdown file
 
 Ordered so each slice replaces a real file the user maintains by hand today, and each is independently useful the week it ships.
 
-**SHIPPED (Aug 4–5, 2026):** ✅ 1. Campaign core + journal + event ledger (migrations 0001–0003, five-kind taxonomy incl. chat). ✅ 2. The Black Road import (0004 — 144 entries, 3 PCs, 17 NPCs, 7 quests, 13 treasure items, live). ✅ 3a. Characters, view side (PlayerCard + CharacterSheet overlay, real colors via 0005). ✅ 4. Server-authoritative dice (0007–0008: roll_dice, advantage/disadvantage, d100, DiceRoller overlay). ✅ 5a. Quest Log, view side (persistent card panel). Plus unplanned-but-kept: end_session (0006), the v11 card-shell layout. The app is in daily solo use.
+**Status refreshed 2026-08-14** by a full code-level audit (this banner and the list below had drifted badly out of sync with what's actually shipped — items 6 through 12 were still marked "remaining" despite being built weeks ago; nobody had come back to check them off). Audit method: grep the real source for each item's described RPCs/components, read the call sites, and for the highest-uncertainty ones (AI GM) cross-check against what was actually observed live in the browser this session. Every claim below is grounded in a specific file, not a guess.
 
-**REMAINING, in order — each slice still gets a plan gate before build:**
+**SHIPPED:**
 
-6. **Character commands** (next; completes old slice 3): the mutation half — adjust HP/XP/coin, gear add/remove, full rest — as SECURITY DEFINER commands writing ledger events, surfaced as edit affordances in CharacterSheet and echoed to the journal as system entries. Acceptance: a full rest at the end of a real session updates Kimbo's sheet and appears in the log without touching markdown.
-7. **Session states + lifecycle** (absorbs the v11 pause stub): a real `paused` state (schema + commands), then end-session review — XP/treasure summary and a "next pickup" note derived from the ledger, replacing SESSION_PROTOCOL.md's checklist.
-8. **Maps overlay** (v11's Maps tool): Region tab first — uploaded map image, party-position pin, travel chips (pace, hexes remaining); Site and Scene tabs stub. Private storage per licensing rules.
-9. **NPC / faction / treasure trackers**: surface the already-imported tables (17 NPCs are in the database with no UI); GM-secret fields separated at the schema level.
-10. **Campaign search** (the top-bar pill goes live): full-text over journal entries first — highest value per line of code once entries number in the hundreds.
-11. **AI GM in-app**: gm-brain persona through the same commands; narration into the journal. The summit of Milestone 1.
-12. **Character builder** — for the family campaign's new players.
-13. **Encounter mode + zone scenes**: initiative order on the party rail (cards reorder, active glows, round chip — the rail was built for this), dying/stabilizing timers on PlayerCard down-states, Close/Near/Far scene tab.
-14. **Multiplayer**: invites, roles, presence, realtime. Constantine's and LaLa's players join for real; two-account playtest is the gate.
-15. **GM prep + handouts.** Broken into 4 independent slices (see `grimoire-phase15-gm-prep-handouts-scope.md` in the project): Locations/Places tracker, threat/faction clocks, GM reference (persona + house rules), player-safe handout maps. Slice 1 (Locations/Places, migration `0024_locations`) shipped 2026-08-12. The other 3 are still ahead.
+✅ 1. Campaign core + journal + event ledger (migrations 0001–0003, five-kind taxonomy incl. chat). ✅ 2. The Black Road import (0004 — 144 entries, 3 PCs, 17 NPCs, 7 quests, 13 treasure items, live). ✅ 3a. Characters, view side (PlayerCard + CharacterSheet overlay, real colors via 0005). ✅ 4. Server-authoritative dice (0007–0008: roll_dice, advantage/disadvantage, d100, DiceRoller overlay). ✅ 5a. Quest Log, view side (persistent card panel). Plus unplanned-but-kept: end_session (0006), the v11 card-shell layout.
+
+✅ 6. **Character commands**: the full mutation set — `adjustCharacterHp/Xp/Luck/Gold`, `addCharacterGear`/`removeCharacterGear`, `restCharacter` (all in `lib/characters.ts`) — surfaced as real edit affordances via `CharacterCommands.tsx`, mounted inside `CharacterSheet`. Acceptance criterion met: these write through the same command layer as everything else and echo to the journal.
+
+✅ 9. **NPC / faction / treasure trackers**: `NpcCard`, `FactionCard`, `TreasureRow` all live, wired into `WorldTabs` alongside `npcStatBlocks`/`locationSecrets` maps — GM-secret data kept structurally separate from the public rows, same pattern used elsewhere in the app.
+
+✅ 10. **Campaign search**: real client-side full-text token filter over the feed (`CampaignSearch.tsx`), not the disabled stub the original mockup shipped.
+
+✅ 11. **AI GM in-app**: a full `gm_turn` edge function (`prompt.ts`/`context.ts`/`tools.ts`/`provider.ts`/`tts.ts`) with real tool-calling (`log_journal_entry`, `roll_dice`, `adjust_character_hp`, `propose_check`, `note_invention`), persona sourced from `system_packs`, GM budget tracking. Confirmed live and in active use this session (the Bell-Warden dungeon narration was this system, not a fixture).
+
+✅ 12. **Character builder**: a real 7-step wizard (`CharacterBuilder.tsx`, 867 lines) — level, stats, ancestry, class, background, gear, review, with a zero-level branch that skips the class step per the real rule.
+
+✅ 15. **GM prep + handouts** — all 4 slices shipped 2026-08-12 through 2026-08-14: Locations/Places tracker (`0024_locations`), threat/faction clocks, GM reference viewer (persona + house rules, reading real `system_packs` content), player-safe handout maps (`0026_map_handouts`, the first owner-gated action anywhere in the maps command layer). See `grimoire-phase15-gm-prep-handouts-scope.md` in the project for the full slice-by-slice writeup.
+
+**PARTIALLY SHIPPED — the audit found real work done, but also a real gap left in the same item:**
+
+🟡 7. **Session states + lifecycle**: the `paused` state is real and fully wired (`pauseSession`/`resumeSession`/`endSession`/`startSession` all in `lib/campaigns.ts`, all live in the header's session controls). **Still missing:** end-session review — `handleEndSession` just calls the RPC and updates state; there's no XP/treasure summary or "next pickup" note anywhere. SESSION_PROTOCOL.md's checklist still isn't replaced.
+
+🟡 8. **Maps overlay**: Region and Site tabs are both real — uploaded map image, party-position pin (`MapPositionSidebar`/`MapPin`), pace + hexes-remaining travel chips, and (new as of item 15 slice 4) owner-only handout maps for players. **Still missing:** the Scene tab is an honest, labeled stub (`live: false`, "Scene (coming soon)") — no Close/Near/Far scene view exists.
+
+🟡 14. **Multiplayer**: invites and roles are real and working (join-by-code, owner/player role enforced via RLS throughout — confirmed live this session via the header's Invite flow). **Still missing:** presence and realtime sync — there is no `supabase.channel()`, `postgres_changes` subscription, or presence tracking anywhere in the codebase. The whole app runs on "echo what the RPC returned," which means a second signed-in player would not see another player's live actions without refreshing the page. This is the one gap in this section worth flagging as higher-stakes than the others: the family-campaign milestone (Constantine's and LaLa's players joining for real) explicitly depends on this, and a two-account playtest would surface it immediately.
+
+**NOT BUILT — confirmed still open, matches the original claim:**
+
+⬜ 13. **Encounter mode + zone scenes**: no `InitiativeRing`, `MonsterCard`, or `EncounterControls` component exists. `PlayerCard.tsx`'s own comments say as much directly — initiative order "needs data from the (unbuilt) Encounter slice," and the down-state timer "needs stabilize-DC/rounds-remaining data this schema doesn't carry." The Close/Near/Far scene tab is the same stub noted under item 8. Dying/last-stand *rules text* exists as reference content (`lib/rules/shadowdark.ts`) but nothing mechanical is wired to it.
+
+**Suggested order for what's left**, not a hard requirement: item 14's realtime/presence gap is the one with a real milestone riding on it (the family campaign can't actually go multiplayer without it) and is probably worth the next plan gate. Items 7 and 8's remaining halves are each small, self-contained, and could slot in around it. Item 13 (Encounter mode) is the biggest remaining lift and was always sequenced last for a reason — worth keeping it there rather than pulling it forward.
 
 ## Domain component list
 
