@@ -102,6 +102,12 @@ interface MobileJournalViewProps {
    * — same "pre-gated by the caller, this component doesn't re-derive
    * the gate" convention `onOpenRules` already follows. */
   onOpenSearch?: () => void
+  /** Opens `GmReference` from the Tools tile's own tile (BUILD_PLAN.md
+   * item 15 slice 3, 2026-08-14) — same threaded-straight-through shape
+   * as `onOpenRules`/`onOpenSearch`, but always provided rather than
+   * conditionally undefined: see `ToolsDock`'s own doc comment on why
+   * this tile isn't gated behind `gmEnabled` the way Rules is. */
+  onOpenGmReference?: () => void
   onOpenCharacter: (character: Character) => void
   /** Opens `CharacterBuilder` (2026-08-11) — rendered as a button at
    * the top of the Party tab, same always-available shape as
@@ -149,6 +155,7 @@ const VIEW_TITLES: Record<MobileView, string> = {
 const TOOL_TILES: Array<{ icon: IconName; label: string }> = [
   { icon: 'rules', label: 'Rules' },
   { icon: 'search', label: 'Search' },
+  { icon: 'gmRef', label: 'Reference' },
 ]
 
 function ToolTile({ icon, label, onClick }: { icon: IconName; label: string; onClick?: () => void }) {
@@ -239,6 +246,7 @@ export function MobileJournalView({
   campaignId,
   onOpenRules,
   onOpenSearch,
+  onOpenGmReference,
   onOpenCharacter,
   onNewCharacter,
   onOpenDice,
@@ -390,7 +398,15 @@ export function MobileJournalView({
                 <ToolTile
                   key={tile.label}
                   {...tile}
-                  onClick={tile.label === 'Rules' ? onOpenRules : tile.label === 'Search' ? onOpenSearch : undefined}
+                  onClick={
+                    tile.label === 'Rules'
+                      ? onOpenRules
+                      : tile.label === 'Search'
+                        ? onOpenSearch
+                        : tile.label === 'Reference'
+                          ? onOpenGmReference
+                          : undefined
+                  }
                 />
               ))}
               {isOwner && <ToolTile icon="invite" label="Invite" onClick={() => setInviteOpen(true)} />}

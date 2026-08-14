@@ -178,6 +178,38 @@ export async function listRulesChat(campaignId: string): Promise<GmChatMessage[]
   return (data ?? []) as GmChatMessage[]
 }
 
+export interface SystemPack {
+  id: string
+  slug: string
+  title: string
+  body: string
+  sort_order: number
+}
+
+/** The GM reference viewer's source data (BUILD_PLAN.md item 15 slice 3)
+ * -- `system_packs` already exists and is already load-bearing: it's
+ * what `gm_turn/prompt.ts` assembles into the live AI GM's system
+ * prompt every turn (see that file's own header comment), so this
+ * isn't new content, just a new read surface onto content the app
+ * already depends on. Read directly, same "ordinary select, no reason
+ * to spend an edge-function invocation" precedent as `listRulesChat`
+ * above -- `system_packs_select_authenticated`'s RLS policy is `true`
+ * (any authenticated user, not campaign- or owner-scoped), already
+ * exercised this way by `lib/rules/index.ts` for character-creation
+ * content.
+ *
+ * `system` is the campaign's `system` column ('shadowdark' today), not
+ * a campaign id -- packs aren't per-campaign, they're per ruleset. */
+export async function listSystemPacks(system: string): Promise<SystemPack[]> {
+  const { data, error } = await supabase
+    .from('system_packs')
+    .select('id, slug, title, body, sort_order')
+    .eq('system', system)
+    .order('sort_order', { ascending: true })
+  if (error) throw error
+  return (data ?? []) as SystemPack[]
+}
+
 /** Reads the day's budget without spending anything. The edge function
  * answers a `probe` with a budget-only reply: no model call, no
  * telemetry row, one cheap database read.

@@ -12,6 +12,7 @@ import { MapsOverlay } from '../../components/domain/MapsOverlay'
 import { SessionAction } from '../../components/domain/SessionAction'
 import { MobileJournalView } from '../../components/domain/MobileJournalView'
 import { RulesChat } from '../../components/domain/RulesChat'
+import { GmReference } from '../../components/domain/GmReference'
 import { CampaignSearch } from '../../components/domain/CampaignSearch'
 import type { FeedItem } from '../../lib/feed'
 import { useJournalFeed } from '../../hooks/useJournalFeed'
@@ -104,6 +105,11 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
   const [openCharacter, setOpenCharacter] = useState<Character | null>(null)
   const [diceOpen, setDiceOpen] = useState(false)
   const [rulesOpen, setRulesOpen] = useState(false)
+  // GM Reference (BUILD_PLAN.md item 15 slice 3, 2026-08-14) — same
+  // "always wired, no gm_mode gate" shape as search/builder below, not
+  // rulesOpen above: see ToolsDock's own doc comment on
+  // onOpenGmReference for why this one isn't feature-flag-gated.
+  const [gmReferenceOpen, setGmReferenceOpen] = useState(false)
   // Slice 8: desktop-only — ToolsDock's Maps button opens this overlay.
   // Mobile's own "Maps" bottom tab renders MapsPanel inline instead (see
   // MobileJournalView's doc comment), so it needs no state here.
@@ -432,6 +438,7 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
         onNewCharacter={() => setBuilderOpen(true)}
         onOpenDice={() => setDiceOpen(true)}
         onOpenMaps={() => setMapsOpen(true)}
+        onOpenGmReference={() => setGmReferenceOpen(true)}
         gmEnabled={aiGmActive}
         onOpenRules={aiGmActive ? () => setRulesOpen(true) : undefined}
         onLog={(kind, body) => handleLog(kind, body)}
@@ -497,6 +504,7 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
           resolvingCheckId={resolvingCheckId}
           campaignId={campaign.id}
           onOpenRules={aiGmActive ? () => setRulesOpen(true) : undefined}
+          onOpenGmReference={() => setGmReferenceOpen(true)}
           onOpenSearch={() => setSearchOpen(true)}
           onOpenCharacter={setOpenCharacter}
           onNewCharacter={() => setBuilderOpen(true)}
@@ -523,6 +531,8 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
       />
 
       <RulesChat open={rulesOpen} campaignId={campaign.id} onClose={() => setRulesOpen(false)} />
+
+      <GmReference open={gmReferenceOpen} system={campaign.system} onClose={() => setGmReferenceOpen(false)} />
 
       <CampaignSearch open={searchOpen} items={feedItems} sessions={sessions ?? []} onClose={() => setSearchOpen(false)} />
 

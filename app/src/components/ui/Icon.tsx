@@ -1,5 +1,6 @@
 import {
   Backpack,
+  BookMarked,
   BookOpen,
   ChevronLeft,
   ChevronRight,
@@ -95,6 +96,16 @@ import { cx } from '../../lib/cx'
  * roster," and this means "bring someone new into it," which `settings`
  * doesn't capture either). Distinct from `party`'s `Users` for exactly
  * that reason: one person joining the roster, not the roster itself.
+ *
+ * `gmRef` added for the GM Reference viewer's ToolsDock/Tools-tile
+ * entry point (BUILD_PLAN.md item 15 slice 3) — deliberately a
+ * different glyph from `rules`' `BookOpen`, even though both live under
+ * "things you look up mid-session": `rules` opens the out-of-character
+ * Q&A transcript (a conversation), this opens the persona/house-rules
+ * source documents directly (a reference shelf). `BookMarked` reads as
+ * "the book you keep a place in," distinct enough from the open-book
+ * `rules` glyph that the two tiles don't look like duplicates of each
+ * other.
  */
 const icons = {
   hp: Heart,
@@ -122,6 +133,7 @@ const icons = {
   voiceOff: VolumeX,
   send: Send,
   invite: UserPlus,
+  gmRef: BookMarked,
 } as const
 
 export type IconName = keyof typeof icons

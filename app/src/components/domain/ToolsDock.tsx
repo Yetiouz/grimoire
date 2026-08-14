@@ -19,6 +19,14 @@ interface ToolsDockProps {
    * exists. Optional only so the stub state (pre-slice-8 callers, and
    * this component's own tests) still renders correctly disabled. */
   onOpenMaps?: () => void
+  /** BUILD_PLAN.md item 15 slice 3 (2026-08-14). Same "always provided
+   * once the overlay exists" shape as `onOpenMaps`, not `onOpenRules`:
+   * the GM reference viewer reads `system_packs`, whose RLS is open to
+   * any campaign member (see `GmReference.tsx`'s own doc comment), so
+   * there's no `gm_mode` gate for this button the way there is for
+   * Rules. Optional only for the same pre-existence/test reason as the
+   * other two. */
+  onOpenGmReference?: () => void
   className?: string
 }
 
@@ -62,7 +70,7 @@ function DockButton({
  * pixel-for-pixel. Labels stay at `text.label` (11px) rather than the
  * mockup's 8px for the same reason: typography is a closed set too.
  */
-export function ToolsDock({ onOpenDice, diceDisabled, onOpenRules, onOpenMaps, className }: ToolsDockProps) {
+export function ToolsDock({ onOpenDice, diceDisabled, onOpenRules, onOpenMaps, onOpenGmReference, className }: ToolsDockProps) {
   return (
     <div className={cx('flex gap-2', className)}>
       <DockButton
@@ -81,6 +89,17 @@ export function ToolsDock({ onOpenDice, diceDisabled, onOpenRules, onOpenMaps, c
         title={onOpenRules ? 'Rules chat' : 'Rules (coming soon)'}
         onClick={onOpenRules}
         disabled={!onOpenRules}
+      />
+      {/* GM Reference (slice 3): the persona/house-rules source docs
+        * themselves, not a gated stub — see `onOpenGmReference`'s own
+        * doc comment for why this one isn't behind the `gm_mode` check
+        * `Rules` is. */}
+      <DockButton
+        icon="gmRef"
+        label="Reference"
+        title={onOpenGmReference ? 'GM reference' : 'GM reference (coming soon)'}
+        onClick={onOpenGmReference}
+        disabled={!onOpenGmReference}
       />
       <DockButton icon="dice" label="Roll" title="Roll dice" onClick={onOpenDice} disabled={diceDisabled} />
     </div>

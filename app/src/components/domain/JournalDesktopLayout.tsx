@@ -94,6 +94,11 @@ interface JournalDesktopLayoutProps {
    * undefined`), same convention `MobileJournalView` already uses —
    * this component doesn't re-derive the gate itself. */
   onOpenRules?: () => void
+  /** BUILD_PLAN.md item 15 slice 3 (2026-08-14) — threaded straight to
+   * `ToolsDock`, same "always provided, not gated behind `gmEnabled`"
+   * shape as `onOpenMaps` above, not `onOpenRules`: see `ToolsDock`'s
+   * own doc comment on `onOpenGmReference` for why. */
+  onOpenGmReference?: () => void
   onLog: (kind: LogEntryKind, body: string) => Promise<void>
   onAskGm?: (input: string) => Promise<GmTurnResult>
   onAskRules?: (input: string) => Promise<GmTurnResult>
@@ -161,6 +166,7 @@ export function JournalDesktopLayout({
   onOpenMaps,
   gmEnabled,
   onOpenRules,
+  onOpenGmReference,
   onLog,
   onAskGm,
   onAskRules,
@@ -217,7 +223,7 @@ export function JournalDesktopLayout({
             <Button type="button" variant="dashed" onClick={onNewCharacter}>+ New Character</Button>
           </ColumnCard>
           <ColumnCard headerLeft="Tools">
-            <ToolsDock onOpenDice={onOpenDice} diceDisabled={!sessionActive} onOpenRules={onOpenRules} onOpenMaps={onOpenMaps} />
+            <ToolsDock onOpenDice={onOpenDice} diceDisabled={!sessionActive} onOpenRules={onOpenRules} onOpenMaps={onOpenMaps} onOpenGmReference={onOpenGmReference} />
           </ColumnCard>
         </div>
       )}
