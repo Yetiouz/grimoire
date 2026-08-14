@@ -3,6 +3,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import { supabase } from '../lib/supabase'
 import type { CampaignSession, JournalEntry } from '../lib/campaigns'
 import type { Character } from '../lib/characters'
+import type { TurnOrder } from '../lib/encounters'
 
 /** Upsert-by-id, matching every mutation handler in `JournalScreen.tsx`
  * (`handleLog`, `handleStartSession`, etc.) — those all echo an RPC's
@@ -38,15 +39,21 @@ function removeById<T extends { id: string }>(prev: T[] | null, id: string): T[]
  * new state shape, no parallel "remote" copy to reconcile — a realtime
  * event and a local echo are indistinguishable once they land here.
  *
- * Scoped to the three tables a live session actually mutates during
+ * Scoped to the four tables a live session actually mutates during
  * play — `sessions` (start/pause/resume/end), `characters` (HP/gold/
- * sheet edits), `journal_entries` (the feed) — not every table
+ * sheet edits), `journal_entries` (the feed), `turn_order` (Encounter
+ * mode, migration `0032_encounter_mode_realtime`) — not every table
  * `useJournalScreenData` loads. `quests`/`npcs`/`factions`/`treasure`/
  * `notes`/`locations`/`clocks` are GM-curated world content, edited
  * rarely and almost always by whoever's driving, not the "what did the
  * other player just do" signal this slice targets; they can be added
- * the same way later if that stops being true. See migration
- * `0027_realtime_publication.sql` for the publication side of this —
+ * the same way later if that stops being true. `encounter_monsters` is
+ * deliberately NOT subscribed here — that table's detail is only ever
+ * shown inside `EncounterPanel`, which owns its own scoped subscription
+ * lifecycle rather than adding a fifth always-on channel every screen
+ * pays for (same reasoning `scene_positions` was left out for). See
+ * migration `0027_realtime_publication.sql`/
+ * `0032_encounter_mode_realtime.sql` for the publication side of this —
  * a table has to be added to `supabase_realtime` before Postgres
  * Changes will emit anything for it at all, RLS aside.
  *
@@ -57,15 +64,22 @@ function removeById<T extends { id: string }>(prev: T[] | null, id: string): T[]
  * row it couldn't already `SELECT`; the filter is purely to avoid
  * paying for events from every OTHER campaign this project has.
  *
- * One channel for all three tables (not three channels) — cheaper on
+ * One channel for all four tables (not four channels) — cheaper on
  * both ends, and there's no ordering dependency between them that
  * would need separate subscriptions to preserve.
+ *
+ * `turn_order`'s primary key is `campaign_id`, not a separate `id` (one
+ * row per campaign — see migration `0031_encounter_mode`'s own doc
+ * comment) — so its handler below sets the single row directly rather
+ * than reusing `upsertById`/`removeById`, which assume an `id`-keyed
+ * array.
  */
 export function useCampaignRealtime(
   campaignId: string,
   setSessions: Dispatch<SetStateAction<CampaignSession[] | null>>,
   setEntries: Dispatch<SetStateAction<JournalEntry[] | null>>,
   setCharacters: Dispatch<SetStateAction<Character[] | null>>,
+  setTurnOrder: Dispatch<SetStateAction<TurnOrder | null>>,
 ) {
   useEffect(() => {
     const channel = supabase
@@ -103,10 +117,17 @@ export function useCampaignRealtime(
           }
         },
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'turn_order', filter: `campaign_id=eq.${campaignId}` },
+        (payload) => {
+          setTurnOrder(payload.eventType === 'DELETE' ? null : (payload.new as TurnOrder))
+        },
+      )
       .subscribe()
 
     return () => {
       void supabase.removeChannel(channel)
     }
-  }, [campaignId, setSessions, setEntries, setCharacters])
+  }, [campaignId, setSessions, setEntries, setCharacters, setTurnOrder])
 }

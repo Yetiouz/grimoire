@@ -7,6 +7,8 @@ import { listQuests } from '../lib/quests'
 import type { Quest } from '../lib/quests'
 import { listCampaignNotes, listClocks, listFactions, listLocationSecrets, listLocations, listNpcStatBlocks, listNpcs, listTreasure } from '../lib/world'
 import type { Clock, Faction, Location, LocationSecret, Note, Npc, NpcStatBlock, Treasure } from '../lib/world'
+import { getTurnOrder } from '../lib/encounters'
+import type { TurnOrder } from '../lib/encounters'
 
 /**
  * `JournalScreen`'s core data fetch — sessions, entries, characters,
@@ -70,6 +72,17 @@ export function useJournalScreenData(campaignId: string) {
   // +1 click would be wasteful and would also flash the whole Quest Log
   // column's loading state for a one-row change.
   const [clocks, setClocks] = useState<Clock[] | null>(null)
+  // Encounter mode (BUILD_PLAN.md item 13 phase 2, 2026-08-14) — loaded
+  // alongside everything else here, same reasoning `clocks` above
+  // already established (a live table always visible in the party rail,
+  // not opened on demand): `PlayerCard`'s active-turn ring needs to know
+  // whose turn it is from the moment the journal screen mounts, not only
+  // once the Maps overlay's Scene tab happens to be opened. Kept live
+  // afterward by `useCampaignRealtime`'s own `turn_order` subscription
+  // (migration `0032_encounter_mode_realtime`), same pattern
+  // `sessions`/`characters`/`entries` already use — `load()` only ever
+  // needs to run once per mount for this one.
+  const [turnOrder, setTurnOrder] = useState<TurnOrder | null>(null)
   const [myMembership, setMyMembership] = useState<CampaignMember | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -88,6 +101,7 @@ export function useJournalScreenData(campaignId: string) {
         statBlockRows,
         locationSecretRows,
         clockRows,
+        turnOrderRow,
         membership,
       ] = await Promise.all([
         listSessions(campaignId),
@@ -102,6 +116,7 @@ export function useJournalScreenData(campaignId: string) {
         listNpcStatBlocks(campaignId),
         listLocationSecrets(campaignId),
         listClocks(campaignId),
+        getTurnOrder(campaignId),
         getMyMembership(campaignId),
       ])
       setSessions(sessionRows)
@@ -116,6 +131,7 @@ export function useJournalScreenData(campaignId: string) {
       setNpcStatBlocks(new Map(statBlockRows.map((row) => [row.npc_id, row])))
       setLocationSecrets(new Map(locationSecretRows.map((row) => [row.location_id, row])))
       setClocks(clockRows)
+      setTurnOrder(turnOrderRow)
       setMyMembership(membership)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong loading the journal.')
@@ -142,6 +158,7 @@ export function useJournalScreenData(campaignId: string) {
     quests, setQuests,
     npcs, factions, treasure, notes, locations, npcStatBlocks, locationSecrets,
     clocks, reloadClocks,
+    turnOrder, setTurnOrder,
     myMembership,
     error, setError,
     load,
