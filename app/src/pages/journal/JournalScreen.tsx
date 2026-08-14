@@ -233,14 +233,6 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
   const sessionMeta = headerSession
     ? `${gmModeLabel} · Session ${headerSession.number}${sessionPaused ? ' · Paused' : ''}`
     : `${gmModeLabel} · No sessions yet`
-  // Journal column header label: the mockup's `.col-head` shows a scene
-  // title we have no equivalent field for (no encounter/scene model
-  // exists yet) — the session's own real `title` is the closest honest
-  // substitute when set (only session 1's imported "…Prologue" has one
-  // today), falling back to the same session meta the header already
-  // shows rather than inventing scene text.
-  const journalColumnLabel = headerSession?.title ?? sessionMeta
-
   // BOB_queue task 1: the unified feed. Owns the gm_chat/gm_checks reads
   // and the entries+gm_chat+gm_checks merge — see hooks/useJournalFeed.ts
   // for why this isn't just inlined here. Reads are gated on the plain
@@ -433,7 +425,6 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
         entries={entries}
         error={error}
         onRetry={() => { setError(null); void load() }}
-        journalColumnLabel={journalColumnLabel}
         activeFilters={activeFilters}
         onToggleFilter={toggleFilter}
         feedItems={feedItems}

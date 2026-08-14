@@ -8,16 +8,16 @@ interface JournalHeaderProps {
   campaignName: string
   sessionMeta: string
   /** The Start/End Session + pause control (JournalScreen owns the
-   * command calls) — rendered in the utility row's right-hand group. */
+   * command calls) — rendered in the top-right group, between search
+   * and the hamburger. */
   sessionAction: ReactNode
   /** Opens the owner-only invite modal (`CampaignInviteModal` —
-   * `JournalScreen` owns the open state). As of the 2026-08-14 header
-   * rework ("Option B"), Invite is no longer a button in the header at
-   * all — it's a hamburger-menu item, same tier as "Back to Campaigns"/
-   * "Sign out" below. Only rendered when given: `JournalScreen` passes
-   * this exclusively when the signed-in user is the campaign owner (the
-   * RPC behind it enforces that server-side too, but there's no reason
-   * to show a menu item a player could never use). */
+   * `JournalScreen` owns the open state). Lives in the hamburger menu,
+   * not the button row — see the component doc comment. Only rendered
+   * when given: `JournalScreen` passes this exclusively when the
+   * signed-in user is the campaign owner (the RPC behind it enforces
+   * that server-side too, but there's no reason to show a menu item a
+   * player could never use). */
   onOpenInvite?: () => void
   onBack: () => void
   /** Wired into the hamburger menu's "Sign out" item (2026-08-11 —
@@ -33,63 +33,53 @@ interface JournalHeaderProps {
 }
 
 /**
- * Journal's two-bar header — "Option B" from the 2026-08-14 header
- * mockup round ("title-led hero row + controls get their own row"),
- * replacing the v10/v11 shape this screen shipped with since the
- * visual-reconciliation pass. Two complaints drove the rework (owner
- * review of a live mockup, not a bug report): the old top bar's bare
- * `/logo.webp` mark read as an orphaned icon with nothing pairing it to
- * "this is Grimoire, tap to go back" — and the old campaign-bar's
- * name+meta stack getting squeezed against Invite+pause+Stop Session on
- * a narrow phone was the same class of crowding problem `PlayerCard`'s
- * stat row and the desktop party column already hit twice (see
- * `JournalDesktopLayout`'s own 16rem->18rem->20rem doc comments) — just
- * one level up, in the chrome instead of the content.
+ * Journal's single-row header — third pass in the 2026-08-14 rework
+ * (mockup review -> "Option B" two-row split -> this single-row
+ * collapse), driven by two more owner notes on the live Option B build:
+ * "AI GM · Session 15" was already showing a second time on the
+ * journal column itself (`JournalDesktopLayout`'s `ColumnCard`), and
+ * the pause/Stop Session buttons read better sitting with the other
+ * chrome controls (search, hamburger) than parked in their own row
+ * below.
  *
- * Top bar is now the hero row: the brand mark sits directly beside the
- * campaign name — both inside one button, both the back-to-campaigns
- * tap target — instead of floating alone with nothing to pair it to.
- * Solves "logo looks out of place" by giving it an obvious textual
- * partner rather than relabeling or shrinking it. Search + hamburger
- * keep their existing top-right position. The mark and the title
- * deliberately carry no responsive size classes anywhere in this file,
- * so they stay in constant visual proportion to each other at every
- * viewport width by construction — the mockup round's "the G isn't the
- * same size relative to the title on mobile vs desktop" note was an
- * artifact of the static mockup itself (which hardcoded two different
- * pixel sizes per illustration frame for comparison); this component
- * only ever renders once, not twice per breakpoint, so that drift can't
- * happen here.
+ * One row now, not two. The back-to-campaigns button is a lockup: the
+ * brand mark beside a two-line text block (campaign name, then session
+ * meta right under it — the pre-Option-B stacked shape, just moved
+ * in next to a bigger logo instead of alone under a floating one). The
+ * mark is sized to visually span both lines (`h-9`, up from the
+ * single-line `h-6` original) rather than the earlier hero-row's
+ * single-line height — a real, deliberate size change this time, not
+ * the "same size everywhere, no responsive drift" guarantee the
+ * previous round's doc comment described (that guarantee still holds:
+ * nothing here carries a breakpoint-specific size override, so mark
+ * and text stay in this same proportion at every viewport width).
+ * min-w-0 down the chain (button, text block, both lines) so a very
+ * long campaign name truncates instead of pushing search/session
+ * controls/hamburger off-screen — same `PlayerCard` truncation
+ * convention used elsewhere. `alt=""` on the mark: the button's own
+ * `aria-label` is already the accessible name for the whole control.
  *
- * Utility row: session meta on the left (no longer stacked directly
- * under the title — see "what this costs" below), pause + Start/End
- * Session pinned right. Invite used to live in this row too; it's gone
- * from here entirely as of this rework, moved into the hamburger menu.
- * That's a real cost — getting to the invite code is one more tap for
- * the owner than it used to be — but Invite was also the one control in
- * this row that most viewers (every non-owner) could never use anyway,
- * making it the one that made sense to demote rather than the session
- * controls everyone reaches for.
+ * Right-hand group, left to right: search (hidden below `sm:`, same as
+ * always), the session action (pause + Start/End Session), then the
+ * hamburger — session controls sit between search and the menu button
+ * on every width; search just drops out below `sm:`, which
+ * automatically leaves the session controls as the hamburger's
+ * immediate left neighbor on a phone without a separate mobile-only
+ * ordering rule.
  *
  * The hamburger (2026-08-11, "make the hamburger button usable") menu
- * now has three items instead of two: "Back to Campaigns" (same
- * `onBack` the hero row's own tap already calls), the owner-only
- * "Invite" item (only rendered when `onOpenInvite` is given), and "Sign
- * out". Still a small `role="menu"` popover anchored to the button
- * rather than `Overlay` — a few nav/action links don't need a
- * full-screen backdrop dialog. Closes on outside click, Escape, or
- * picking an item.
+ * still carries three items: "Back to Campaigns" (same `onBack` the
+ * lockup's own tap already calls), the owner-only "Invite" item (only
+ * rendered when `onOpenInvite` is given — moved here in the Option B
+ * pass and unchanged since), and "Sign out". Small `role="menu"`
+ * popover anchored to the button, not `Overlay` — a few nav/action
+ * links don't need a full-screen backdrop dialog. Closes on outside
+ * click, Escape, or picking an item.
  *
- * What this rework costs, named rather than left implicit: the campaign
- * name and session meta are no longer visually paired as a title+
- * subtitle stack — they're on separate rows now — so "AI GM · Session
- * 15" reads more like a toolbar label than a subtitle. And Stop
- * Session collapsing to an icon-only red square below `sm:` (see its
- * own doc comment in `SessionAction.tsx`) means a player on the
- * narrowest phones loses the in-progress "Stopping…" text during that
- * async call — same tradeoff Pause's icon-only button already accepted
- * everywhere; only `disabled:opacity-40` signals the pending state
- * there too.
+ * `JournalDesktopLayout`'s own journal column now labels itself plainly
+ * ("Journal", a static string — see that file) instead of repeating
+ * this same session-meta text, since this header shows it now. That
+ * dedup is the other half of why this round happened at all.
  */
 export function JournalHeader({ campaignName, sessionMeta, sessionAction, onOpenInvite, onBack, onSignOut, onOpenSearch }: JournalHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -118,24 +108,18 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, onOpen
 
   return (
     <header className="border-b border-line">
-      <div className="flex items-center justify-between gap-4 border-b border-line-soft px-4 py-2">
-        {/* Hero row (2026-08-14 rework): brand mark + campaign name
-          * share one tap target instead of the mark floating alone.
-          * min-w-0 on both the button and the h1 so a very long
-          * campaign name truncates instead of pushing search/hamburger
-          * off-screen — same PlayerCard truncation convention used
-          * elsewhere in this app. alt="" on the mark: the button's own
-          * aria-label is already the accessible name for the whole
-          * control, so a second "Grimoire" announcement on the image
-          * would just be noise for screen readers. */}
+      <div className="flex items-center justify-between gap-4 px-4 py-2">
         <button
           type="button"
           onClick={onBack}
           aria-label="Back to campaigns"
-          className="-ml-2 flex min-h-11 min-w-0 items-center gap-2 rounded-button py-1 pl-2 pr-3 hover:bg-panel2"
+          className="-ml-2 flex min-h-11 min-w-0 items-center gap-2.5 rounded-button py-1.5 pl-2 pr-3 hover:bg-panel2"
         >
-          <img src="/logo.webp" alt="" className="h-6 w-auto shrink-0" />
-          <h1 className={cx(text.h3, 'min-w-0 truncate')}>{campaignName}</h1>
+          <img src="/logo.webp" alt="" className="h-9 w-auto shrink-0" />
+          <div className="min-w-0 text-left">
+            <h1 className={cx(text.h3, 'truncate')}>{campaignName}</h1>
+            <p className={cx(text.label, 'mt-0.5 truncate')}>{sessionMeta}</p>
+          </div>
         </button>
         <div className="flex shrink-0 items-center gap-2">
           <button
@@ -156,6 +140,7 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, onOpen
             <Icon name="search" />
             <span>Search the campaign…</span>
           </button>
+          {sessionAction}
           <div className="relative" ref={menuRef}>
             <button
               type="button"
@@ -223,13 +208,6 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, onOpen
             )}
           </div>
         </div>
-      </div>
-      {/* Utility row (2026-08-14 rework): session meta left, pause +
-        * Start/End Session right — no title to pair with here anymore
-        * (see the component doc comment's "what this costs"). */}
-      <div className="flex items-center justify-between gap-3 px-4 py-2">
-        <p className={cx(text.label, 'min-w-0 truncate')}>{sessionMeta}</p>
-        <div className="flex shrink-0 items-center gap-2">{sessionAction}</div>
       </div>
     </header>
   )

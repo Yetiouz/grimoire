@@ -53,7 +53,6 @@ interface JournalDesktopLayoutProps {
   entries: JournalEntry[] | null
   error: string | null
   onRetry: () => void
-  journalColumnLabel: string
   activeFilters: Set<FilterKind>
   onToggleFilter: (kind: FilterKind) => void
   feedItems: FeedItem[]
@@ -152,7 +151,6 @@ export function JournalDesktopLayout({
   entries,
   error,
   onRetry,
-  journalColumnLabel,
   activeFilters,
   onToggleFilter,
   feedItems,
@@ -243,9 +241,18 @@ export function JournalDesktopLayout({
         * header slot kills the extra row AND the visual "same chips
         * twice" confusion with the composer's kind pickers in one
         * move. Gated on the same loaded state as the feed so chips
-        * don't render over the skeleton. */}
+        * don't render over the skeleton.
+        *
+        * headerLeft is a plain static "Journal" now (2026-08-14,
+        * header rework round 3) -- it used to be the dynamic
+        * journalColumnLabel (session title, or "<mode> · Session N" as
+        * a fallback), but JournalHeader shows that same session meta
+        * itself now, right under the campaign name. Showing it a
+        * second time here was the exact duplication an owner note
+        * flagged; this card just names what it is, like its Party/
+        * Tools siblings already do. */}
       <ColumnCard
-        headerLeft={journalColumnLabel}
+        headerLeft="Journal"
         headerRight={
           sessions !== null && entries !== null ? (
             <JournalFilterBar compact active={activeFilters} onToggle={onToggleFilter} showRules={gmEnabled} />

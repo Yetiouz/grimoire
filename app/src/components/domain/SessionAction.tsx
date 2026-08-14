@@ -17,6 +17,43 @@ interface SessionActionProps {
   onResume: () => void
 }
 
+/** Shared 16x16 viewBox for the three filled transport glyphs below —
+ * deliberately NOT `Icon.tsx`'s 24px stroke-only grid (that spec is for
+ * outline icons; pause/play/stop read as solid glyphs everywhere, same
+ * as any media-transport control). Drawn on one shared coordinate
+ * system so their filled area — and so their visual weight — actually
+ * matches instead of relying on a font's own glyph metrics: this
+ * replaces three plain Unicode characters (⏸ ▶ ■, 2026-08-14 fix,
+ * "fix the pause icon so it matches the style of the stop button") that
+ * rendered at inconsistent sizes against each other depending on the
+ * browser's font, most visibly pause's ⏸ reading noticeably smaller
+ * and lighter than stop's ■ once both sat side by side as matching
+ * icon-only squares. */
+function PauseGlyph() {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true">
+      <rect x="3" y="2" width="3.2" height="12" rx="1" />
+      <rect x="9.8" y="2" width="3.2" height="12" rx="1" />
+    </svg>
+  )
+}
+
+function ResumeGlyph() {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true">
+      <path d="M4 2.3v11.4a.8.8 0 0 0 1.22.68l9.1-5.7a.8.8 0 0 0 0-1.36l-9.1-5.7A.8.8 0 0 0 4 2.3z" />
+    </svg>
+  )
+}
+
+function StopGlyph() {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true">
+      <rect x="3" y="3" width="10" height="10" rx="1.5" />
+    </svg>
+  )
+}
+
 /**
  * v11 (SPEC decision log): the session button IS the session indicator —
  * no separate status dot. "Start Session" renders green-tinted when no
@@ -28,7 +65,7 @@ interface SessionActionProps {
  * reversed directly with the owner rather than silently overridden (see
  * `lib/campaigns.ts`'s `pauseSession` doc comment). Disabled whenever
  * there's no open session to pause (nothing to act on); while open, it
- * toggles between pause (yellow, ⏸) and resume (green, ▶) depending on
+ * toggles between pause (yellow) and resume (green) depending on
  * `paused` — same tint pattern as Start/Stop (`color/12` bg, `color/45`
  * border, matching `DangerBanner`'s tone treatment) rather than a third
  * new color.
@@ -47,6 +84,10 @@ interface SessionActionProps {
  * mobile button during that async call — same tradeoff the pause
  * button already made everywhere; only `disabled:opacity-40` signals
  * the pending state there too, and now here.
+ *
+ * Pause/resume/Stop all draw from the shared `*Glyph` components above
+ * (2026-08-14, same-day follow-up) instead of a bare Unicode character
+ * each — see that comment for why.
  *
  * JournalScreen still owns every command call; this component only
  * renders state and forwards clicks.
@@ -71,7 +112,7 @@ export function SessionAction({ open, paused, starting, ending, pausing, resumin
           title="Resume this session"
           className={cx(base, 'w-11 border-green/45 bg-green/10 px-0 text-green')}
         >
-          ▶
+          <ResumeGlyph />
         </button>
       ) : (
         <button
@@ -82,7 +123,7 @@ export function SessionAction({ open, paused, starting, ending, pausing, resumin
           title={open ? 'Pause this session' : 'Start a session to pause it'}
           className={cx(base, 'w-11 border-yellow/45 bg-yellow/10 px-0 text-yellow')}
         >
-          ⏸
+          <PauseGlyph />
         </button>
       )}
       {open ? (
@@ -94,7 +135,9 @@ export function SessionAction({ open, paused, starting, ending, pausing, resumin
           aria-label="Stop Session"
           className={cx(base, 'w-11 px-0 sm:w-auto sm:px-4', 'border-red/45 bg-red/10 text-red')}
         >
-          <span className="sm:hidden" aria-hidden="true">■</span>
+          <span className="sm:hidden">
+            <StopGlyph />
+          </span>
           <span className="hidden sm:inline">{ending ? 'Stopping…' : 'Stop Session'}</span>
         </button>
       ) : (
