@@ -30,6 +30,7 @@ import type { DieType, RollMode } from '../../lib/dice'
 import { gmEnabled } from '../../lib/gm'
 import { configureAiSpeech } from '../../lib/speech'
 import type { LogEntryKind } from '../../components/ui/LogEntryRow'
+import { readCombatants } from '../../lib/encounters'
 
 interface JournalScreenProps {
   campaign: Campaign
@@ -96,6 +97,7 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
     quests,
     npcs, factions, treasure, notes, locations, npcStatBlocks, locationSecrets,
     clocks, reloadClocks,
+    turnOrder, setTurnOrder,
     myMembership,
     error, setError,
     load,
@@ -106,9 +108,28 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
   // anyone else did" into an actually-live shared session. Both take
   // the exact same setters/ids `useJournalScreenData` above already
   // exposes; see each hook's own doc comment for why they're split
-  // rather than folded into that data hook.
-  useCampaignRealtime(campaign.id, setSessions, setEntries, setCharacters)
+  // rather than folded into that data hook. `setTurnOrder` (Encounter
+  // mode phase 2, 2026-08-14) rides the same channel as
+  // sessions/entries/characters — see `useCampaignRealtime`'s own doc
+  // comment on why `turn_order` is the one encounter table subscribed
+  // here rather than locally inside `EncounterPanel`.
+  useCampaignRealtime(campaign.id, setSessions, setEntries, setCharacters, setTurnOrder)
   const onlineMemberIds = useCampaignPresence(campaign.id, myMembership?.id ?? null)
+
+  // Encounter mode phase 2 (BUILD_PLAN.md item 13, 2026-08-14) —
+  // `PlayerCard`'s active-turn ring needs "which character (if any) is
+  // up right now," not the raw `turn_order` row itself; narrowed here
+  // once rather than in both `JournalDesktopLayout` and
+  // `MobileJournalView`, same reasoning `activeCharacter` below is
+  // computed once for its own two call sites. `null` whenever no
+  // encounter is running, `combatants` is still empty (rolled nobody
+  // yet), or the active combatant is a monster, not a character.
+  const activeTurnCharacterId = (() => {
+    if (!turnOrder) return null
+    const combatants = readCombatants(turnOrder.combatants)
+    const active = combatants[turnOrder.active_index]
+    return active && active.combatant_type === 'character' ? active.combatant_id : null
+  })()
 
   const [startingSession, setStartingSession] = useState(false)
   const [endingSession, setEndingSession] = useState(false)
@@ -438,6 +459,7 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
       <JournalDesktopLayout
         characters={characters}
         onlineMemberIds={onlineMemberIds}
+        activeTurnCharacterId={activeTurnCharacterId}
         quests={quests}
         npcs={npcs}
         factions={factions}
@@ -517,6 +539,10 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
           clocks={clocks ?? []}
           reloadClocks={reloadClocks}
           sessions={sessions ?? []}
+          sessionId={openSession?.id ?? null}
+          turnOrder={turnOrder}
+          onTurnOrderChange={setTurnOrder}
+          activeTurnCharacterId={activeTurnCharacterId}
           items={feedItems}
           sessionOpen={sessionActive}
           sessionPaused={sessionPaused}
@@ -563,7 +589,16 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
 
       <CampaignSearch open={searchOpen} items={feedItems} sessions={sessions ?? []} onClose={() => setSearchOpen(false)} />
 
-      <MapsOverlay open={mapsOpen} campaignId={campaign.id} isOwner={isOwner} characters={characters ?? []} onClose={() => setMapsOpen(false)} />
+      <MapsOverlay
+        open={mapsOpen}
+        campaignId={campaign.id}
+        isOwner={isOwner}
+        characters={characters ?? []}
+        sessionId={openSession?.id ?? null}
+        turnOrder={turnOrder}
+        onTurnOrderChange={setTurnOrder}
+        onClose={() => setMapsOpen(false)}
+      />
 
       <CampaignInviteModal campaignId={campaign.id} open={inviteOpen} onClose={() => setInviteOpen(false)} />
 
