@@ -25,6 +25,8 @@ import type { CampaignSession } from '../../lib/campaigns'
 import type { Character } from '../../lib/characters'
 import type { Quest } from '../../lib/quests'
 import type { Faction, Note, Npc, NpcStatBlock, Treasure, Location, LocationSecret, Clock } from '../../lib/world'
+import type { TurnOrder } from '../../lib/encounters'
+import type { Dispatch, SetStateAction } from 'react'
 
 interface MobileJournalViewProps {
   loading: boolean
@@ -57,6 +59,19 @@ interface MobileJournalViewProps {
   clocks: Clock[]
   reloadClocks: () => Promise<void>
   sessions: CampaignSession[]
+  /** Encounter mode phase 2 (BUILD_PLAN.md item 13, 2026-08-14) —
+   * `sessionId` threads straight to `MapsPanel`'s Scene tab for
+   * `end_encounter`'s journal echo; `turnOrder`/`onTurnOrderChange` do
+   * the same (lifted to `JournalScreen`, see `useCampaignRealtime`'s own
+   * doc comment). `activeTurnCharacterId` is the one this component
+   * actually reads itself — the `character.id` of whichever combatant is
+   * up right now (`null` if no encounter is running or a monster is
+   * active), matched against each `PlayerCard` below the same way
+   * `onlineMemberIds` already is for `isOnline`. */
+  sessionId: string | null
+  turnOrder: TurnOrder | null
+  onTurnOrderChange: Dispatch<SetStateAction<TurnOrder | null>>
+  activeTurnCharacterId: string | null
   /** BOB_queue task 1: the already-merged, already-sorted feed — see
    * lib/feed.ts's buildFeed(). Was `entries: JournalEntry[]` before
    * this task; JournalScreen now builds this once (useJournalFeed) and
@@ -236,6 +251,10 @@ export function MobileJournalView({
   clocks,
   reloadClocks,
   sessions,
+  sessionId,
+  turnOrder,
+  onTurnOrderChange,
+  activeTurnCharacterId,
   items,
   sessionOpen,
   sessionPaused,
@@ -316,6 +335,7 @@ export function MobileJournalView({
           onClick={() => onOpenCharacter(activeCharacter)}
           className="mx-4 mt-3 shrink-0"
           isOnline={activeCharacter.member_id != null && (onlineMemberIds?.has(activeCharacter.member_id) ?? false)}
+          isActiveTurn={activeCharacter.id === activeTurnCharacterId}
         />
       )}
 
@@ -428,6 +448,7 @@ export function MobileJournalView({
                     character={character}
                     onClick={() => onOpenCharacter(character)}
                     isOnline={character.member_id != null && (onlineMemberIds?.has(character.member_id) ?? false)}
+                    isActiveTurn={character.id === activeTurnCharacterId}
                   />
                 ))
               ) : (
@@ -456,7 +477,14 @@ export function MobileJournalView({
             </div>
           ) : campaignId ? (
             <div className="p-4">
-              <MapsPanel campaignId={campaignId} isOwner={isOwner} characters={characters} />
+              <MapsPanel
+                campaignId={campaignId}
+                isOwner={isOwner}
+                characters={characters}
+                sessionId={sessionId}
+                turnOrder={turnOrder}
+                onTurnOrderChange={onTurnOrderChange}
+              />
             </div>
           ) : (
             <div className="p-4">

@@ -32,6 +32,14 @@ interface JournalDesktopLayoutProps {
    * file) — always passed a real (possibly empty) set from
    * `JournalScreen` in practice. */
   onlineMemberIds?: Set<string>
+  /** Encounter mode phase 2 (BUILD_PLAN.md item 13, 2026-08-14) — same
+   * "narrow before handing down" shape `onlineMemberIds` above already
+   * established, just a single id instead of a set (only one combatant
+   * is ever active at a time): the `character.id` of whichever
+   * combatant `turn_order.active_index` currently points at, or `null`
+   * if no encounter is running or a monster is active. Matched against
+   * each `PlayerCard` below the same way `isOnline` already is. */
+  activeTurnCharacterId: string | null
   quests: Quest[] | null
   /** BUILD_PLAN.md slice 9 (`WorldTabs`) — loaded alongside `quests` by
    * `useJournalScreenData`, threaded straight through the same way
@@ -147,6 +155,7 @@ interface JournalDesktopLayoutProps {
 export function JournalDesktopLayout({
   characters,
   onlineMemberIds,
+  activeTurnCharacterId,
   quests,
   npcs,
   factions,
@@ -234,6 +243,7 @@ export function JournalDesktopLayout({
                 character={character}
                 onClick={() => onOpenCharacter(character)}
                 isOnline={character.member_id != null && (onlineMemberIds?.has(character.member_id) ?? false)}
+                isActiveTurn={character.id === activeTurnCharacterId}
               />
             ))}
             {characters.length === 0 && (
