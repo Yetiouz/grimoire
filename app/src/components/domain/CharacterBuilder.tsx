@@ -82,11 +82,22 @@ const cardBase =
   'rounded-[12px] border border-line-soft bg-panel2 p-3 text-left transition-colors hover:border-line-hover'
 const cardSelected = 'border-purple bg-purple/10'
 
+// One color per sourcebook (owner request, 2026-08-15 — playtesting
+// surfaced that all three expansions rendered as the identical orange
+// badge, only Core stood apart). Reuses existing palette tokens rather
+// than inventing new ones (`grimoire-style-guide.md`'s "don't introduce
+// a new color without giving it a job first") — cyan and pink are
+// already documented as flexible "secondary indicator accent" slots,
+// and orange/yellow get a second job here the same way orange already
+// had one before this change (the badge itself, not "alert/attention").
+// Purple/green/red are left alone: they're this app's buttons, live-
+// status, and danger colors respectively, and a sourcebook badge reading
+// as any of those in a class list would be actively misleading.
 const SOURCE_BADGE: Record<RulesClass['source'], string> = {
   Core: 'border-cyan/35 text-cyan',
-  Diablerie: 'border-orange/35 text-orange',
+  Diablerie: 'border-pink/35 text-pink',
   'Red Sands': 'border-orange/35 text-orange',
-  'Midnight Sun': 'border-orange/35 text-orange',
+  'Midnight Sun': 'border-yellow/35 text-yellow',
 }
 
 const STEP_LABEL: Record<StepKey, string> = {
@@ -604,6 +615,20 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                 <p className="font-semibold">
                   {c.name}
                   <span className={cx(text.label, 'ml-2 rounded-full border px-2 py-0.5', SOURCE_BADGE[c.source])}>{c.source}</span>
+                  {/* Owner request, 2026-08-15 — playtesting a high-WIS
+                    * character surfaced that nothing in this grid says
+                    * which classes even cast spells, let alone off which
+                    * stat, until you click into one and scroll to its
+                    * Known Spells section. A neutral (uncolored) chip
+                    * rather than a 3rd badge color: this is a property of
+                    * the class, not a 2nd sourcebook-style category, and
+                    * staying colorless keeps it from competing with
+                    * SOURCE_BADGE's now-distinct-per-book colors above. */}
+                  {c.spellcasting && (
+                    <span className={cx(text.label, 'ml-1 rounded-full border border-line-soft px-2 py-0.5 text-ink-dim')}>
+                      {c.spellcasting.ability.toUpperCase()} caster
+                    </span>
+                  )}
                 </p>
                 <p className={cx(text.caption, 'mt-1 text-ink-faint')}>
                   Weapons {c.weapons} · Armor {c.armor} · HP 1d{c.hpDie}/lvl
