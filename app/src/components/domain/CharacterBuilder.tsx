@@ -43,6 +43,22 @@ type StepKey = 'level' | 'stats' | 'ancestry' | 'class' | 'background' | 'gear' 
 
 const PALETTE = ['#9b5cff', '#39ff8f', '#ff3b52', '#ffd23f', '#ff8a3d', '#ff3fd6', '#35f0ff']
 
+/** Owner request, 2026-08-15 ("i think we need to highlight all the
+ * rolls so someone knows when to roll when making this") — every roll
+ * button below moved from `variant="ghost"` (the same subdued style
+ * generic secondary actions like Cancel/Clear use) to the default
+ * `primary` fill, so a roll reads as the button to press on its step
+ * rather than blending in. This ring is a second, sharper layer on top
+ * of that for the specific rolls `canContinue`/`hpReady` actually gate
+ * (Stats, Gear's gold-or-gear, Review's HP roll) — reusing the style
+ * guide's own orange = alert/incomplete language, the same color the
+ * caption text right below each of these buttons already uses, rather
+ * than inventing a new signal. Applied only while that requirement is
+ * still unmet; typing a value by hand (every one of these rolls has a
+ * manual-entry equivalent) satisfies it too and drops the ring, same as
+ * pressing the button would. */
+const ROLL_NEEDED_RING = 'ring-2 ring-orange/60 ring-offset-2 ring-offset-bg'
+
 function rollD6(): number {
   return 1 + Math.floor(Math.random() * 6)
 }
@@ -601,7 +617,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
             into directly, so a score you already rolled on paper works the same way.
           </p>
           <div className="flex gap-2">
-            <Button type="button" variant="ghost" onClick={rollAllStats}>Roll All</Button>
+            <Button type="button" onClick={rollAllStats} className={cx(!statsFilled && ROLL_NEEDED_RING)}>Roll All</Button>
             <Button type="button" variant="ghost" onClick={clearStats}>Clear</Button>
           </div>
           {ABILITY_ORDER.map((ability) => {
@@ -633,7 +649,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                 <span className={cx(text.caption, 'w-8 text-center', mod !== null && mod >= 0 ? 'text-green' : mod !== null ? 'text-red' : 'text-ink-faint')}>
                   {mod !== null ? (mod >= 0 ? `+${mod}` : mod) : '—'}
                 </span>
-                <Button type="button" variant="ghost" className="ml-auto" onClick={() => rollOneStat(ability)}>Roll</Button>
+                <Button type="button" className="ml-auto" onClick={() => rollOneStat(ability)}>Roll</Button>
               </div>
             )
           })}
@@ -749,7 +765,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                 ))}
                 {effectiveTalentRolls.length < maxTalentRolls && (
                   <div className="flex items-center gap-3">
-                    <Button type="button" variant="ghost" onClick={rollTalent}>Roll talent (2d6)</Button>
+                    <Button type="button" onClick={rollTalent}>Roll talent (2d6)</Button>
                     {/* Only shown once there's a second roll to explain
                       * (Human's Ambitious bonus) — a single-roll class
                       * needs no extra label. */}
@@ -833,7 +849,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
               ))}
             </div>
             <div className="mb-2 flex items-center gap-2">
-              <Button type="button" variant="ghost" onClick={rollBackground}>Roll (d20)</Button>
+              <Button type="button" onClick={rollBackground}>Roll (d20)</Button>
               <span className={cx(text.caption, 'text-ink-faint')}>or pick one below, or type your own</span>
             </div>
             <div className="mb-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
@@ -891,14 +907,18 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
           {isZeroLevel ? (
             <div>
               <div className="mb-2 flex items-center gap-3">
-                <Button type="button" variant="ghost" onClick={rollZeroLevelGear}>Roll starting gear ({module.zeroLevelGear.rollCount})</Button>
+                <Button type="button" onClick={rollZeroLevelGear} className={cx(!goldOrGearEngaged && ROLL_NEEDED_RING)}>
+                  Roll starting gear ({module.zeroLevelGear.rollCount})
+                </Button>
                 {goldRolled && <span className={cx(text.caption, 'text-ink-faint')}>Rerolling replaces the list below.</span>}
               </div>
             </div>
           ) : (
             <div>
               <div className="mb-2 flex items-center gap-3">
-                <Button type="button" variant="ghost" onClick={rollGold}>Roll starting gold ({module.firstLevelGoldFormula})</Button>
+                <Button type="button" onClick={rollGold} className={cx(!goldOrGearEngaged && ROLL_NEEDED_RING)}>
+                  Roll starting gold ({module.firstLevelGoldFormula})
+                </Button>
               </div>
               <div className="flex flex-wrap items-end gap-2">
                 <TextInput label="GP" inputMode="numeric" value={gold.gp} onChange={(e) => setGold((g) => ({ ...g, gp: e.target.value }))} className="w-24" />
@@ -963,7 +983,9 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
             <div className="flex items-center gap-3">
               <span className={cx(text.label, 'text-ink-faint')}>HP roll</span>
               <span className={text.bodySecondary}>1d{klass.hpDie} ({hpRoll ?? '—'}) + CON {conMod >= 0 ? `+${conMod}` : conMod}</span>
-              <Button type="button" variant="ghost" onClick={rollHp}>{hpRoll === null ? 'Roll HP' : 'Reroll HP'}</Button>
+              <Button type="button" onClick={rollHp} className={cx(!hpReady && ROLL_NEEDED_RING)}>
+                {hpRoll === null ? 'Roll HP' : 'Reroll HP'}
+              </Button>
             </div>
           )}
 
