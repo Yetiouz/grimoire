@@ -216,7 +216,11 @@ export async function updateClock(
     p_name: fields.name,
     p_description: fields.description,
     p_segments: fields.segments,
-    p_faction_id: fields.factionId ?? undefined,
+    // The generated type for p_faction_id says `string`, but the RPC's
+    // SQL default makes omission legal and the runtime already passes
+    // undefined to clear it — the cast records that reality without
+    // changing behavior (make-CI-green).
+    p_faction_id: (fields.factionId ?? undefined) as unknown as string,
     p_revealed: fields.revealed,
   })
   if (error) throw error

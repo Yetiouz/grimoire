@@ -230,8 +230,11 @@ if (browserSpeechAvailable()) {
 /** Safari GC guard: Safari garbage-collects a SpeechSynthesisUtterance
  * that nothing references and cuts the speech off mid-sentence when it
  * does. A module-level reference to the active utterance is the
- * documented workaround. */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- write-only by design: existing is the point
+ * documented workaround — held while speaking, released when playback
+ * settles (the release is also what keeps tsc's noUnusedLocals honest:
+ * the variable is genuinely read, not write-only; a suppression comment
+ * here previously targeted eslint and left CI's tsc failing on TS6133
+ * for sixty commits). */
 let keepAlive: SpeechSynthesisUtterance | null = null
 
 /** Deliberately SYNCHRONOUS, no awaits before `speak()` — Safari only
@@ -255,8 +258,14 @@ function speakWithBrowser(text: string): SpeechHandle {
   const done = new Promise<void>((resolve) => {
     settle = resolve
   })
-  utterance.onend = () => settle()
-  utterance.onerror = () => settle()
+  const finish = () => {
+    // Release the GC guard once this utterance is done being the one
+    // that must survive.
+    if (keepAlive === utterance) keepAlive = null
+    settle()
+  }
+  utterance.onend = finish
+  utterance.onerror = finish
 
   const speakNow = () => {
     keepAlive = utterance

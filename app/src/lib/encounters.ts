@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type { SceneZone } from './maps'
-import type { Tables } from './database.types'
+import type { Json, Tables } from './database.types'
 
 export type EncounterMonster = Tables<'encounter_monsters'>
 export type TurnOrder = Tables<'turn_order'>
@@ -118,7 +118,9 @@ export async function addEncounterMonster(campaignId: string, input: AddEncounte
   const { data, error } = await supabase.rpc('add_encounter_monster', {
     p_campaign_id: campaignId,
     p_label: input.label,
-    p_stat_block: input.statBlock ?? {},
+    // JSON-shaped interface into the generated `Json` union — same
+    // cast rationale as characters.ts's create args (make-CI-green).
+    p_stat_block: (input.statBlock ?? {}) as unknown as Json,
     p_zone: input.zone ?? undefined,
   })
   if (error) throw error

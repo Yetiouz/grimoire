@@ -190,7 +190,10 @@ export function JournalDesktopLayout({
   onToggleFilter,
   feedItems,
   feedFilter,
-  openSession,
+  // openSession stays in the props interface (callers still pass it;
+  // removing it there is an API change) but is no longer destructured —
+  // sessionActive/sessionPaused superseded it here, and the unused
+  // binding was one of the errors keeping CI red (TS6133).
   sessionActive,
   sessionPaused,
   onOpenCharacter,

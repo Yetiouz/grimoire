@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Tables } from './database.types'
+import type { Json, Tables } from './database.types'
 
 export type Character = Tables<'characters'>
 
@@ -276,9 +276,15 @@ export async function createCharacter(input: CreateCharacterInput): Promise<Char
     p_alignment_title: input.alignmentTitle ?? undefined,
     p_xp_needed: input.xpNeeded ?? undefined,
     p_gear_max: input.gearMax ?? undefined,
-    p_gold: input.gold ?? {},
-    p_abilities: input.abilities ?? {},
-    p_sheet: input.sheet ?? {},
+    // `as unknown as Json` on the three jsonb args: the generated RPC
+    // types accept the closed `Json` union, and our richer interfaces
+    // (CharacterGold etc.) are JSON-shaped but not assignable to a
+    // closed union by TS's rules. The cast states what's already true
+    // at runtime. (CI's tsc failed on these for a stretch of commits —
+    // part of the 2026-08-15 make-CI-green pass.)
+    p_gold: (input.gold ?? {}) as unknown as Json,
+    p_abilities: (input.abilities ?? {}) as unknown as Json,
+    p_sheet: (input.sheet ?? {}) as unknown as Json,
     p_status: input.status ?? 'active',
     p_color: input.color ?? undefined,
     p_session_id: input.sessionId ?? undefined,
