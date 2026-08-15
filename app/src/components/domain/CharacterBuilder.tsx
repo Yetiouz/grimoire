@@ -483,12 +483,27 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         * its first child, so a sliver of that padding sat ABOVE the
         * `bg-panel` box even while stuck, letting scrolled-past content
         * peek through above the bar. `-mt-4`/`-mx-4 sm:-mx-6` cancels
-        * that padding on this element specifically, `-top-4` moves the
-        * stuck position out to match, and the matching `pt-4`/`px-4
-        * sm:px-6` restores the exact same visual inset — the row now
-        * fully covers the gutter it sticks in instead of floating
-        * inside it. */}
-      <div className="sticky -top-4 z-10 -mx-4 -mt-4 flex flex-wrap gap-1.5 border-b border-line-soft bg-panel px-4 pb-4 pt-4 sm:-mx-6 sm:px-6">
+        * that padding on this element, and the matching `pt-4`/`px-4
+        * sm:px-6` restores the exact same visual inset — the row's own
+        * static (unstuck) position is now already flush with the true
+        * top of the scrollport (the canceled margin moves it there
+        * directly), so plain `top: 0` is the correct stuck threshold.
+        *
+        * Second follow-up, same day (owner: "the top still has a
+        * sliver") — the first pass over-corrected by ALSO setting
+        * `top: -1rem` here, reasoning it needed to match the canceled
+        * padding the same way the offset does elsewhere. It doesn't:
+        * once the margin trick already puts the row's natural position
+        * at the scrollport's true top edge, a *negative* `top` pushes
+        * the stuck threshold a further 16px past that, so for the
+        * first 16px of scrolling the row's own top edge — and the
+        * border-b along with it — sat up to 16px above the visible
+        * viewport, clipped by `overflow-y-auto`, which is exactly the
+        * remaining sliver. Plain `top-0` has no such window: the row's
+        * rendered position is `max(-scrollTop, 0)`, which is already 0
+        * at `scrollTop: 0` and stays exactly 0 for every scroll
+        * position after, no transition to glitch through. */}
+      <div className="sticky top-0 z-10 -mx-4 -mt-4 flex flex-wrap gap-1.5 border-b border-line-soft bg-panel px-4 pb-4 pt-4 sm:-mx-6 sm:px-6">
         {steps.map((key, index) => (
           <span
             key={key}
@@ -1016,13 +1031,21 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         * container's own `pb-6`/`px-4 sm:px-6` sat BELOW this box even
         * while stuck (this is the last child), so scrolled-past content
         * could peek through beneath the buttons. `-mb-6`/`-mx-4
-        * sm:-mx-6` cancels that padding here, `-bottom-6` moves the
-        * stuck position to match, and `pb-7` (the old `pb-1` breathing
-        * room plus the canceled `pb-6`, folded into one value so the
-        * total gap above the buttons to the true edge is unchanged)
-        * plus `px-4 sm:px-6` restores the original visual spacing —
-        * fully covered now instead of floating inside the gutter. */}
-      <div className="sticky -bottom-6 z-10 -mx-4 mt-6 -mb-6 flex items-center justify-between border-t border-line-soft bg-panel px-4 pb-7 pt-4 sm:-mx-6 sm:px-6">
+        * sm:-mx-6` cancels that padding here, and `pb-7` (the old
+        * `pb-1` breathing room plus the canceled `pb-6`, folded into
+        * one value so the total gap above the buttons to the true edge
+        * is unchanged) plus `px-4 sm:px-6` restores the original
+        * visual spacing.
+        *
+        * Second follow-up, same day (owner: "the top still has a
+        * sliver") — same over-correction as the breadcrumb row's own
+        * second pass, mirrored: this originally also set `bottom:
+        * -1.5rem` reasoning it needed to match `-mb-6`, which pushed
+        * the stuck threshold 24px past where the margin trick had
+        * already put this row's natural position (flush with the
+        * scrollport's true bottom edge). Plain `bottom-0` needs no such
+        * extra offset — `-mb-6` alone already gets the row there. */}
+      <div className="sticky bottom-0 z-10 -mx-4 mt-6 -mb-6 flex items-center justify-between border-t border-line-soft bg-panel px-4 pb-7 pt-4 sm:-mx-6 sm:px-6">
         <Button type="button" variant="ghost" onClick={stepIndex === 0 ? requestClose : goBack}>
           {stepIndex === 0 ? 'Cancel' : '← Back'}
         </Button>
