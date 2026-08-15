@@ -5,6 +5,7 @@ import { ALL_FILTER_KINDS } from '../../lib/journalFilters'
 import type { FilterKind } from '../../lib/journalFilters'
 import { JournalHeader } from '../../components/domain/JournalHeader'
 import { CampaignInviteModal } from '../../components/domain/CampaignInvite'
+import { CampaignGmModeModal } from '../../components/domain/CampaignGmModeModal'
 import { CharacterSheet } from '../../components/domain/CharacterSheet'
 import { CharacterBuilder } from '../../components/domain/CharacterBuilder'
 import { DiceRoller } from '../../components/domain/DiceRoller'
@@ -45,6 +46,15 @@ interface JournalScreenProps {
    * mint or view its `join_code` — see `ensure_campaign_join_code`'s
    * own owner check in migration 0023. */
   isOwner: boolean
+  /** Owner request, 2026-08-15 ("i want one when starting a campaign.
+   * and a toggle.") — `CampaignGmModeModal` returns the updated row
+   * straight from `update_campaign_gm_mode`, and this is how that
+   * reaches back to `App.tsx`'s own `campaign` state (`campaign` is a
+   * prop here, this screen holds no state of its own for it). `App.tsx`
+   * passes its existing `setCampaign` straight through — the same
+   * setter `onOpenCampaign`/`CampaignList` already use, not a new state
+   * slice. */
+  onCampaignUpdated: (campaign: Campaign) => void
   onBack: () => void
   /** Wired into `JournalHeader`'s hamburger menu (2026-08-11, "make the
    * hamburger button usable"). `App.tsx`'s `AuthGate` already has
@@ -89,7 +99,7 @@ const GM_MODE_LABEL: Record<string, string> = { solo: 'Solo', ai: 'AI GM', human
  * and with it the save-as-note wiring on desktop. This is the split
  * version restored from fe59ee3, plus the one thing 889164e had
  * legitimately added on top: the `configureAiSpeech` effect below. */
-export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut }: JournalScreenProps) {
+export function JournalScreen({ campaign, authorName, isOwner, onCampaignUpdated, onBack, onSignOut }: JournalScreenProps) {
   const {
     sessions, setSessions,
     entries, setEntries,
@@ -160,6 +170,11 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
   // MobileJournalView already uses for its own Tools-tab Invite tile —
   // not a new pattern, just this screen's own copy of it.
   const [inviteOpen, setInviteOpen] = useState(false)
+  // GM Mode settings modal (owner request, 2026-08-15: "i want one when
+  // starting a campaign. and a toggle.") — same lifted-state,
+  // owner-only-trigger shape as `inviteOpen` right above, opened from
+  // the same hamburger menu.
+  const [gmModeOpen, setGmModeOpen] = useState(false)
   // End Session Review (BUILD_PLAN.md item 7, 2026-08-14) — Stop
   // Session no longer ends the session directly; it opens this review
   // first (see EndSessionReview's own doc comment for why), and
@@ -449,6 +464,7 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
         sessionMeta={sessionMeta}
         sessionAction={sessionAction}
         onOpenInvite={isOwner ? () => setInviteOpen(true) : undefined}
+        onOpenGmMode={isOwner ? () => setGmModeOpen(true) : undefined}
         onBack={onBack}
         onSignOut={onSignOut}
         onOpenSearch={() => setSearchOpen(true)}
@@ -602,6 +618,8 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
       />
 
       <CampaignInviteModal campaignId={campaign.id} open={inviteOpen} onClose={() => setInviteOpen(false)} />
+
+      <CampaignGmModeModal campaign={campaign} open={gmModeOpen} onClose={() => setGmModeOpen(false)} onUpdated={onCampaignUpdated} />
 
       <EndSessionReview
         open={endReviewOpen}
