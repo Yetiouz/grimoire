@@ -208,15 +208,20 @@ describe("resolve_check", () => {
       ])],
     );
 
-    const result = await callAs<{
-      total: number; band: { text: string; hp_delta?: number }; band_index: number;
+    // resolve_check returns a single jsonb VALUE, so `select * from` it
+    // yields one column named resolve_check holding the whole object —
+    // not spread columns. (This test's original `result.band` read was
+    // written before the verify-db job could ever reach the test run;
+    // its first real execution, 2026-08-15, caught it.)
+    const row = await callAs<{
+      resolve_check: { total: number; band: { text: string; hp_delta?: number }; band_index: number };
     }>(
       ownerId,
-      "select * from resolve_check($1, 'physical', 8)",
+      "select resolve_check($1, 'physical', 8) as resolve_check",
       [created.gm_create_check],
     );
-    expect(result.band.text).toBe("the ledge crumbles");
-    expect(result.band_index).toBe(0);
+    expect(row.resolve_check.band.text).toBe("the ledge crumbles");
+    expect(row.resolve_check.band_index).toBe(0);
 
     const char = await callAs<{ hp_current: number }>(
       ownerId,
