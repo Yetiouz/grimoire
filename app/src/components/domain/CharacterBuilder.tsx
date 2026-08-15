@@ -197,6 +197,16 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
   const statsFilled = ABILITY_ORDER.every((a) => stats[a].value.trim() !== '' && !Number.isNaN(Number(stats[a].value)))
   const anyStatHigh = ABILITY_ORDER.some((a) => Number(stats[a].value) >= 14)
   const showRerollBanner = Boolean(module.statMethod.rerollRule) && statsFilled && !anyStatHigh
+  // Owner request, 2026-08-15 ("let's add suggestions") — same >=14
+  // threshold `anyStatHigh`/the reroll banner above already treat as
+  // "a stat worth noticing" (rulebook pg. 15's own reroll trigger, and
+  // the first modifier bracket above average), reused here rather than
+  // inventing a second cutoff. Drives the Class step's ability-pill
+  // highlighting below (`RulesClass.primaryAbilities`) — Class is only
+  // ever reachable after Stats is filled (linear step-gating via
+  // `canContinue`), so `stats` is always real data by the time this set
+  // is read there, not a guess against blank fields.
+  const strongAbilities = new Set(ABILITY_ORDER.filter((a) => Number(stats[a].value) >= 14))
 
   const conScore = Number(stats.con.value) || 0
   const conMod = statsFilled ? abilityModifier(module, conScore) : 0
@@ -452,7 +462,20 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         </div>
       }
     >
-      <div className="flex flex-wrap gap-1.5 pb-4">
+      {/* Owner request, 2026-08-15 ("the back and continue buttons and
+        * the breadcrumb header should be sticky so I don't have to
+        * scroll to see them") — `sticky top-0`, not a second fixed
+        * header: `Overlay`'s own title/step-counter row is already
+        * pinned outside the scrolling body (see its own doc comment on
+        * "the header is now always pinned and only the body scrolls
+        * beneath it"), but this pill row is the first thing INSIDE that
+        * scrolling body, so it was scrolling away the moment a step's
+        * content (a 9-card Class grid, two 20-row Background tables)
+        * grew past one screenful. `bg-panel` matches the scroll
+        * container's own background (`Overlay`'s panel fill) so nothing
+        * shows through underneath once stuck; `z-10` keeps it above
+        * scrolled-past card content, which has no z-index of its own. */}
+      <div className="sticky top-0 z-10 flex flex-wrap gap-1.5 border-b border-line-soft bg-panel pb-4">
         {steps.map((key, index) => (
           <span
             key={key}
@@ -609,6 +632,18 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
 
       {step === 'class' && (
         <div className="flex flex-col gap-4">
+          {/* Owner request, 2026-08-15 ("let's add suggestions") — a
+            * one-line legend rather than a silent color change: the
+            * purple/green pills below now carry two DIFFERENT meanings
+            * (which stat a class is built around vs. which stat YOU
+            * rolled well), and a prior question this same session
+            * ("are the highlighted ones there to know those are good for
+            * me?") showed that distinction doesn't read as obvious on
+            * its own. */}
+          <p className={cx(text.caption, 'text-ink-faint')}>
+            <span className="text-purple">Purple</span> = that class's spellcasting stat ·{' '}
+            <span className="text-green">Green</span> = a stat you rolled 14+ on
+          </p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {module.classes.map((c) => (
               <button key={c.key} type="button" onClick={() => selectClass(c)} className={cx(cardBase, classKey === c.key && cardSelected)}>
@@ -620,31 +655,49 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                   Weapons {c.weapons} · Armor {c.armor} · HP 1d{c.hpDie}/lvl
                 </p>
                 {/* Owner request, 2026-08-15 ("I may want a strength or
-                  * dex class") — replaces the previous single "WIS
-                  * caster"-only chip with every ability this class's own
-                  * talent table names as a stat-boost option (see
+                  * dex class") — every ability this class's own talent
+                  * table names as a stat-boost option (see
                   * `RulesClass.primaryAbilities`'s doc comment), so
                   * browsing for e.g. a STR/DEX class doesn't require
-                  * clicking into each card first. The casting ability (if
-                  * any — always listed first) gets a purple pill, the
-                  * same color already used for spellcasting elsewhere in
-                  * this step (the "features" header, the selected-spell
-                  * chips below); every other listed stat is a neutral
-                  * pill, same as the rest of this card's chrome. */}
+                  * clicking into each card first.
+                  *
+                  * Two independent signals, layered rather than
+                  * conflated (follow-up same day, "let's add
+                  * suggestions"): purple marks the class's spellcasting
+                  * stat (a fact about the CLASS, same for every player);
+                  * a green fill marks a stat THIS character rolled 14+
+                  * on (a fact about the PLAYER, via `strongAbilities`).
+                  * A pill can be neither, either, or both — a caster
+                  * class's casting stat that the player also rolled well
+                  * on gets a filled purple pill (`bg-purple/15`) rather
+                  * than picking one color over the other, so "this class
+                  * fits you AND happens to be its casting stat" doesn't
+                  * silently collapse into just one of those two true
+                  * facts. */}
                 {c.primaryAbilities.length > 0 && (
                   <div className="mt-1.5 flex flex-wrap gap-1">
-                    {c.primaryAbilities.map((ability) => (
-                      <span
-                        key={ability}
-                        className={cx(
-                          text.label,
-                          'rounded-full border px-1.5 py-0.5',
-                          c.spellcasting?.ability === ability ? 'border-purple/40 text-purple' : 'border-line-soft text-ink-dim',
-                        )}
-                      >
-                        {ability.toUpperCase()}
-                      </span>
-                    ))}
+                    {c.primaryAbilities.map((ability) => {
+                      const isCasting = c.spellcasting?.ability === ability
+                      const isStrong = strongAbilities.has(ability)
+                      return (
+                        <span
+                          key={ability}
+                          className={cx(
+                            text.label,
+                            'rounded-full border px-1.5 py-0.5',
+                            isCasting && isStrong
+                              ? 'border-purple bg-purple/15 text-purple'
+                              : isCasting
+                                ? 'border-purple/40 text-purple'
+                                : isStrong
+                                  ? 'border-green/40 bg-green/10 text-green'
+                                  : 'border-line-soft text-ink-dim',
+                          )}
+                        >
+                          {ability.toUpperCase()}
+                        </span>
+                      )
+                    })}
                   </div>
                 )}
               </button>
@@ -938,7 +991,13 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         </div>
       )}
 
-      <div className="mt-6 flex items-center justify-between border-t border-line-soft pt-4">
+      {/* Sticky footer, same request/reasoning as the breadcrumb row
+        * above — `sticky bottom-0` keeps Back/Continue (or Create, on
+        * Review) reachable without scrolling down past a long step's
+        * content first. `pb-1` gives it a hair of breathing room above
+        * the scroll container's own bottom padding rather than sitting
+        * flush on it. */}
+      <div className="sticky bottom-0 z-10 mt-6 flex items-center justify-between border-t border-line-soft bg-panel pb-1 pt-4">
         <Button type="button" variant="ghost" onClick={stepIndex === 0 ? requestClose : goBack}>
           {stepIndex === 0 ? 'Cancel' : '← Back'}
         </Button>
