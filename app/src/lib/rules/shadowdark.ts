@@ -94,6 +94,7 @@ export const SHADOWDARK: RulesModule = {
       weapons: 'All weapons',
       armor: 'All armor and shields',
       hpDie: 8,
+      primaryAbilities: ['str', 'dex', 'con'],
       features: [
         'Hauler. Add your Constitution modifier, if positive, to your gear slots.',
         'Weapon Mastery. Choose one type of weapon (e.g. longswords) for +1 to attack and damage with it; add half your level to these rolls (round down).',
@@ -116,6 +117,7 @@ export const SHADOWDARK: RulesModule = {
       weapons: 'Club, crossbow, dagger, mace, longsword, staff, warhammer',
       armor: 'All armor and shields',
       hpDie: 6,
+      primaryAbilities: ['wis', 'str'],
       features: [
         'Languages. You know Celestial, Diabolic, or Primordial.',
         "Turn Undead. You know the turn undead spell — it doesn't count toward your known spells.",
@@ -145,6 +147,7 @@ export const SHADOWDARK: RulesModule = {
       weapons: 'Club, crossbow, dagger, shortbow, shortsword',
       armor: 'Leather armor, mithral chainmail',
       hpDie: 4,
+      primaryAbilities: ['str', 'dex', 'cha'],
       features: [
         'Backstab. Extra weapon die of damage against an unaware target, plus half your level (round down) in additional dice.',
         'Thievery. Advantage on checks to climb, sneak/hide, apply disguises, find/disable traps, and delicate tasks like picking pockets or locks (tools take no gear slots).',
@@ -166,6 +169,7 @@ export const SHADOWDARK: RulesModule = {
       weapons: 'Dagger, staff',
       armor: 'None',
       hpDie: 4,
+      primaryAbilities: ['int'],
       features: [
         'Languages. Two additional common languages and two rare languages.',
         'Learning Spells. Permanently learn a wizard spell from a scroll by studying it a day and passing a DC 15 INT check (the scroll is expended either way).',
@@ -198,6 +202,7 @@ export const SHADOWDARK: RulesModule = {
       weapons: 'All melee weapons, crossbow',
       armor: 'All armor and shields',
       hpDie: 6,
+      primaryAbilities: ['str', 'dex', 'con', 'cha'],
       features: [
         'Languages. You know Diabolic.',
         'Demonic Possession. 3/day, gain a +1 bonus to your damage rolls that lasts 3 rounds, plus half your level (round down).',
@@ -220,6 +225,12 @@ export const SHADOWDARK: RulesModule = {
       weapons: 'Club, crossbow, dagger, mace, longsword',
       armor: 'Leather armor, chainmail, and shields',
       hpDie: 6,
+      // Empty, not fabricated: this class's own talent table (below)
+      // only ever says "Add +1 point to two stats" without naming which
+      // two — unlike every other class in this file, Warlock genuinely
+      // has no ability the rulebook itself commits to. See
+      // `RulesClass.primaryAbilities`'s own doc comment.
+      primaryAbilities: [],
       features: [
         'Languages. You know either Celestial, Diabolic, Draconic, Primordial, or Sylvan.',
         'Patron. Choose a patron to serve (Cursed Scroll 1, pg. 17) — the source of your supernatural gifts.',
@@ -242,6 +253,7 @@ export const SHADOWDARK: RulesModule = {
       weapons: 'Dagger, staff',
       armor: 'Leather armor',
       hpDie: 4,
+      primaryAbilities: ['cha', 'str', 'dex', 'con'],
       features: [
         'Languages. You know Diabolic, Primordial, and Sylvan.',
         'Familiar. A small animal (raven, rat, frog…) who serves you loyally and can speak Common — can be the source of your spells for range purposes.',
@@ -276,6 +288,7 @@ export const SHADOWDARK: RulesModule = {
       weapons: 'Club, dagger, javelin, longsword, pike, shortbow, scimitar, spear, whip',
       armor: 'Leather armor, shields',
       hpDie: 8,
+      primaryAbilities: ['str', 'dex'],
       features: [
         'Charge. 3/day, charge into combat by moving at least near before attacking — melee attacks deal double damage that round.',
         'Mount. A common camel or horse that comes when called and never spooks. While riding, both of you get +AC equal to half your level (round down).',
@@ -297,6 +310,7 @@ export const SHADOWDARK: RulesModule = {
       weapons: 'All weapons',
       armor: 'Leather armor, shields',
       hpDie: 8,
+      primaryAbilities: ['str', 'con'],
       features: [
         'Flourish. 3/day, regain 1d6 HP when you hit an enemy with a melee attack.',
         'Implacable. Advantage on Constitution checks to resist injury, poison, or endure extreme environments.',
@@ -320,6 +334,7 @@ export const SHADOWDARK: RulesModule = {
       weapons: 'Blowgun, bolas, dagger, razor chain, scimitar, shuriken, spear',
       armor: 'Leather armor',
       hpDie: 6,
+      primaryAbilities: ['str', 'dex'],
       features: [
         'Languages. You know Diabolic.',
         'Assassin. Advantage on checks to sneak and hide; double damage against unaware targets.',
@@ -345,6 +360,7 @@ export const SHADOWDARK: RulesModule = {
       weapons: 'Dagger, greataxe, handaxe, longbow, longsword, spear',
       armor: 'Leather armor, chainmail, shields',
       hpDie: 8,
+      primaryAbilities: ['str', 'con'],
       features: [
         'Seafarer. Advantage on checks related to navigating and crewing boats.',
         'Old Gods. Each day after resting, choose Odin (regain 1d4 HP on a kill), Freya (daily luck token, +1d6 when you spend one), or Loki (advantage to lie/sneak/hide) until your next rest.',
@@ -367,6 +383,7 @@ export const SHADOWDARK: RulesModule = {
       weapons: 'Dagger, stave, spear',
       armor: 'Leather armor',
       hpDie: 6,
+      primaryAbilities: ['wis', 'cha'],
       features: [
         'Destined. Whenever you use a luck token, add 1d6 to the roll.',
         "Omen. 3/day, DC 9 WIS check — on success, gain a luck token (max one at a time).",

@@ -77,6 +77,22 @@ export interface RulesClass {
   weapons: string
   armor: string
   hpDie: number
+  /** Every ability this class's own talent table names as a "+2 to X
+   * stat" option (e.g. Fighter's "+2 to Strength, Dexterity, or
+   * Constitution stat" row), in the order the rulebook prints them —
+   * with `spellcasting.ability` moved first when the class has one,
+   * since that's the one stat the class is definitionally built around
+   * rather than just optionally good at. Owner request, 2026-08-15
+   * ("I may want a strength or dex class") — a scan aid for the Class
+   * step grid, not a new rule; every value here is already printed
+   * somewhere in that class's own transcribed talent table/spellcasting
+   * field, nothing invented. Left empty for a class whose talent table
+   * only ever says "two stats" without naming which ones (Warlock,
+   * Cursed Scroll 1 pg. 18 — "Add +1 point to two stats, they must be
+   * different") — same never-fabricate discipline `spellList: null`
+   * already follows elsewhere in this file, rather than guessing at a
+   * thematic stat the book itself doesn't commit to. */
+  primaryAbilities: Ability[]
   /** Non-talent-roll features every member of the class starts with —
    * Deity choice, Turn Undead, Familiar, Mount, and so on. Prose, same
    * reasoning as `RulesAncestry.talent`. */
