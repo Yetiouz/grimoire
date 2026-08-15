@@ -1504,7 +1504,7 @@ export type Database = {
       }
       clear_scene: { Args: { p_campaign_id: string }; Returns: undefined }
       create_campaign: {
-        Args: { p_name: string }
+        Args: { p_gm_mode?: string; p_name: string }
         Returns: {
           canon: string | null
           created_at: string
@@ -2089,6 +2089,25 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "sessions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_campaign_gm_mode: {
+        Args: { p_campaign_id: string; p_gm_mode: string }
+        Returns: {
+          canon: string | null
+          created_at: string
+          gm_mode: string
+          id: string
+          join_code: string | null
+          name: string
+          owner: string
+          system: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "campaigns"
           isOneToOne: true
           isSetofReturn: false
         }
