@@ -1019,6 +1019,29 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         </div>
       )}
 
+      {/* Bug found live, same day (owner: "character creation is
+        * getting hung up on background. it wont let me select one and
+        * then continue") — the real cause: once the sticky footer
+        * below is scrolled to its stuck position, it opaquely covers
+        * roughly its own height's worth of whatever content is
+        * scrolled into that same screen region — normal for ANY
+        * bottom-sticky bar, but on a short step (Background: a text
+        * field plus one Alignment grid, no long list) that covered
+        * zone can BE the step's last real controls, with no further
+        * room to scroll past max-scroll to bring them clear. Alignment
+        * is required to continue (see `canContinue.background` below),
+        * so a trapped-behind-the-footer alignment grid reads exactly
+        * as "picking a background doesn't let me continue" — the
+        * background text was never the blocker, the un-reachable
+        * alignment buttons were. This spacer (sized to roughly the
+        * footer's own rendered height: `pt-4` + one button row + `pb-7`
+        * ≈ 88px, rounded up) guarantees every step always has that much
+        * extra scrollable room after its real content, so the last
+        * control can always be scrolled clear of the footer's covered
+        * zone. Plain flow, not sticky itself — only real content needs
+        * never sit here, this box is disposable. */}
+      <div className="h-24" aria-hidden="true" />
+
       {/* Sticky footer, same request/reasoning as the breadcrumb row
         * above — `sticky bottom-0` keeps Back/Continue (or Create, on
         * Review) reachable without scrolling down past a long step's
