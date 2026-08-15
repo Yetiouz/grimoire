@@ -615,24 +615,38 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                 <p className="font-semibold">
                   {c.name}
                   <span className={cx(text.label, 'ml-2 rounded-full border px-2 py-0.5', SOURCE_BADGE[c.source])}>{c.source}</span>
-                  {/* Owner request, 2026-08-15 — playtesting a high-WIS
-                    * character surfaced that nothing in this grid says
-                    * which classes even cast spells, let alone off which
-                    * stat, until you click into one and scroll to its
-                    * Known Spells section. A neutral (uncolored) chip
-                    * rather than a 3rd badge color: this is a property of
-                    * the class, not a 2nd sourcebook-style category, and
-                    * staying colorless keeps it from competing with
-                    * SOURCE_BADGE's now-distinct-per-book colors above. */}
-                  {c.spellcasting && (
-                    <span className={cx(text.label, 'ml-1 rounded-full border border-line-soft px-2 py-0.5 text-ink-dim')}>
-                      {c.spellcasting.ability.toUpperCase()} caster
-                    </span>
-                  )}
                 </p>
                 <p className={cx(text.caption, 'mt-1 text-ink-faint')}>
                   Weapons {c.weapons} · Armor {c.armor} · HP 1d{c.hpDie}/lvl
                 </p>
+                {/* Owner request, 2026-08-15 ("I may want a strength or
+                  * dex class") — replaces the previous single "WIS
+                  * caster"-only chip with every ability this class's own
+                  * talent table names as a stat-boost option (see
+                  * `RulesClass.primaryAbilities`'s doc comment), so
+                  * browsing for e.g. a STR/DEX class doesn't require
+                  * clicking into each card first. The casting ability (if
+                  * any — always listed first) gets a purple pill, the
+                  * same color already used for spellcasting elsewhere in
+                  * this step (the "features" header, the selected-spell
+                  * chips below); every other listed stat is a neutral
+                  * pill, same as the rest of this card's chrome. */}
+                {c.primaryAbilities.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {c.primaryAbilities.map((ability) => (
+                      <span
+                        key={ability}
+                        className={cx(
+                          text.label,
+                          'rounded-full border px-1.5 py-0.5',
+                          c.spellcasting?.ability === ability ? 'border-purple/40 text-purple' : 'border-line-soft text-ink-dim',
+                        )}
+                      >
+                        {ability.toUpperCase()}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </button>
             ))}
           </div>
