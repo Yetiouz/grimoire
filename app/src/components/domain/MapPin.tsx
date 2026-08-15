@@ -61,6 +61,7 @@ export function MapPin({ x, y, color, pulsing, label, onClick }: MapPinProps) {
  * governance as `MapKind`/`MarkerKind` in `lib/maps.ts`, kept next to the
  * one place that actually consumes it as a color rather than duplicated
  * per call site. */
+// eslint-disable-next-line react-refresh/only-export-components -- deliberate: markerColor lives beside its one consumer (see comment above); fast-refresh cost accepted
 export function markerColor(markerKind: string): string {
   return MARKER_COLOR[markerKind] ?? MARKER_COLOR.custom
 }

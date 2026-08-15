@@ -43,6 +43,7 @@ export function useGmBudget(campaignId: string, enabled: boolean) {
 
   useEffect(() => {
     if (!enabled) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear when disabled, the canonical fetch effect
       setBudget(null)
       return
     }

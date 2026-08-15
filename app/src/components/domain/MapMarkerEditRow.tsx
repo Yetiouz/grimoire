@@ -38,6 +38,7 @@ export function MapMarkerEditRow({ marker, saving, onSave, onDelete }: MapMarker
   const [notes, setNotes] = useState(marker.notes ?? '')
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync local edit state to the marker prop
     setLabel(marker.label)
     setMarkerKind(marker.marker_kind as MarkerKind)
     setNotes(marker.notes ?? '')

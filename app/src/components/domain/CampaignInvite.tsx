@@ -50,6 +50,7 @@ export function CampaignInviteModal({ campaignId, open, onClose }: CampaignInvit
     // is already cached from a prior open — otherwise a stale
     // "Copied!" from last time leaks into a fresh open and reads as
     // "you already copied this," which isn't true this time around.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset-on-open, the modal convention
     setCopied(false)
     if (code) return
     setLoading(true)

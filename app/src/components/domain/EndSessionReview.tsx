@@ -94,6 +94,7 @@ export function EndSessionReview({ open, campaignId, session, characters, ending
 
   useEffect(() => {
     if (!open || !session) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset-on-open + fetch kick, the modal convention
     setNote('')
     setLoading(true)
     setError(null)

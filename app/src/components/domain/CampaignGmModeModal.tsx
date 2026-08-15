@@ -36,9 +36,9 @@ export function CampaignGmModeModal({ campaign, open, onClose, onUpdated }: Camp
   // CampaignInviteModal's own `copied` reset already uses.
   useEffect(() => {
     if (!open) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset-on-open, the modal convention
     setMode(campaign.gm_mode as GmMode)
     setError(null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, campaign.gm_mode])
 
   async function handleConfirm() {

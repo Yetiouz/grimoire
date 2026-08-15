@@ -66,6 +66,7 @@ export function MapsSiteTab({ campaignId, map, imageUrl, handoutImageUrl, isOwne
   const [markerSaving, setMarkerSaving] = useState(false)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync local edit state to the map prop
     setLabel(map?.label ?? '')
   }, [map])
 

@@ -64,6 +64,7 @@ export function CampaignSearch({ open, items, sessions, onClose }: CampaignSearc
   // seed-focus effect.
   useEffect(() => {
     if (!open) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset-on-open, the modal convention
     setQuery('')
     inputRef.current?.focus()
   }, [open])

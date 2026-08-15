@@ -74,6 +74,7 @@ export function MapsSceneTab({ campaignId, characters, isOwner, sessionId, turnO
 
   useEffect(() => {
     let cancelled = false
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clear-then-fetch on mount, the canonical fetch effect
     setPositions(null)
     listScenePositions(campaignId)
       .then((rows) => {

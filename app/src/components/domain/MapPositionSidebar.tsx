@@ -36,6 +36,7 @@ export function MapPositionSidebar({ position, onSave }: MapPositionSidebarProps
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync local edit state to the position prop
     setLocationInput(position?.location_label ?? '')
     setPaceInput(position?.travel_pace ?? '')
     setHexesInput(position?.hexes_remaining != null ? String(position.hexes_remaining) : '')

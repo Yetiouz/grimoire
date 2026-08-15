@@ -162,6 +162,7 @@ export function WorldTabs({ quests, npcs, factions, treasure, notes, locations, 
   useEffect(() => {
     if (selection?.kind !== 'clock') return
     const fresh = clocks.find((clock) => clock.id === selection.item.id)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync selection to the fresh clock row
     setSelection(fresh ? { kind: 'clock', item: fresh } : null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clocks])

@@ -131,6 +131,7 @@ export function MapsPanel({ campaignId, isOwner, characters, sessionId, turnOrde
   // means "just became visible" at both.
   useEffect(() => {
     let cancelled = false
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clear-then-fetch on open, the canonical fetch effect
     setMaps(null)
     setPosition(null)
     setError(null)

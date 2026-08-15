@@ -47,6 +47,7 @@ export function useEncounterMonsters(campaignId: string): [EncounterMonster[] | 
 
   useEffect(() => {
     let cancelled = false
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clear-then-fetch, the canonical fetch effect
     setMonsters(null)
     // Fetch errors surface as an empty list rather than a thrown promise
     // here -- `EncounterPanel` treats a still-`null` state as "loading",
