@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { cx } from '../../lib/cx'
+import { text } from '../../lib/typography'
 import { Button } from '../ui/Button'
 import { ColumnCard } from '../ui/ColumnCard'
 import { EmptyState } from '../ui/EmptyState'
@@ -22,6 +24,18 @@ import type { Faction, Note, Npc, NpcStatBlock, Treasure, Location, LocationSecr
 
 interface JournalDesktopLayoutProps {
   characters: Character[] | null
+  /** Owner request, 2026-08-15 ("I think it need the same visual que on
+   * desktop") — `MobileJournalView`'s own `activeCharacter` prop,
+   * threaded down for the exact same reason: whether *any* active PC
+   * exists yet (mine, else any other member's — same broad fallback
+   * `JournalScreen`'s own doc comment on `activeCharacter` documents),
+   * so the Party card below can swap its plain "+ New Character" button
+   * for the same purple nudge treatment mobile shows on its home view
+   * when this is null. Desktop has no separate "home slot" to put a
+   * banner in the way mobile's tab system does — the Party card IS the
+   * always-visible equivalent — so the nudge replaces that card's own
+   * button rather than sitting in a second spot alongside it. */
+  activeCharacter: Character | null
   /** BUILD_PLAN.md item 14 (realtime/presence, 2026-08-14) —
    * `useCampaignPresence`'s raw `Set<memberId>`, threaded straight
    * through to each `PlayerCard` below (matched there against
@@ -154,6 +168,7 @@ interface JournalDesktopLayoutProps {
  */
 export function JournalDesktopLayout({
   characters,
+  activeCharacter,
   onlineMemberIds,
   activeTurnCharacterId,
   quests,
@@ -249,7 +264,31 @@ export function JournalDesktopLayout({
             {characters.length === 0 && (
               <EmptyState icon="party" title="No party yet" description="Characters you add to this campaign show up here." />
             )}
-            <Button type="button" variant="dashed" onClick={onNewCharacter}>+ New Character</Button>
+            {/* Owner request, 2026-08-15 ("I think it need the same
+              * visual que on desktop") — same purple nudge treatment
+              * `MobileJournalView`'s home view shows when
+              * `activeCharacter` is null, copy included, in place of
+              * the plain dashed button below (not alongside it — this
+              * card is already the always-visible equivalent of
+              * mobile's separate home-view slot, so one CTA here does
+              * both jobs). Once a real active character exists, this
+              * reverts to the ordinary dashed button for adding
+              * further party members, same as it always has. */}
+            {activeCharacter === null ? (
+              <button
+                type="button"
+                onClick={onNewCharacter}
+                className="flex items-center justify-between gap-3 rounded-card border border-purple/35 bg-purple/10 px-4 py-3 text-left"
+              >
+                <span>
+                  <span className={cx(text.label, 'block text-purple')}>No character yet</span>
+                  <span className={cx(text.caption, 'mt-0.5 block text-ink-faint')}>Tap to create one and join the party.</span>
+                </span>
+                <span className={cx(text.label, 'shrink-0 text-purple')}>+ New Character</span>
+              </button>
+            ) : (
+              <Button type="button" variant="dashed" onClick={onNewCharacter}>+ New Character</Button>
+            )}
           </ColumnCard>
           <ColumnCard headerLeft="Tools">
             <ToolsDock onOpenDice={onOpenDice} diceDisabled={!sessionActive} onOpenRules={onOpenRules} onOpenMaps={onOpenMaps} onOpenGmReference={onOpenGmReference} />

@@ -458,6 +458,7 @@ export function JournalScreen({ campaign, authorName, isOwner, onBack, onSignOut
         * JournalDesktopLayout.tsx. */}
       <JournalDesktopLayout
         characters={characters}
+        activeCharacter={activeCharacter}
         onlineMemberIds={onlineMemberIds}
         activeTurnCharacterId={activeTurnCharacterId}
         quests={quests}
