@@ -474,8 +474,21 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         * grew past one screenful. `bg-panel` matches the scroll
         * container's own background (`Overlay`'s panel fill) so nothing
         * shows through underneath once stuck; `z-10` keeps it above
-        * scrolled-past card content, which has no z-index of its own. */}
-      <div className="sticky top-0 z-10 flex flex-wrap gap-1.5 border-b border-line-soft bg-panel pb-4">
+        * scrolled-past card content, which has no z-index of its own.
+        *
+        * Follow-up, same day (owner: "it shows the scroll on the top
+        * and bottom, i think you just shorten that panel to be inside
+        * the sticky bars") — the scroll container (`Overlay`'s body)
+        * carries its own `pt-4`/`px-4 sm:px-6`, and this pill row is
+        * its first child, so a sliver of that padding sat ABOVE the
+        * `bg-panel` box even while stuck, letting scrolled-past content
+        * peek through above the bar. `-mt-4`/`-mx-4 sm:-mx-6` cancels
+        * that padding on this element specifically, `-top-4` moves the
+        * stuck position out to match, and the matching `pt-4`/`px-4
+        * sm:px-6` restores the exact same visual inset — the row now
+        * fully covers the gutter it sticks in instead of floating
+        * inside it. */}
+      <div className="sticky -top-4 z-10 -mx-4 -mt-4 flex flex-wrap gap-1.5 border-b border-line-soft bg-panel px-4 pb-4 pt-4 sm:-mx-6 sm:px-6">
         {steps.map((key, index) => (
           <span
             key={key}
@@ -994,10 +1007,22 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
       {/* Sticky footer, same request/reasoning as the breadcrumb row
         * above — `sticky bottom-0` keeps Back/Continue (or Create, on
         * Review) reachable without scrolling down past a long step's
-        * content first. `pb-1` gives it a hair of breathing room above
-        * the scroll container's own bottom padding rather than sitting
-        * flush on it. */}
-      <div className="sticky bottom-0 z-10 mt-6 flex items-center justify-between border-t border-line-soft bg-panel pb-1 pt-4">
+        * content first.
+        *
+        * Follow-up, same day (owner: "it shows the scroll on the top
+        * and bottom, i think you just shorten that panel to be inside
+        * the sticky bars") — same fix as the breadcrumb row's own
+        * follow-up above, mirrored for this edge: the scroll
+        * container's own `pb-6`/`px-4 sm:px-6` sat BELOW this box even
+        * while stuck (this is the last child), so scrolled-past content
+        * could peek through beneath the buttons. `-mb-6`/`-mx-4
+        * sm:-mx-6` cancels that padding here, `-bottom-6` moves the
+        * stuck position to match, and `pb-7` (the old `pb-1` breathing
+        * room plus the canceled `pb-6`, folded into one value so the
+        * total gap above the buttons to the true edge is unchanged)
+        * plus `px-4 sm:px-6` restores the original visual spacing —
+        * fully covered now instead of floating inside the gutter. */}
+      <div className="sticky -bottom-6 z-10 -mx-4 mt-6 -mb-6 flex items-center justify-between border-t border-line-soft bg-panel px-4 pb-7 pt-4 sm:-mx-6 sm:px-6">
         <Button type="button" variant="ghost" onClick={stepIndex === 0 ? requestClose : goBack}>
           {stepIndex === 0 ? 'Cancel' : '← Back'}
         </Button>
