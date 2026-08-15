@@ -6,10 +6,13 @@ import { Button } from '../ui/Button'
 import { TextInput } from '../ui/TextInput'
 import { ErrorBanner } from '../ui/ErrorBanner'
 import { GearSlotGrid } from './GearSlotGrid'
+import { Shop } from './Shop'
 import { createCharacter } from '../../lib/characters'
 import type { Character, CharacterAbilities, CharacterSheetData, AbilityScore } from '../../lib/characters'
 import { getRulesModule, abilityModifier, ABILITY_ORDER } from '../../lib/rules'
 import type { Ability, RulesClass, RulesTalentTableRow } from '../../lib/rules'
+import { goldDeltaForSpend, goldToCp } from '../../lib/rules/equipment'
+import type { RulesEquipmentItem } from '../../lib/rules/equipment'
 
 interface CharacterBuilderProps {
   open: boolean
@@ -328,6 +331,49 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
   }
 
   function removeGearItem(index: number) {
+    setEquipment((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  // Owner request, 2026-08-15 ("shop list where you can be like 1 of
+  // these 1 of these 1 of these and submit/or refund") — `Shop`'s own
+  // "+"/"−" per row, wired to this component's existing local `gold`/
+  // `equipment` state rather than a new state shape. `goldDeltaForSpend`
+  // (see its doc comment in `lib/rules/equipment.ts`) re-normalizes the
+  // WHOLE balance to the fewest coins on every purchase rather than
+  // decrementing just the item's own gp/sp/cp breakdown against
+  // whatever denominations happen to be sitting in the three text
+  // fields right now — the same clamp risk that comment explains for
+  // `adjustCharacterGold` applies here too, since `gold.sp`/`gold.cp`
+  // are free-typed text that can easily be "0" while `gold.gp` holds
+  // everything.
+  function applyGoldDeltaCp(deltaCp: number) {
+    setGold((g) => {
+      const delta = goldDeltaForSpend(g, deltaCp)
+      return {
+        gp: String((Number(g.gp) || 0) + delta.gp),
+        sp: String((Number(g.sp) || 0) + delta.sp),
+        cp: String((Number(g.cp) || 0) + delta.cp),
+      }
+    })
+  }
+
+  function buyShopItem(item: RulesEquipmentItem) {
+    if (item.costCp > goldToCp(gold)) return
+    applyGoldDeltaCp(-item.costCp)
+    setEquipment((prev) => [...prev, item.name])
+  }
+
+  // Refunds the catalog price and drops ONE matching entry — the first
+  // one found, same "Shop only knows the name, not which array index"
+  // reasoning documented on `Shop`'s own `onReturn` prop. Distinct from
+  // `removeGearItem` (GearSlotGrid's plain "Drop"): Drop discards
+  // anything with no refund (rolled 0-level gear included, which was
+  // never bought); Return only appears on a Shop row you've bought from
+  // and always gives the catalog price back.
+  function returnShopItem(item: RulesEquipmentItem) {
+    const index = equipment.findIndex((name) => name === item.name)
+    if (index === -1) return
+    applyGoldDeltaCp(item.costCp)
     setEquipment((prev) => prev.filter((_, i) => i !== index))
   }
 
@@ -925,10 +971,20 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                 <TextInput label="SP" inputMode="numeric" value={gold.sp} onChange={(e) => setGold((g) => ({ ...g, sp: e.target.value }))} className="w-24" />
                 <TextInput label="CP" inputMode="numeric" value={gold.cp} onChange={(e) => setGold((g) => ({ ...g, cp: e.target.value }))} className="w-24" />
               </div>
-              <p className={cx(text.caption, 'mt-2 text-ink-faint')}>
-                No priced gear catalog exists in this app yet — spend the gold above however you like and add the items
-                you bought to the list below.
-              </p>
+            </div>
+          )}
+
+          {/* Owner request, 2026-08-15 — Core-rulebook priced catalog,
+            * only shown for 1st-level (0-level characters roll gear
+            * directly above and never get starting gold to shop with,
+            * per the rulebook's own Starting Gear section). Buying
+            * charges `gold` and appends straight into the same
+            * `equipment` list the manual add box and 0-level gear roll
+            * both already write to. */}
+          {!isZeroLevel && (
+            <div>
+              <p className={cx(text.label, 'mb-2 text-ink-faint')}>Shop</p>
+              <Shop goldCp={goldToCp(gold)} owned={equipment} onBuy={buyShopItem} onReturn={returnShopItem} />
             </div>
           )}
 
@@ -938,7 +994,12 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
             </p>
             {equipment.length > 0 && <GearSlotGrid items={equipment} onRemove={removeGearItem} className="mb-2" />}
             <div className="flex items-end gap-2">
-              <TextInput label="Add item" value={gearDraft} onChange={(e) => setGearDraft(e.target.value)} className="flex-1" />
+              <TextInput
+                label={isZeroLevel ? 'Add item' : "Add an item the shop doesn't carry"}
+                value={gearDraft}
+                onChange={(e) => setGearDraft(e.target.value)}
+                className="flex-1"
+              />
               <Button type="button" variant="ghost" onClick={addGearItem}>Add</Button>
             </div>
           </div>
