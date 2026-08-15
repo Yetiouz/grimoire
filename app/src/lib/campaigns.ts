@@ -6,6 +6,25 @@ export type CampaignSession = Tables<'sessions'>
 export type JournalEntry = Tables<'journal_entries'>
 export type CampaignMember = Tables<'campaign_members'>
 
+/** `campaigns.gm_mode`'s three values (migration 0019's own CHECK
+ * constraint) — narrowed here from the raw `string` column type
+ * `database.types.ts` generates, so both the "New Campaign" picker and
+ * the settings toggle (owner request, 2026-08-15: "i want one when
+ * starting a campaign. and a toggle.") share one real type instead of
+ * each hand-rolling their own union. */
+export type GmMode = 'solo' | 'ai' | 'human'
+
+/** Single source of truth for every gm_mode picker's copy — label plus
+ * a one-line description of what picking it means at the table. Order
+ * is deliberate: `solo` first since it's the table default and the
+ * lowest-commitment choice, `ai` last since a build without
+ * `VITE_GM_ENABLED` filters it out entirely (see `GmModeSelector`). */
+export const GM_MODE_OPTIONS: { value: GmMode; label: string; description: string }[] = [
+  { value: 'solo', label: 'Solo', description: 'Just you — no GM narration.' },
+  { value: 'human', label: 'Human GM', description: 'Someone at the table runs it live.' },
+  { value: 'ai', label: 'AI GM', description: "Grimoire's AI narrates and adjudicates." },
+]
+
 /** A campaign plus its most recent journal entry's timestamp, for the
  * campaign list's "name + last-entry time" card (SPEC's Journal v1
  * screen 1). `lastEntryAt` is null for a campaign with no entries yet. */
@@ -76,9 +95,25 @@ export async function listJournalEntries(campaignId: string): Promise<JournalEnt
 }
 
 /** Wraps the `create_campaign` command. `system` stays hidden/defaulted
- * to 'shadowdark' server-side per SPEC — no UI passes it in v1. */
-export async function createCampaign(name: string): Promise<Campaign> {
-  const { data, error } = await supabase.rpc('create_campaign', { p_name: name })
+ * to 'shadowdark' server-side per SPEC — no UI passes it in v1.
+ * `gmMode` defaults to `'solo'` — migration 0033 made it an optional
+ * second RPC parameter (owner request, 2026-08-15) precisely so this
+ * call keeps working with just a name for any caller that doesn't care;
+ * `CampaignList`'s "New Campaign" modal is the one that does. */
+export async function createCampaign(name: string, gmMode: GmMode = 'solo'): Promise<Campaign> {
+  const { data, error } = await supabase.rpc('create_campaign', { p_name: name, p_gm_mode: gmMode })
+  if (error) throw error
+  return data
+}
+
+/** Wraps `update_campaign_gm_mode` (migration 0033) — owner-only
+ * server-side (the RPC checks `campaigns.owner = auth.uid()` itself and
+ * raises if it doesn't match), same "component doesn't re-check, the
+ * RPC is the real boundary" convention `ensureCampaignJoinCode` below
+ * already follows. Lets an existing campaign's mode change after
+ * creation — the settings-toggle half of the owner's 2026-08-15 request. */
+export async function updateCampaignGmMode(campaignId: string, gmMode: GmMode): Promise<Campaign> {
+  const { data, error } = await supabase.rpc('update_campaign_gm_mode', { p_campaign_id: campaignId, p_gm_mode: gmMode })
   if (error) throw error
   return data
 }
