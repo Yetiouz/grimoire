@@ -54,6 +54,12 @@ function AuthGate() {
         // prop for why this is computed here rather than passed down
         // as a display string the way `authorName` is.
         isOwner={campaign.owner === user.id}
+        // Owner request, 2026-08-15 ("i want one when starting a
+        // campaign. and a toggle.") — the same setter `onOpenCampaign`
+        // below already uses, reused so `CampaignGmModeModal`'s updated
+        // row (routed back up through `JournalScreen`) lands in this
+        // same state slice rather than a second, separately-tracked copy.
+        onCampaignUpdated={setCampaign}
         onBack={() => setCampaign(null)}
         // Same signOut this AuthGate already wires to CampaignList below
         // — the hamburger menu (2026-08-11) is the first way to sign out
