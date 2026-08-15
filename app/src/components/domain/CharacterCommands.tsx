@@ -6,18 +6,22 @@ import { ErrorBanner } from '../ui/ErrorBanner'
 import { Stepper } from '../ui/Stepper'
 import { TextInput } from '../ui/TextInput'
 import { GearSlotGrid } from './GearSlotGrid'
+import { Shop } from './Shop'
 import {
   adjustCharacterGold,
   adjustCharacterHp,
   adjustCharacterLuck,
   adjustCharacterXp,
   addCharacterGear,
+  readCharacterGold,
   readCharacterSheet,
   removeCharacterGear,
   restCharacter,
   setCharacterHpMax,
 } from '../../lib/characters'
 import type { Character } from '../../lib/characters'
+import { goldDeltaForSpend, goldToCp } from '../../lib/rules/equipment'
+import type { RulesEquipmentItem } from '../../lib/rules/equipment'
 
 interface CharacterCommandsProps {
   character: Character
@@ -105,6 +109,49 @@ export function CharacterCommands({ character, sessionId, onUpdate }: CharacterC
     } finally {
       setPending(false)
     }
+  }
+
+  // Owner request, 2026-08-15 ("since we will have that it might be
+  // good to have a general store also — pulls up the same or similar
+  // list of things the game has prices for") — the follow-up half of
+  // the Character Builder's Shop feature, wired here to the two RPCs
+  // that already existed for exactly this (`adjustCharacterGold`,
+  // `addCharacterGear`/`removeCharacterGear` — the same calls the Gold
+  // and Gear sections above already make). `goldDeltaForSpend` does the
+  // same whole-balance re-normalize `CharacterBuilder`'s own shop
+  // handlers use, for the same reason (see its doc comment in
+  // `lib/rules/equipment.ts`).
+  //
+  // Two sequential RPC calls, not one atomic transaction — this app has
+  // no `buy_character_gear`/`return_character_gear` RPC that adjusts
+  // gold and gear together in a single statement, and adding one is a
+  // real schema change (a new migration against the live Supabase
+  // project) that's out of scope for this pass. If the second call
+  // fails after the first succeeds, gold moves but gear doesn't; `run`'s
+  // existing error banner surfaces that failure the same way it
+  // surfaces any other command error, and a GM can true up the balance
+  // by hand via the Gold section above. Every other multi-field mutation
+  // in this file already accepts this same non-atomic shape (nothing
+  // here wraps two RPCs in one transaction), so this isn't a new risk
+  // class, just the first place two calls happen back to back.
+  function shopBuy(item: RulesEquipmentItem) {
+    const currentGold = readCharacterGold(character.gold)
+    if (item.costCp > goldToCp(currentGold)) return
+    const delta = goldDeltaForSpend(currentGold, -item.costCp)
+    void run(async () => {
+      await adjustCharacterGold(character.id, delta, sessionId)
+      return addCharacterGear(character.id, item.name, sessionId)
+    })
+  }
+
+  function shopReturn(item: RulesEquipmentItem) {
+    const index = equipment.findIndex((name) => name === item.name)
+    if (index === -1) return
+    const delta = goldDeltaForSpend(readCharacterGold(character.gold), item.costCp)
+    void run(async () => {
+      await adjustCharacterGold(character.id, delta, sessionId)
+      return removeCharacterGear(character.id, index, sessionId)
+    })
   }
 
   return (
@@ -266,6 +313,11 @@ export function CharacterCommands({ character, sessionId, onUpdate }: CharacterC
         >
           Apply
         </Button>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className={cx(text.label, 'text-ink-faint')}>General Store</span>
+        <Shop goldCp={goldToCp(readCharacterGold(character.gold))} owned={equipment} onBuy={shopBuy} onReturn={shopReturn} disabled={pending} />
       </div>
 
       <div className="flex flex-col gap-2">
