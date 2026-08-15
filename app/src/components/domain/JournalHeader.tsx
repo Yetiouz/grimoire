@@ -19,6 +19,12 @@ interface JournalHeaderProps {
    * that server-side too, but there's no reason to show a menu item a
    * player could never use). */
   onOpenInvite?: () => void
+  /** Opens `CampaignGmModeModal` (owner request, 2026-08-15: "i want
+   * one when starting a campaign. and a toggle."). Same owner-only,
+   * only-rendered-when-given shape as `onOpenInvite` right above —
+   * `update_campaign_gm_mode` (migration 0033) enforces owner-only
+   * server-side too, this just keeps the item off a player's menu. */
+  onOpenGmMode?: () => void
   onBack: () => void
   /** Wired into the hamburger menu's "Sign out" item (2026-08-11 —
    * "make the hamburger button usable"). `JournalScreen` passes the same
@@ -85,20 +91,21 @@ interface JournalHeaderProps {
  * ordering rule.
  *
  * The hamburger (2026-08-11, "make the hamburger button usable") menu
- * still carries three items: "Back to Campaigns" (same `onBack` the
- * lockup's own tap already calls), the owner-only "Invite" item (only
- * rendered when `onOpenInvite` is given — moved here in the Option B
- * pass and unchanged since), and "Sign out". Small `role="menu"`
- * popover anchored to the button, not `Overlay` — a few nav/action
- * links don't need a full-screen backdrop dialog. Closes on outside
- * click, Escape, or picking an item.
+ * carries "Back to Campaigns" (same `onBack` the lockup's own tap
+ * already calls), the owner-only "Invite" item (only rendered when
+ * `onOpenInvite` is given — moved here in the Option B pass and
+ * unchanged since), the owner-only "GM Mode" item (2026-08-15, same
+ * only-rendered-when-given shape, right below Invite), and "Sign out".
+ * Small `role="menu"` popover anchored to the button, not `Overlay` — a
+ * few nav/action links don't need a full-screen backdrop dialog. Closes
+ * on outside click, Escape, or picking an item.
  *
  * `JournalDesktopLayout`'s own journal column now labels itself plainly
  * ("Journal", a static string — see that file) instead of repeating
  * this same session-meta text, since this header shows it now. That
  * dedup is the other half of why this round happened at all.
  */
-export function JournalHeader({ campaignName, sessionMeta, sessionAction, onOpenInvite, onBack, onSignOut, onOpenSearch }: JournalHeaderProps) {
+export function JournalHeader({ campaignName, sessionMeta, sessionAction, onOpenInvite, onOpenGmMode, onBack, onSignOut, onOpenSearch }: JournalHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -205,6 +212,22 @@ export function JournalHeader({ campaignName, sessionMeta, sessionAction, onOpen
                     )}
                   >
                     Invite
+                  </button>
+                )}
+                {onOpenGmMode && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      onOpenGmMode()
+                    }}
+                    className={cx(
+                      'flex min-h-11 w-full items-center border-t border-line-soft px-4 text-left hover:bg-panel2 hover:text-ink',
+                      text.label,
+                    )}
+                  >
+                    GM Mode
                   </button>
                 )}
                 <button

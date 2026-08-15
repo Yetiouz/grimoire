@@ -7,9 +7,11 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorBanner } from '../../components/ui/ErrorBanner'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Skeleton, SkeletonGroup } from '../../components/ui/Skeleton'
+import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { createCampaign, joinCampaignByCode, listCampaignsWithLastEntry } from '../../lib/campaigns'
-import type { Campaign, CampaignWithLastEntry } from '../../lib/campaigns'
+import type { Campaign, CampaignWithLastEntry, GmMode } from '../../lib/campaigns'
+import { GmModeSelector } from '../../components/domain/GmModeSelector'
 
 interface CampaignListProps {
   onOpenCampaign: (campaign: Campaign) => void
@@ -27,8 +29,12 @@ function formatLastEntry(iso: string | null): string {
 }
 
 /** Screen 1 of Journal v1 (SPEC): Panel cards, each showing name +
- * last-entry time; "New Campaign" opens a Modal with a name field only
- * — `system` stays hidden, defaulted to 'shadowdark' server-side.
+ * last-entry time; "New Campaign" opens a Modal with a name field —
+ * `system` stays hidden, defaulted to 'shadowdark' server-side — plus a
+ * `GmModeSelector` (owner request, 2026-08-15: "i want one when
+ * starting a campaign. and a toggle.") so gm_mode no longer silently
+ * defaults to 'solo' for every new campaign with no way to choose
+ * otherwise.
  *
  * "Have an invite code?" (2026-08-11, migration 0023, "I may want to
  * play a different character with my friends") is the redeeming half
@@ -45,6 +51,7 @@ export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
   const [error, setError] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [name, setName] = useState('')
+  const [gmMode, setGmMode] = useState<GmMode>('solo')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [joinModalOpen, setJoinModalOpen] = useState(false)
@@ -81,9 +88,10 @@ export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
     setCreating(true)
     setCreateError(null)
     try {
-      const created = await createCampaign(trimmed)
+      const created = await createCampaign(trimmed, gmMode)
       setModalOpen(false)
       setName('')
+      setGmMode('solo')
       onOpenCampaign(created)
     } catch (err) {
       // Local to the modal (matching handleJoin's joinError), not the
@@ -187,6 +195,7 @@ export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
             onCancel={() => {
               setModalOpen(false)
               setName('')
+              setGmMode('solo')
               setCreateError(null)
             }}
             onConfirm={() => void handleCreate()}
@@ -200,6 +209,10 @@ export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
               disabled={creating}
               error={createError ?? undefined}
             />
+            <div className="mt-4">
+              <p className={cx(text.label, 'text-ink-faint')}>GM Mode</p>
+              <GmModeSelector value={gmMode} onChange={setGmMode} className="mt-1.5" />
+            </div>
           </Modal>
         )}
 
