@@ -147,10 +147,10 @@ const STEP_LABEL: Record<StepKey, string> = {
  * branch rather than a fixed 7-step sequence with a skipped/disabled
  * step in the middle.
  *
- * Deliberately does NOT model a priced gear shop — no item-price table
- * exists anywhere in this project (Gear, pg. 34, lists items without a
- * price list this app has transcribed), so starting gold is rolled and
- * shown as a number the player self-tracks, and equipment is a plain
+ * Owner request, 2026-08-15 ("when you get to the gear screen there
+ * needs to be a shop list...") — the Gear step now offers a priced
+ * Core-rulebook `Shop` (see `lib/rules/equipment.ts`) for 1st-level
+ * characters spending rolled/typed gold, in addition to the plain
  * freeform add/remove list, the exact same shape `sheet.equipment`
  * (and `CharacterCommands`' own "Add item" control) already use.
  */
