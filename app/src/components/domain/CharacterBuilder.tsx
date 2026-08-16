@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { Overlay } from '../ui/Overlay'
@@ -384,6 +384,17 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
     if (stepIndex > 0) setStep(steps[stepIndex - 1])
   }
 
+  // The Overlay body keeps its scroll position across step changes, so
+  // moving from a long step to the next one landed the player mid-list
+  // instead of at the top (live report: reached the Gear step 2000px+
+  // deep in the shop with the starting-gold roll scrolled out of view).
+  // The breadcrumb row is the scroller's first child, so its parent IS
+  // the scroll container — reset it whenever the step changes.
+  const crumbRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    crumbRef.current?.parentElement?.scrollTo({ top: 0 })
+  }, [step])
+
   // Both gates below exist because of a live report: a first-time
   // player reached Create having never engaged either "Roll HP"
   // (Review step) or "Roll starting gold" (Gear step) -- neither was
@@ -574,7 +585,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         * 16px above the scrollport instead, where the Overlay body's
         * overflow clip swallows it. Flush on both behaviors. The
         * footer's `-bottom-6` below is the same fix for its `-mb-6`. */}
-      <div className="sticky -top-4 z-10 -mx-4 -mt-4 flex flex-wrap gap-1.5 border-b border-line-soft bg-panel px-4 pb-4 pt-4 sm:-mx-6 sm:px-6">
+      <div ref={crumbRef} className="sticky -top-4 z-10 -mx-4 -mt-4 flex flex-wrap gap-1.5 border-b border-line-soft bg-panel px-4 pb-4 pt-4 sm:-mx-6 sm:px-6">
         {steps.map((key, index) => (
           <span
             key={key}
@@ -961,6 +972,10 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         <div className="flex flex-col gap-5">
           {isZeroLevel ? (
             <div>
+              {/* Section label, matching SHOP/SEARCH below — the step
+                * used to open straight onto the button with nothing
+                * above it ("gear page is tight at the top"). */}
+              <p className={cx(text.label, 'mb-2 text-ink-faint')}>Starting gear</p>
               <div className="mb-2 flex items-center gap-3">
                 <Button type="button" onClick={rollZeroLevelGear} className={cx(!goldOrGearEngaged && ROLL_NEEDED_RING)}>
                   Roll starting gear ({module.zeroLevelGear.rollCount})
@@ -970,6 +985,8 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
             </div>
           ) : (
             <div>
+              {/* Same tight-top fix as the 0-level branch above. */}
+              <p className={cx(text.label, 'mb-2 text-ink-faint')}>Starting gold</p>
               <div className="mb-2 flex items-center gap-3">
                 <Button type="button" onClick={rollGold} className={cx(!goldOrGearEngaged && ROLL_NEEDED_RING)}>
                   Roll starting gold ({module.firstLevelGoldFormula})
