@@ -9,6 +9,7 @@ import { GearSlotGrid } from './GearSlotGrid'
 import { Shop } from './Shop'
 import { createCharacter } from '../../lib/characters'
 import type { Character, CharacterAbilities, CharacterSheetData, AbilityScore } from '../../lib/characters'
+import { AncestryArt, ClassArt } from './AncestryClassArt'
 import { getRulesModule, abilityModifier, ABILITY_ORDER } from '../../lib/rules'
 import type { Ability, RulesClass, RulesTalentTableRow } from '../../lib/rules'
 import { goldDeltaForSpend, goldToCp } from '../../lib/rules/equipment'
@@ -720,13 +721,20 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         </div>
       )}
 
+      {/* Pictograms (2026-08-16, "races need visuals on what they are"
+        * — style approved via ancestry-art-mockup.html): each card
+        * leads with its mark in its own accent color, text to the
+        * right. See AncestryClassArt.tsx for the glyphs. */}
       {step === 'ancestry' && (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {module.ancestries.map((a) => (
-            <button key={a.key} type="button" onClick={() => setAncestryKey(a.key)} className={cx(cardBase, ancestryKey === a.key && cardSelected)}>
-              <p className="font-semibold">{a.name}</p>
-              <p className={cx(text.caption, 'mt-1 text-ink-faint')}>{a.languages.join(', ')}</p>
-              <p className={cx(text.bodySecondary, 'mt-1')}>{a.talent}</p>
+            <button key={a.key} type="button" onClick={() => setAncestryKey(a.key)} className={cx(cardBase, 'flex items-start gap-3', ancestryKey === a.key && cardSelected)}>
+              <AncestryArt k={a.key} className="mt-0.5 h-8 w-8 shrink-0" />
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold">{a.name}</span>
+                <span className={cx(text.caption, 'mt-1 block text-ink-faint')}>{a.languages.join(', ')}</span>
+                <span className={cx(text.bodySecondary, 'mt-1 block')}>{a.talent}</span>
+              </span>
             </button>
           ))}
         </div>
@@ -748,7 +756,14 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
           </p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {module.classes.map((c) => (
-              <button key={c.key} type="button" onClick={() => selectClass(c)} className={cx(cardBase, classKey === c.key && cardSelected)}>
+              <button key={c.key} type="button" onClick={() => selectClass(c)} className={cx(cardBase, 'flex items-start gap-3', classKey === c.key && cardSelected)}>
+                {/* Same pictogram treatment as the Ancestry step above —
+                  * every class in the grid has a glyph (core four from
+                  * the approved mockup, expansion classes drawn in the
+                  * same hand) so no card sits bare beside an
+                  * illustrated one. */}
+                <ClassArt k={c.key} className="mt-0.5 h-8 w-8 shrink-0" />
+                <span className="min-w-0 flex-1">
                 <p className="font-semibold">
                   {c.name}
                   <span className={cx(text.label, 'ml-2 rounded-full border px-2 py-0.5', SOURCE_BADGE[c.source])}>{c.source}</span>
@@ -802,6 +817,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                     })}
                   </div>
                 )}
+                </span>
               </button>
             ))}
           </div>

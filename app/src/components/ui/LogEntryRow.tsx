@@ -268,9 +268,15 @@ export function LogEntryRow({
             // Stays revealed while this row is talking (or warming up) —
             // otherwise the stop control would vanish the moment the
             // pointer wanders off mid-narration.
+            // Hover-reveal is DESKTOP-ONLY (`xl:`, the same breakpoint
+            // the journal's layouts split on): a touch screen has no
+            // hover, so below xl: the actions are simply always visible
+            // (owner, 2026-08-16: "we are missing the voice stuff on
+            // mobile — roll over will not work"). The icons are `small`
+            // now, so the permanent mobile row costs little quiet.
             speaking || loading
               ? 'opacity-100'
-              : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-has-[:focus-visible]:pointer-events-auto group-has-[:focus-visible]:opacity-100',
+              : 'xl:pointer-events-none xl:opacity-0 xl:group-hover:pointer-events-auto xl:group-hover:opacity-100 xl:group-has-[:focus-visible]:pointer-events-auto xl:group-has-[:focus-visible]:opacity-100',
           )}
         >
           {canSpeak && (
