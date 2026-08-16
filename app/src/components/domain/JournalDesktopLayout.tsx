@@ -383,8 +383,11 @@ export function JournalDesktopLayout({
         * specifically being non-empty like the old quests-only panel
         * was — a campaign with NPCs but no quests yet should still see
         * this card. */}
+      {/* "Quest Log" -> "World" (UI review slice C, 2026-08-16): seven
+        * tabs of NPCs/factions/places/clocks outgrew the old name —
+        * it's a world browser, and the header should say so. */}
       {quests !== null && npcs !== null && factions !== null && treasure !== null && notes !== null && locations !== null && clocks !== null && (
-        <ColumnCard headerLeft="Quest Log" bodyClassName="gap-0">
+        <ColumnCard headerLeft="World" bodyClassName="gap-0">
           <WorldTabs
             quests={quests}
             npcs={npcs}

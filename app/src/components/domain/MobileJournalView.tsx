@@ -153,7 +153,11 @@ interface MobileJournalViewProps {
 const VIEW_TITLES: Record<MobileView, string> = {
   party: 'Party',
   maps: 'Maps',
-  quests: 'Quest Log',
+  // "Quest Log" -> "World" (UI review slice C) — same rename as the
+  // desktop rail header; the `quests` KEY stays for history (it's
+  // threaded through MobileTabBar's MobileView type), only the visible
+  // words change.
+  quests: 'World',
   tools: 'Tools',
 }
 

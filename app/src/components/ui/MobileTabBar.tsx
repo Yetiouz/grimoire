@@ -24,7 +24,12 @@ const TABS: Array<{ view: MobileView; icon: IconName; label: string }> = [
   { view: 'maps', icon: 'map', label: 'Maps' },
 ]
 const TABS_AFTER_FAB: Array<{ view: MobileView; icon: IconName; label: string }> = [
-  { view: 'quests', icon: 'quest', label: 'Quests' },
+  // "Quests" -> "World" + globe icon (UI review slice C, 2026-08-16):
+  // matches the renamed rail this tab opens — it's been the whole
+  // world browser (NPCs/factions/places/clocks) since slice 9 v2, and
+  // the tab should say what it opens. The `quests` view KEY is
+  // untouched; only the player-facing words/glyph change.
+  { view: 'quests', icon: 'world', label: 'World' },
   { view: 'tools', icon: 'settings', label: 'Tools' },
 ]
 

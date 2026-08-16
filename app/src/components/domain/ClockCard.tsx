@@ -43,14 +43,25 @@ interface ClockCardProps {
  * (purple) up to `filled`. A visual clock, not a numeric readout alone:
  * SESSION_PROTOCOL.md's "decide what advances this session" reads
  * naturally as filling in the next box, same mental model Blades-in-
- * the-Dark-style clocks use everywhere else this mechanic appears. */
-function ClockDots({ segments, filled }: { segments: number; filled: number }) {
+ * the-Dark-style clocks use everywhere else this mechanic appears.
+ *
+ * Exported since UI review slice C (2026-08-16): the world rail's
+ * Clocks tab now renders these pips in its preview rows too (replacing
+ * the "0/6 segments filled" sentence — owner approved the visual-pips
+ * mockup, with "segments can be smaller"), so the list and the detail
+ * overlay speak the same clock language from one component. `small`
+ * (the list's size) shrinks each pip from 14px to 10px. */
+export function ClockDots({ segments, filled, small = false }: { segments: number; filled: number; small?: boolean }) {
   return (
     <div className="flex flex-wrap gap-1">
       {Array.from({ length: segments }, (_, index) => (
         <span
           key={index}
-          className={cx('h-3.5 w-3.5 shrink-0 rounded-sm border', index < filled ? 'border-purple bg-purple' : 'border-line-hover bg-transparent')}
+          className={cx(
+            small ? 'h-2.5 w-2.5' : 'h-3.5 w-3.5',
+            'shrink-0 rounded-sm border',
+            index < filled ? 'border-purple bg-purple' : 'border-line-hover bg-transparent',
+          )}
         />
       ))}
     </div>

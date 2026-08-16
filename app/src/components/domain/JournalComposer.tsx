@@ -3,6 +3,7 @@ import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { TextInput } from '../ui/TextInput'
 import { Icon } from '../ui/Icon'
+import type { IconName } from '../ui/Icon'
 import type { LogEntryKind } from '../ui/LogEntryRow'
 import type { GmTurnResult } from '../../lib/gm'
 import { GmReply } from './GmReply'
@@ -48,6 +49,12 @@ type Choice = LogEntryKind | 'gm' | 'rules'
 
 interface ChoiceSpec {
   id: Choice
+  /** Recognition mark (UI review slice B, 2026-08-16 — playtest
+   * feedback: a first-time player reads every text label before she
+   * can pick; an icon lets her recognize instead). Rendered `small`
+   * inside the chip, inheriting the chip's own color via
+   * `currentColor` so it lights with the selection tint for free. */
+  icon: IconName
   label: string
   /** Mobile label (below xl:) — owner's pick for keeping every choice
    * on one line on a phone: abbreviate rather than scroll, stack, or
@@ -69,10 +76,10 @@ interface ChoiceSpec {
  * unchanged from the original single-row design: whoever is at the
  * keyboard is playing every part, including the GM's own narration. */
 const NON_AI_CHOICES: ChoiceSpec[] = [
-  { id: 'action', label: 'Action', short: 'Act', ai: false, hex: '#9b5cff', on: 'border-purple/45 bg-purple/15 text-purple', placeholder: 'Add to the journal…' },
-  { id: 'narration', label: 'Narration', short: 'Nar', ai: false, hex: '#ff3fd6', on: 'border-pink/45 bg-pink/15 text-pink', placeholder: 'Narrate the scene…' },
-  { id: 'roll', label: 'Roll', short: 'Roll', ai: false, hex: '#39ff8f', on: 'border-green/45 bg-green/15 text-green', placeholder: 'Record a roll…' },
-  { id: 'note', label: 'Note', short: 'Note', ai: false, hex: '#ffd23f', on: 'border-yellow/45 bg-yellow/15 text-yellow', placeholder: 'Jot a note…' },
+  { id: 'action', icon: 'chat', label: 'Action', short: 'Act', ai: false, hex: '#9b5cff', on: 'border-purple/45 bg-purple/15 text-purple', placeholder: 'Add to the journal…' },
+  { id: 'narration', icon: 'journal', label: 'Narration', short: 'Nar', ai: false, hex: '#ff3fd6', on: 'border-pink/45 bg-pink/15 text-pink', placeholder: 'Narrate the scene…' },
+  { id: 'roll', icon: 'dice', label: 'Roll', short: 'Roll', ai: false, hex: '#39ff8f', on: 'border-green/45 bg-green/15 text-green', placeholder: 'Record a roll…' },
+  { id: 'note', icon: 'saveNote', label: 'Note', short: 'Note', ai: false, hex: '#ffd23f', on: 'border-yellow/45 bg-yellow/15 text-yellow', placeholder: 'Jot a note…' },
 ]
 
 /** AI-GM campaigns. `id: 'action'` still backs "Party" (it logs the
@@ -80,10 +87,10 @@ const NON_AI_CHOICES: ChoiceSpec[] = [
  * "Narration" option) — nothing downstream of `onLog`/the feed needed
  * to change for the rename. */
 const AI_GM_CHOICES: ChoiceSpec[] = [
-  { id: 'action', label: 'Party', short: 'Party', ai: false, hex: '#9b5cff', on: 'border-purple/45 bg-purple/15 text-purple', placeholder: 'Say or do something…' },
-  { id: 'gm', label: 'GM', short: 'GM', ai: true, hex: '#35f0ff', on: 'border-cyan/45 bg-cyan/15 text-cyan', placeholder: 'Tell the GM what you do…' },
-  { id: 'note', label: 'Notes', short: 'Notes', ai: false, hex: '#ffd23f', on: 'border-yellow/45 bg-yellow/15 text-yellow', placeholder: 'Jot a note…' },
-  { id: 'rules', label: 'Rules', short: 'Rules', ai: true, hex: '#ff8a3d', on: 'border-orange/45 bg-orange/15 text-orange', placeholder: 'Ask a rules question…' },
+  { id: 'action', icon: 'party', label: 'Party', short: 'Party', ai: false, hex: '#9b5cff', on: 'border-purple/45 bg-purple/15 text-purple', placeholder: 'Say or do something…' },
+  { id: 'gm', icon: 'gm', label: 'GM', short: 'GM', ai: true, hex: '#35f0ff', on: 'border-cyan/45 bg-cyan/15 text-cyan', placeholder: 'Tell the GM what you do…' },
+  { id: 'note', icon: 'saveNote', label: 'Notes', short: 'Notes', ai: false, hex: '#ffd23f', on: 'border-yellow/45 bg-yellow/15 text-yellow', placeholder: 'Jot a note…' },
+  { id: 'rules', icon: 'rules', label: 'Rules', short: 'Rules', ai: true, hex: '#ff8a3d', on: 'border-orange/45 bg-orange/15 text-orange', placeholder: 'Ask a rules question…' },
 ]
 
 interface JournalComposerProps {
@@ -289,6 +296,11 @@ export function JournalComposer({
                   askLocked && 'pointer-events-none opacity-35',
                 )}
               >
+                {/* `currentColor` (inline, so it beats `stateColorClass`
+                  * regardless of stylesheet order) makes the mark follow
+                  * the chip's own text color — tinted when selected, dim
+                  * at rest — with no per-choice color plumbing. */}
+                <Icon name={c.icon} small style={{ color: 'currentColor' }} className="mr-1.5" />
                 <span className="xl:hidden">{c.short}</span>
                 <span className="hidden xl:inline">{c.label}</span>
               </button>

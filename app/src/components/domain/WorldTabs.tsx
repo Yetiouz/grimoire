@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { EmptyState } from '../ui/EmptyState'
+import { Icon } from '../ui/Icon'
+import type { IconName } from '../ui/Icon'
+import { ClockDots } from './ClockCard'
 import { deriveStatusIndicator, isQuestClosed } from '../../lib/statusTone'
 import { WorldPreviewRow } from './WorldPreviewRow'
 import { WorldDetailOverlay } from './WorldDetailOverlay'
@@ -99,14 +102,20 @@ type WorldTab = 'quests' | 'npcs' | 'factions' | 'treasure' | 'notes' | 'locatio
  * own doc comment above), where wrapping would break the "justified"
  * look, and mobile's wider row has more room per tab than desktop's
  * tight 26rem column. */
-const TABS: Array<{ key: WorldTab; label: string }> = [
-  { key: 'quests', label: 'Quests' },
-  { key: 'npcs', label: 'NPCs' },
-  { key: 'factions', label: 'Factions' },
-  { key: 'treasure', label: 'Loot' },
-  { key: 'notes', label: 'Notes' },
-  { key: 'locations', label: 'Places' },
-  { key: 'clocks', label: 'Clocks' },
+/** Icons + counts joined the labels in UI review slice C (2026-08-16,
+ * superseding variant C's "no icons" call above — playtest feedback:
+ * "she wanted icons or pictures to help identify what she was
+ * picking"). Every icon is an existing closed-set name except `clock`,
+ * added for this. Counts render from the live lists so the rail says
+ * what's inside before a click. */
+const TABS: Array<{ key: WorldTab; icon: IconName; label: string }> = [
+  { key: 'quests', icon: 'quest', label: 'Quests' },
+  { key: 'npcs', icon: 'party', label: 'NPCs' },
+  { key: 'factions', icon: 'faction', label: 'Factions' },
+  { key: 'treasure', icon: 'gear', label: 'Loot' },
+  { key: 'notes', icon: 'saveNote', label: 'Notes' },
+  { key: 'locations', icon: 'map', label: 'Places' },
+  { key: 'clocks', icon: 'clock', label: 'Clocks' },
 ]
 
 /**
@@ -171,6 +180,16 @@ export function WorldTabs({ quests, npcs, factions, treasure, notes, locations, 
 
   return (
     <div className={cx('flex min-h-0 flex-1 flex-col', className)}>
+      {/* UI review slice C (2026-08-16): tabs carry an icon + live count
+        * everywhere. On mobile (`justifyTabs`), the old justified
+        * `flex-1` row is replaced by the approved mockup's treatment —
+        * one horizontally-swipeable row that never stacks, where only
+        * the ACTIVE tab spells its name and the rest are icon + count
+        * (owner: "stacking rows of tabs looks kind of funny... make
+        * sure things are good on mobile since we are adding size").
+        * Desktop keeps its wrap — its tight column plus icons would
+        * otherwise hide tabs behind an invisible scroll again, the
+        * exact 2026-08-14 bug wrapping was introduced to fix. */}
       <div
         className={cx(
           'flex shrink-0 gap-1.5 pb-2',
@@ -178,21 +197,29 @@ export function WorldTabs({ quests, npcs, factions, treasure, notes, locations, 
         )}
         style={justifyTabs ? { scrollbarWidth: 'none' } : undefined}
       >
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => setActiveTab(tab.key)}
-            className={cx(
-              text.caption,
-              justifyTabs ? 'flex-1 text-center' : 'shrink-0',
-              'rounded-full border px-3 py-1.5 font-semibold uppercase tracking-eyebrow',
-              activeTab === tab.key ? 'border-purple bg-purple text-white' : 'border-line-soft bg-panel2 text-ink-dim',
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
+        {TABS.map((tab) => {
+          const active = activeTab === tab.key
+          const count = { quests: quests.length, npcs: npcs.length, factions: factions.length, treasure: treasure.length, notes: notes.length, locations: locations.length, clocks: clocks.length }[tab.key]
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              aria-label={`${tab.label} (${count})`}
+              className={cx(
+                text.caption,
+                'inline-flex shrink-0 items-center rounded-full border px-3 py-1.5 font-semibold uppercase tracking-eyebrow',
+                active ? 'border-purple bg-purple text-white' : 'border-line-soft bg-panel2 text-ink-dim',
+              )}
+            >
+              <Icon name={tab.icon} small style={{ color: 'currentColor' }} className="mr-1.5" />
+              {/* Mobile hides inactive labels (icon + count carry the
+                * identity); desktop always spells them. */}
+              <span className={cx(!active && justifyTabs && 'hidden')}>{tab.label}</span>
+              <span className={cx('font-normal', active ? 'text-white/60' : 'text-ink-faint', (active || !justifyTabs) && 'ml-1.5')}>{count}</span>
+            </button>
+          )
+        })}
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
@@ -252,7 +279,11 @@ export function WorldTabs({ quests, npcs, factions, treasure, notes, locations, 
                 key={npc.id}
                 title={npc.name}
                 indicator={deriveStatusIndicator(npc.status)}
-                preview={npc.role}
+                // Role AND location (slice C): scanning seventeen names
+                // means something once each row says who they are and
+                // where — the data was already on the row, only `role`
+                // was shown.
+                preview={[npc.role, npc.location].filter(Boolean).join(' · ') || null}
                 onClick={() => setSelection({ kind: 'npc', item: npc, statBlock: npcStatBlocks.get(npc.id) })}
               />
             ))
@@ -328,7 +359,12 @@ export function WorldTabs({ quests, npcs, factions, treasure, notes, locations, 
                   key={clock.id}
                   title={clock.name}
                   indicator={{ label: clock.revealed ? 'Revealed' : 'GM only', tone: clock.revealed ? 'positive' : 'special' }}
-                  preview={`${clock.filled}/${clock.segments} segments filled`}
+                  // Slice C: real pips instead of the "0/6 segments
+                  // filled" sentence — same `ClockDots` the detail
+                  // overlay renders, at the list's smaller size, so
+                  // both surfaces speak one clock language.
+                  preview={null}
+                  visual={<ClockDots segments={clock.segments} filled={clock.filled} small />}
                   onClick={() => setSelection({ kind: 'clock', item: clock })}
                 />
               ))

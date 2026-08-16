@@ -4,11 +4,14 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
+  Clock3,
   Dice5,
+  Eye,
   Flag,
   Flame,
   Globe,
   Heart,
+  Landmark,
   Map,
   Menu,
   MessageSquare,
@@ -115,9 +118,23 @@ import { cx } from '../../lib/cx'
 // lucide glyph as `luck` (Sparkles) on purpose — the semantic names are
 // the closed set here, not the glyphs, and "a spark of thought" is
 // exactly the association Claude's own thinking indicator trades on.
+// `gm` and `clock` added for UI review slices B/C (2026-08-16, owner +
+// playtest feedback: "she wanted icons or pictures to help identify
+// what she was picking" — recognition over reading). `gm` (Eye, the
+// all-seeing GM) marks the composer's GM mode chip; `clock` (Clock3)
+// marks the world rail's Clocks tab. Both are recognition marks for
+// dense chip/tab rows, not new features.
 const icons = {
   hp: Heart,
   thinking: Sparkles,
+  gm: Eye,
+  clock: Clock3,
+  // Factions get their own mark rather than sharing `world`'s Globe —
+  // the mobile tab bar's World tab wears the globe, and two different
+  // destinations with one glyph would defeat the recognition the icons
+  // exist for. Landmark (an institution's facade) reads as "organized
+  // power," which is what a faction is.
+  faction: Landmark,
   ac: Shield,
   gear: Backpack,
   luck: Sparkles,

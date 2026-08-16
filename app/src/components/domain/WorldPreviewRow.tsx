@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { StatusDot } from '../ui/StatusDot'
@@ -13,6 +14,15 @@ interface WorldPreviewRowProps {
    * items, not "however many lines this one entry's text happens to
    * need." Full text lives in the detail overlay this row opens. */
   preview: string | null
+  /** Rendered where `preview` text would go (UI review slice C,
+   * 2026-08-16) — exists for exactly one caller today: the Clocks tab
+   * replacing its "0/6 segments filled" sentence with real pips
+   * (`ClockDots`), since a clock is the single most visual object in
+   * tabletop design and a counting sentence squanders that. Takes
+   * precedence over `preview` when both are given. Still one shared row
+   * component, not a fork — every other tab passes nothing here and is
+   * untouched. */
+  visual?: ReactNode
   onClick: () => void
 }
 
@@ -32,7 +42,7 @@ interface WorldPreviewRowProps {
  * support and the 44px touch-target minimum via `min-h-11`, matching
  * every other interactive row in this app (`DockButton`, `PlayerCard`).
  */
-export function WorldPreviewRow({ title, indicator, preview, onClick }: WorldPreviewRowProps) {
+export function WorldPreviewRow({ title, indicator, preview, visual, onClick }: WorldPreviewRowProps) {
   return (
     <button
       type="button"
@@ -43,7 +53,7 @@ export function WorldPreviewRow({ title, indicator, preview, onClick }: WorldPre
         <span className={cx(text.body, 'truncate font-semibold')}>{title}</span>
         {indicator && <StatusDot {...indicator} />}
       </div>
-      {preview && <span className={cx(text.caption, 'truncate text-ink-dim')}>{preview}</span>}
+      {visual ?? (preview && <span className={cx(text.caption, 'truncate text-ink-dim')}>{preview}</span>)}
     </button>
   )
 }
