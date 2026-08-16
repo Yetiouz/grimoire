@@ -7,6 +7,7 @@ import { Icon } from '../ui/Icon'
 import type { LogEntryKind } from '../ui/LogEntryRow'
 import type { GmTurnResult } from '../../lib/gm'
 import { GmReply } from './GmReply'
+import { AiVoiceToggle } from './AiVoiceToggle'
 import { GmBudgetBar } from './GmBudgetBar'
 import { useGmBudget } from '../../hooks/useGmBudget'
 import { useGmBudgetByMode } from '../../hooks/useGmBudgetByMode'
@@ -114,6 +115,16 @@ interface JournalComposerProps {
    * see `GmBudgetBar`'s doc comment for why the meter moved here
    * (2026-08-10, owner: "stack those where we have this 134 left"). */
   ttsAvailable?: boolean
+  /** The ONE global voice switch (UI review slice A, 2026-08-16) —
+   * `AiVoiceToggle` moved here from every narration row (see that
+   * component's doc comment for the history). Rendered in the top row's
+   * right-hand cluster, next to the budget meters, whenever both are
+   * given; both omitted together where the host has no voice to offer.
+   * The composer just displays and reports — `JournalScreen` owns the
+   * preference (`useAiVoicePreference`) and feeds the resulting on/off
+   * to the feed separately. */
+  aiVoiceOn?: boolean
+  onToggleAiVoice?: () => void
   /** "Save as note" quick action (2026-08-09): the host layout hands
    * back a new object here each time the player taps the action on a
    * journal entry. Seeding, not submitting — this switches the
@@ -135,6 +146,8 @@ export function JournalComposer({
   onAskRules,
   campaignId,
   ttsAvailable = false,
+  aiVoiceOn,
+  onToggleAiVoice,
   seed,
   className,
 }: JournalComposerProps) {
@@ -284,19 +297,30 @@ export function JournalComposer({
           )
         })}
         </div>
-        {meterRelevant && budget && budgetByMode && (
-          // Stacked, not side-by-side (2026-08-10, owner: "stack those
-          // where we have this 134 left") — this replaced the composer's
-          // original single bar-plus-"N left" meter, which only ever
-          // covered GM text turns. Each bar is `GmBudgetBar`, the same
-          // component the header uses, so the two locations read
-          // identically: percentage against the one shared daily pool,
-          // split by mode. GM only renders when Ask GM/Ask Rules exist
-          // here at all; Voice only when the build's voice tier is on —
-          // same two gates the header's own pair uses.
-          <div className="ml-auto flex shrink-0 flex-col items-end gap-1">
-            {gmAvailable && <GmBudgetBar label="GM" used={budgetByMode.textUsed} limit={budget.limit} />}
-            {ttsAvailable && <GmBudgetBar label="Voice" used={budgetByMode.voiceUsed} limit={budget.limit} />}
+        {/* Right-hand cluster: the global voice switch (slice A — see
+          * `AiVoiceToggle`'s doc comment), then the budget meters.
+          * `ml-auto` on the cluster, not the meters, so the switch rides
+          * along pinned right whether or not the meters render. */}
+        {(Boolean(onToggleAiVoice) || (meterRelevant && budget && budgetByMode)) && (
+          <div className="ml-auto flex shrink-0 items-center gap-3">
+            {aiVoiceOn !== undefined && onToggleAiVoice && <AiVoiceToggle on={aiVoiceOn} onToggle={onToggleAiVoice} />}
+            {meterRelevant && budget && budgetByMode && (
+              // Stacked, not side-by-side (2026-08-10, owner: "stack
+              // those where we have this 134 left") — this replaced the
+              // composer's original single bar-plus-"N left" meter,
+              // which only ever covered GM text turns. Each bar is
+              // `GmBudgetBar`, the same component the header uses, so
+              // the two locations read identically: percentage against
+              // the one shared daily pool, split by mode. GM only
+              // renders when Ask GM/Ask Rules exist here at all; Voice
+              // only when the build's voice tier is on AND the player's
+              // own switch is — a meter for a feature the player just
+              // turned off would be noise the switch exists to remove.
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                {gmAvailable && <GmBudgetBar label="GM" used={budgetByMode.textUsed} limit={budget.limit} />}
+                {ttsAvailable && aiVoiceOn !== false && <GmBudgetBar label="Voice" used={budgetByMode.voiceUsed} limit={budget.limit} />}
+              </div>
+            )}
           </div>
         )}
       </div>

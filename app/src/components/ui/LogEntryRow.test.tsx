@@ -65,4 +65,32 @@ describe('LogEntryRow', () => {
     expect(container.querySelector('strong')).toBeNull()
     expect(screen.getByText('Swings **hard** at the lock.')).toBeInTheDocument()
   })
+
+  it('splits a blank-line-separated body into real paragraphs (slice A: narration breathes)', () => {
+    const { container } = render(
+      <LogEntryRow
+        senderName="GM"
+        senderColor="#35f0ff"
+        message={'The vault opens before you.\n\nOn the pedestal sits the gorget.\n\nWhat do you do?'}
+        kind="narration"
+      />,
+    )
+    const paragraphs = container.querySelectorAll('p')
+    expect(paragraphs).toHaveLength(3)
+    expect(paragraphs[0]).toHaveTextContent('The vault opens before you.')
+    expect(paragraphs[2]).toHaveTextContent('What do you do?')
+  })
+
+  it('hides the read-aloud button entirely when voice is switched off (slice A: global voice toggle)', () => {
+    render(
+      <LogEntryRow
+        senderName="GM"
+        senderColor="#35f0ff"
+        message="The hall opens before you."
+        kind="narration"
+        voiceEnabled={false}
+      />,
+    )
+    expect(screen.queryByRole('button', { name: 'Read aloud' })).toBeNull()
+  })
 })

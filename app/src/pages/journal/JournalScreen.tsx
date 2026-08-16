@@ -202,14 +202,18 @@ export function JournalScreen({ campaign, authorName, isOwner, onCampaignUpdated
   // it to stay off, so VITE_GM_TTS is now on in Vercel.
   //
   // `aiVoiceOn` is a second, independent gate on top of that: the
-  // player's own choice, via the AiVoiceToggle pill on each narration
-  // entry (moved there from a header control per owner feedback — see
-  // JournalFeed/LogEntryRow), persisted per-device by
-  // useAiVoicePreference. This is what lets someone prefer their
-  // system voice (still a legitimate taste, not just a fallback)
-  // without anyone touching Vercel — flipping VITE_GM_TTS back off
-  // would be the wrong tool for that now that it's a one-click,
-  // per-player choice instead.
+  // player's own choice, via the ONE global AiVoiceToggle switch by the
+  // composer (UI review slice A, 2026-08-16 — it replaced the per-entry
+  // pill, which repeated the same global choice down every narration
+  // row; see AiVoiceToggle's own doc comment), persisted per-device by
+  // useAiVoicePreference. Off now means the read-aloud feature
+  // disappears entirely (no speaker buttons on any row — LogEntryRow's
+  // voiceEnabled gate) rather than falling back to the browser voice;
+  // on means the best tier available reads (the GM's real voice where
+  // the build has it, browser voice otherwise). Because off is now
+  // "silence" rather than "which engine," the switch is offered
+  // regardless of ttsAvailable below — a browser-voice-only build
+  // deserves the same off switch.
   const ttsAvailable = gmEnabled && import.meta.env.VITE_GM_TTS === 'true'
   const [aiVoiceOn, setAiVoiceOn] = useAiVoicePreference()
 
@@ -509,8 +513,8 @@ export function JournalScreen({ campaign, authorName, isOwner, onCampaignUpdated
         onLog={(kind, body) => handleLog(kind, body)}
         onAskGm={handleAskGm}
         onAskRules={handleAskRules}
-        aiVoiceOn={ttsAvailable ? aiVoiceOn : undefined}
-        onToggleAiVoice={ttsAvailable ? () => setAiVoiceOn(!aiVoiceOn) : undefined}
+        aiVoiceOn={aiVoiceOn}
+        onToggleAiVoice={() => setAiVoiceOn(!aiVoiceOn)}
         ttsAvailable={ttsAvailable}
         onResolveCheck={(check, source, total) => void handleResolveCheck(check, source, total)}
         resolvingCheckId={resolvingCheckId}
@@ -567,8 +571,8 @@ export function JournalScreen({ campaign, authorName, isOwner, onCampaignUpdated
           gmEnabled={aiGmActive}
           onAskGm={handleAskGm}
           onAskRules={handleAskRules}
-          aiVoiceOn={ttsAvailable ? aiVoiceOn : undefined}
-          onToggleAiVoice={ttsAvailable ? () => setAiVoiceOn(!aiVoiceOn) : undefined}
+          aiVoiceOn={aiVoiceOn}
+          onToggleAiVoice={() => setAiVoiceOn(!aiVoiceOn)}
           ttsAvailable={ttsAvailable}
           onResolveCheck={(check, source, total) => void handleResolveCheck(check, source, total)}
           resolvingCheckId={resolvingCheckId}

@@ -7,44 +7,53 @@ interface AiVoiceToggleProps {
 }
 
 /**
- * Per-entry pill (2026-08-10, moved here after owner feedback on the
- * first pass — "it need to be a toggle pill right before the speaker
- * after each message"; this used to live as an icon button in the
- * journal header instead). `JournalFeed` renders one of these into
- * every narration `LogEntryRow`, immediately before that row's own
- * read-aloud button — see `LogEntryRow`'s `voiceToggle` slot — so the
- * choice is made right where it's acted on rather than in a header
- * control easy to miss.
+ * ONE global voice switch (UI review slice A, 2026-08-16) — this
+ * replaced the per-entry pill this file used to export. The pill put
+ * the same global choice on every narration row ("BROWSER VOICE"
+ * repeated dozens of times down a session was the review's #1 noise
+ * finding), and the owner picked the mockup's alternative: a single
+ * slider by the composer. Same one shared preference underneath
+ * (`useAiVoicePreference` — global, per-device), new semantics on OFF:
+ * the read-aloud feature disappears entirely (no speaker buttons on
+ * any row — see `LogEntryRow`'s `voiceEnabled` gate) rather than
+ * falling back to the browser voice. On, playback uses the best tier
+ * available exactly as before: the GM's real voice where the build has
+ * it, the browser voice otherwise (`lib/speech.ts` owns that tiering).
  *
- * The choice itself is global and per-device (`useAiVoicePreference`),
- * NOT per-message: every row's pill reflects and controls the same one
- * preference, the same way every row's speak button already draws from
- * `lib/speech.ts`'s one shared playback singleton rather than each
- * having its own player.
+ * Rendered by `JournalComposer` (the one place the player already
+ * looks to interact with the GM), not by the feed — the feed no longer
+ * knows the preference is toggleable at all, it just receives the
+ * resulting on/off.
  *
- * Pill, not icon-button: matches the ROLL/NOTE tag pill `LogEntryRow`
- * already renders in this exact row, rather than the 44px icon-button
- * shape the header's OTHER controls use — a dense, per-entry control
- * repeated down the whole feed calls for the same compact treatment
- * `LogEntryRow`'s own doc comment already argues for on the speak/
- * save-note buttons sitting right beside this one.
+ * `role="switch"` rather than a pressed-button: this is a settings
+ * toggle with a visible thumb, and switch is the ARIA pattern that
+ * announces "on/off" rather than "pressed".
  */
 export function AiVoiceToggle({ on, onToggle }: AiVoiceToggleProps) {
   return (
     <button
       type="button"
+      role="switch"
+      aria-checked={on}
       onClick={onToggle}
-      aria-pressed={on}
-      title={on ? "GM voice: Fish Audio — click to use your browser's voice instead" : "GM voice: browser — click to use the GM's real voice"}
-      className={cx(
-        'shrink-0 whitespace-nowrap rounded-full border px-2 py-1 uppercase transition-colors',
-        text.label,
-        on
-          ? 'border-purple/45 bg-purple/15 text-purple'
-          : 'border-line-soft bg-panel2 text-ink-dim hover:border-line-hover',
-      )}
+      title={on ? 'Voice on — narration can be read aloud' : 'Voice off — no read-aloud anywhere'}
+      className="flex shrink-0 cursor-pointer items-center gap-2"
     >
-      {on ? 'AI Voice' : 'Browser Voice'}
+      <span
+        aria-hidden="true"
+        className={cx(
+          'relative inline-block h-5 w-[38px] rounded-full border transition-colors',
+          on ? 'border-cyan/50 bg-cyan/[0.18]' : 'border-line bg-panel2',
+        )}
+      >
+        <span
+          className={cx(
+            'absolute top-[2px] block h-3.5 w-3.5 rounded-full transition-all',
+            on ? 'left-[19px] bg-cyan' : 'left-[2px] bg-ink-faint',
+          )}
+        />
+      </span>
+      <span className={cx(text.label, 'uppercase', on ? 'text-cyan' : 'text-ink-faint')}>Voice</span>
     </button>
   )
 }

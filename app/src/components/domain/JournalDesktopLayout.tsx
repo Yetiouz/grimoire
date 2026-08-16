@@ -133,9 +133,11 @@ interface JournalDesktopLayoutProps {
   onLog: (kind: LogEntryKind, body: string) => Promise<void>
   onAskGm?: (input: string) => Promise<GmTurnResult>
   onAskRules?: (input: string) => Promise<GmTurnResult>
-  /** AI-voice on/off pill (2026-08-10) — forwarded straight to
-   * `JournalFeed`, see its own doc comment. Both omitted together when
-   * the voice tier doesn't exist in this build. */
+  /** Global voice switch (UI review slice A, 2026-08-16) — the pair now
+   * feeds `JournalComposer`'s single `AiVoiceToggle` (the per-row pill
+   * is gone), and `aiVoiceOn` alone is additionally forwarded to
+   * `JournalFeed` as `voiceEnabled` so rows know whether to offer
+   * read-aloud at all. See those components' own doc comments. */
   aiVoiceOn?: boolean
   onToggleAiVoice?: () => void
   /** Whether the voice tier exists in this build (`VITE_GM_TTS`) —
@@ -337,6 +339,8 @@ export function JournalDesktopLayout({
             onAskRules={onAskRules}
             campaignId={campaignId}
             ttsAvailable={ttsAvailable}
+            aiVoiceOn={aiVoiceOn}
+            onToggleAiVoice={onToggleAiVoice}
             seed={noteSeed}
           />
         }
@@ -357,8 +361,7 @@ export function JournalDesktopLayout({
             sessions={sessions}
             filter={feedFilter}
             onSaveAsNote={sessionActive ? (item) => setNoteSeed({ body: item.body }) : undefined}
-            aiVoiceOn={aiVoiceOn}
-            onToggleAiVoice={onToggleAiVoice}
+            voiceEnabled={aiVoiceOn}
             onResolveCheck={onResolveCheck}
             resolvingCheckId={resolvingCheckId}
           />

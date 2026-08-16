@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
 import { cx } from '../../lib/cx'
 import { browserSpeechAvailable, startSpeaking } from '../../lib/speech'
 import type { SpeechHandle } from '../../lib/speech'
@@ -34,18 +33,16 @@ interface LogEntryRowProps {
    * button at all — `JournalFeed` already withholds it for entries
    * where it wouldn't make sense (a note saved from a note). */
   onSaveAsNote?: () => void
-  /** AI-voice on/off pill (2026-08-10, `AiVoiceToggle.tsx`), rendered
-   * immediately before this row's own read-aloud button when given —
-   * "host owns the action, header owns the layout" split, same
-   * convention `JournalHeader`'s `sessionAction`/`gmBudget` slots use,
-   * just at row scope instead of page scope. This component builds
-   * nothing itself and doesn't know the preference is global/per-device
-   * rather than per-row — `JournalFeed` decides that and hands back a
-   * ready node, same as it already does for `onSaveAsNote`'s button.
-   * Omit to render no pill at all (unavailable in this build, or this
-   * row can't speak anyway — see `canSpeak` below, which already gates
-   * whether this ever shows regardless of what's passed here). */
-  voiceToggle?: ReactNode
+  /** Global voice preference (UI review slice A, 2026-08-16) — this
+   * replaced the old per-row `voiceToggle` node slot: the choice moved
+   * to ONE switch by the composer (`AiVoiceToggle`, now rendered by
+   * `JournalComposer`), so rows no longer display or control it, they
+   * just obey the result. `false` removes the read-aloud button from
+   * this row entirely (owner's approved semantics: voice off means no
+   * speaker buttons anywhere, not a fallback voice). Defaults to true
+   * so read-only call sites that never wired voice at all keep their
+   * old behavior. */
+  voiceEnabled?: boolean
   className?: string
 }
 
@@ -106,7 +103,7 @@ export function LogEntryRow({
   timestamp,
   kind = 'action',
   onSaveAsNote,
-  voiceToggle,
+  voiceEnabled = true,
   className,
 }: LogEntryRowProps) {
   const muted = kind === 'system'
@@ -123,7 +120,7 @@ export function LogEntryRow({
   // whenever ANY tier could speak; on a browser with no speechSynthesis
   // at all the AI tier still works, so the old hard feature-gate on
   // speechSynthesis alone would hide a working button.
-  const canSpeak = kind === 'narration' && (browserSpeechAvailable() || typeof window !== 'undefined')
+  const canSpeak = voiceEnabled && kind === 'narration' && (browserSpeechAvailable() || typeof window !== 'undefined')
   const [speaking, setSpeaking] = useState(false)
   /** True from click until audio actually starts — the AI voice takes
    * several seconds to synthesize, and with no visible change in that
@@ -182,7 +179,8 @@ export function LogEntryRow({
   return (
     <div
       className={cx(
-        'rounded-lg px-3 py-2',
+        // `group` powers the quick actions' hover-reveal below.
+        'group rounded-lg px-3 py-2',
         kind === 'narration' && 'border border-line-soft bg-panel',
         kind === 'rules' && 'border border-orange/25 bg-orange/[0.06]',
         kind === 'system' && 'opacity-[0.85]',
@@ -216,32 +214,54 @@ export function LogEntryRow({
       {kind === 'rules' ? (
         <Markdown text={message} className={cx(messageWidthClass, 'pl-6')} />
       ) : (
-        <p
+        // Paragraph breaks (UI review slice A, 2026-08-16 — "narration
+        // needs to breathe"): a body with blank lines renders as real
+        // paragraphs with spacing between them instead of one wall.
+        // Split on 2+ newlines; `whitespace-pre-line` inside each
+        // paragraph still honors single newlines as soft breaks. A body
+        // with no blank lines produces exactly one <p>, so every
+        // existing entry renders as before. Applies to every non-rules
+        // kind, not just narration — a hand-typed multi-paragraph note
+        // earns the same treatment for free.
+        <div className={cx(messageWidthClass, 'flex flex-col gap-2.5 pl-6')}>
+          {message.split(/\n{2,}/).filter((paragraph) => paragraph.trim().length > 0).map((paragraph, index) => (
+            <p
+              key={index}
+              className={cx(
+                kind === 'system' ? cx(text.caption, 'text-ink-faint') : text.bodySecondary,
+                'whitespace-pre-line',
+              )}
+            >
+              {paragraph.trim()}
+            </p>
+          ))}
+        </div>
+      )}
+      {/* Quick actions: below the message (2026-08-09, owner feedback —
+       * after the content they act on, not above it), and now revealed
+       * on demand rather than always-on (UI review slice A, 2026-08-16
+       * — the feed's #1 noise finding was permanent per-entry chrome
+       * repeated down the whole session). Hidden via max-h/opacity and
+       * slid in by `group-hover:` on the row — the same bottom position
+       * they always had, they just wait to be reached for. Touch
+       * devices get this for free (mobile browsers apply :hover on
+       * tap); `group-focus-within:` keeps the buttons reachable by
+       * keyboard, since they stay in the tab order while clipped.
+       * `pl-6` keeps them in the message's left indent. The compact-
+       * control exception (no 44px targets in this dense repeated row)
+       * carries over from the always-on version unchanged. */}
+      {(canSpeak || onSaveAsNote) && (
+        <div
           className={cx(
-            kind === 'system' ? cx(text.caption, 'text-ink-faint') : text.bodySecondary,
-            messageWidthClass,
-            'pl-6',
+            'flex items-center gap-1 overflow-hidden pl-6 transition-all duration-200',
+            // Stays revealed while this row is talking (or warming up) —
+            // otherwise the stop control would vanish the moment the
+            // pointer wanders off mid-narration.
+            speaking || loading
+              ? 'max-h-9 pt-1 opacity-100'
+              : 'max-h-0 pt-0 opacity-0 group-hover:max-h-9 group-hover:pt-1 group-hover:opacity-100 group-focus-within:max-h-9 group-focus-within:pt-1 group-focus-within:opacity-100',
           )}
         >
-          {message}
-        </p>
-      )}
-      {/* Quick actions moved below the message (2026-08-09, owner
-       * feedback) — they used to sit in the header row, level with the
-       * name/timestamp, but that put them above content they act on
-       * (read this message, save this message) rather than after it.
-       * `pl-6` keeps them in the same left indent as the message text
-       * above. Compact-control exception, same call as the composer's
-       * mode pill and the header filter chips — this sits in a dense
-       * per-entry row repeated many times down the feed, so a full
-       * 44px touch target on every single one would add real bulk. A
-       * small ghost icon button, matching `GmReply`'s dismiss "×" in
-       * spirit (a low-emphasis inline utility control, not a primary
-       * action). Flagged rather than assumed settled — worth
-       * revisiting if it proves fiddly to tap on a phone. */}
-      {(canSpeak || onSaveAsNote) && (
-        <div className="flex items-center gap-1 pl-6 pt-1">
-          {canSpeak && voiceToggle}
           {canSpeak && (
             <button
               type="button"
