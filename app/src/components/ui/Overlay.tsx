@@ -58,6 +58,16 @@ interface OverlayProps {
    * forking the internal structure per variant.
    */
   variant?: 'dialog' | 'sheet' | 'slideUp'
+  /** Opt out of Overlay's own padded scrolling body: the child gets a
+   * flex column filling the panel and owns its rows — pinned strips as
+   * plain `shrink-0` siblings, its own `overflow-y-auto` middle.
+   * Exists for CharacterBuilder (owner: "make the nav and buttons the
+   * top and bottom and the panel fits inside those — not really sticky
+   * anymore, just built in better"), after four rounds of sticky-bar
+   * sliver fixes inside the scrolling body proved that architecture
+   * unwinnable across browser versions and zoom levels. Default false:
+   * every other caller keeps the classic padded scroller. */
+  flushBody?: boolean
   className?: string
 }
 
@@ -79,7 +89,7 @@ interface OverlayProps {
  * is deliberately not built this pass; see the mobile-layout slice's
  * "what this will not build" list.
  */
-export function Overlay({ open, onClose, header, children, width = 'default', tall = false, variant = 'dialog', className }: OverlayProps) {
+export function Overlay({ open, onClose, header, children, width = 'default', tall = false, variant = 'dialog', flushBody = false, className }: OverlayProps) {
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -173,7 +183,11 @@ export function Overlay({ open, onClose, header, children, width = 'default', ta
          * longer fit in 85vh. `min-h-0` lets this box actually shrink
          * to the space the header leaves it, which is what makes
          * `overflow-y-auto` engage at all. */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-4 sm:px-6">{children}</div>
+        {flushBody ? (
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+        ) : (
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-4 sm:px-6">{children}</div>
+        )}
       </div>
     </div>
   )

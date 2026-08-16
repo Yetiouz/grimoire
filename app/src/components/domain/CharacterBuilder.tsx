@@ -384,15 +384,16 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
     if (stepIndex > 0) setStep(steps[stepIndex - 1])
   }
 
-  // The Overlay body keeps its scroll position across step changes, so
+  // The scroll container keeps its position across step changes, so
   // moving from a long step to the next one landed the player mid-list
   // instead of at the top (live report: reached the Gear step 2000px+
   // deep in the shop with the starting-gold roll scrolled out of view).
-  // The breadcrumb row is the scroller's first child, so its parent IS
-  // the scroll container — reset it whenever the step changes.
-  const crumbRef = useRef<HTMLDivElement>(null)
+  // Reset whenever the step changes. The ref points at the builder's
+  // own scrolling middle (flushBody layout — see the row comment in
+  // the JSX).
+  const scrollRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    crumbRef.current?.parentElement?.scrollTo({ top: 0 })
+    scrollRef.current?.scrollTo({ top: 0 })
   }, [step])
 
   // Both gates below exist because of a live report: a first-time
@@ -528,6 +529,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
       onClose={requestClose}
       width="wide"
       tall
+      flushBody
       header={
         <div className="min-w-0">
           <h2 className={cx(text.h2, 'truncate')}>New Character</h2>
@@ -535,65 +537,17 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         </div>
       }
     >
-      {/* Owner request, 2026-08-15 ("the back and continue buttons and
-        * the breadcrumb header should be sticky so I don't have to
-        * scroll to see them") — `sticky top-0`, not a second fixed
-        * header: `Overlay`'s own title/step-counter row is already
-        * pinned outside the scrolling body (see its own doc comment on
-        * "the header is now always pinned and only the body scrolls
-        * beneath it"), but this pill row is the first thing INSIDE that
-        * scrolling body, so it was scrolling away the moment a step's
-        * content (a 9-card Class grid, two 20-row Background tables)
-        * grew past one screenful. `bg-panel` matches the scroll
-        * container's own background (`Overlay`'s panel fill) so nothing
-        * shows through underneath once stuck; `z-10` keeps it above
-        * scrolled-past card content, which has no z-index of its own.
-        *
-        * Follow-up, same day (owner: "it shows the scroll on the top
-        * and bottom, i think you just shorten that panel to be inside
-        * the sticky bars") — the scroll container (`Overlay`'s body)
-        * carries its own `pt-4`/`px-4 sm:px-6`, and this pill row is
-        * its first child, so a sliver of that padding sat ABOVE the
-        * `bg-panel` box even while stuck, letting scrolled-past content
-        * peek through above the bar. `-mt-4`/`-mx-4 sm:-mx-6` cancels
-        * that padding on this element, and the matching `pt-4`/`px-4
-        * sm:px-6` restores the exact same visual inset — the row's own
-        * static (unstuck) position is now already flush with the true
-        * top of the scrollport (the canceled margin moves it there
-        * directly), so plain `top: 0` is the correct stuck threshold.
-        *
-        * Second follow-up, same day (owner: "the top still has a
-        * sliver") — the first pass over-corrected by ALSO setting
-        * `top: -1rem` here, reasoning it needed to match the canceled
-        * padding the same way the offset does elsewhere. It doesn't:
-        * once the margin trick already puts the row's natural position
-        * at the scrollport's true top edge, a *negative* `top` pushes
-        * the stuck threshold a further 16px past that, so for the
-        * first 16px of scrolling the row's own top edge — and the
-        * border-b along with it — sat up to 16px above the visible
-        * viewport, clipped by `overflow-y-auto`, which is exactly the
-        * remaining sliver. Plain `top-0` has no such window: the row's
-        * rendered position is `max(-scrollTop, 0)`, which is already 0
-        * at `scrollTop: 0` and stays exactly 0 for every scroll
-        * position after, no transition to glitch through. */}
-      {/* `-top-4`, not `top-0` (2026-08-15): Chrome changed sticky
-        * positioning to constrain the MARGIN box, so with this bar's
-        * `-mt-4` a `top-0` pin lands 16px below the scrollport edge and
-        * the sliver this bar's full-bleed treatment fixed came back —
-        * same code, new browser. `-top-4` compensates exactly; on
-        * engines with the old border-box behavior the bar would pin
-        * 16px above the scrollport instead, where the Overlay body's
-        * overflow clip swallows it. Flush on both behaviors. The
-        * footer's `-bottom-6` below is the same fix for its `-mb-6`. */}
-      {/* The `before:` apron: an opaque bg-panel strip extending 16px
-        * past the bar's top edge. Belt to the `-top-4` suspenders —
-        * pinning math varies with browser version, display scaling and
-        * fractional zoom (the sliver reproduced on the owner's machine
-        * at 0px measured gap on another), and an apron of panel color
-        * over the gap zone is immune to all of it. Clipped by the
-        * Overlay body's overflow when pinned, so it can never cover
-        * anything real. */}
-      <div ref={crumbRef} className="sticky -top-4 z-10 -mx-4 -mt-4 flex flex-wrap gap-1.5 border-b border-line-soft bg-panel px-4 pb-4 pt-4 before:absolute before:inset-x-0 before:bottom-full before:h-4 before:bg-panel sm:-mx-6 sm:px-6">
+      {/* Owner's final architecture call after four rounds of sticky-bar
+        * sliver fixes ("make the nav and buttons the top and bottom and
+        * the panel would fit inside those — not really sticky anymore,
+        * just built in better"): the breadcrumb row and the Back/
+        * Continue row are now REAL rows of the panel via Overlay's
+        * `flushBody`, with the scrolling area a separate sibling
+        * between them. Nothing is sticky, nothing overlaps content, no
+        * negative margins, no pinning math for a browser update to
+        * change out from under us — the full saga of what that cost
+        * lives in this file's git history (a3350a8 through 5cdf20c). */}
+      <div className="flex shrink-0 flex-wrap gap-1.5 border-b border-line-soft px-4 py-4 sm:px-6">
         {steps.map((key, index) => (
           <span
             key={key}
@@ -611,6 +565,10 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
           </span>
         ))}
       </div>
+
+      {/* The scrolling middle — owns the padding the Overlay body used
+        * to carry, plus the step-change scroll reset (the ref). */}
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
 
       {confirmingClose && (
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-card border border-red/35 bg-red/10 px-3 py-2">
@@ -1136,61 +1094,10 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         </div>
       )}
 
-      {/* Bug found live, same day (owner: "character creation is
-        * getting hung up on background. it wont let me select one and
-        * then continue") — the real cause: once the sticky footer
-        * below is scrolled to its stuck position, it opaquely covers
-        * roughly its own height's worth of whatever content is
-        * scrolled into that same screen region — normal for ANY
-        * bottom-sticky bar, but on a short step (Background: a text
-        * field plus one Alignment grid, no long list) that covered
-        * zone can BE the step's last real controls, with no further
-        * room to scroll past max-scroll to bring them clear. Alignment
-        * is required to continue (see `canContinue.background` below),
-        * so a trapped-behind-the-footer alignment grid reads exactly
-        * as "picking a background doesn't let me continue" — the
-        * background text was never the blocker, the un-reachable
-        * alignment buttons were. This spacer (sized to roughly the
-        * footer's own rendered height: `pt-4` + one button row + `pb-7`
-        * ≈ 88px, rounded up) guarantees every step always has that much
-        * extra scrollable room after its real content, so the last
-        * control can always be scrolled clear of the footer's covered
-        * zone. Plain flow, not sticky itself — only real content needs
-        * never sit here, this box is disposable. */}
-      <div className="h-24" aria-hidden="true" />
+      </div>
 
-      {/* Sticky footer, same request/reasoning as the breadcrumb row
-        * above — `sticky bottom-0` keeps Back/Continue (or Create, on
-        * Review) reachable without scrolling down past a long step's
-        * content first.
-        *
-        * Follow-up, same day (owner: "it shows the scroll on the top
-        * and bottom, i think you just shorten that panel to be inside
-        * the sticky bars") — same fix as the breadcrumb row's own
-        * follow-up above, mirrored for this edge: the scroll
-        * container's own `pb-6`/`px-4 sm:px-6` sat BELOW this box even
-        * while stuck (this is the last child), so scrolled-past content
-        * could peek through beneath the buttons. `-mb-6`/`-mx-4
-        * sm:-mx-6` cancels that padding here, and `pb-7` (the old
-        * `pb-1` breathing room plus the canceled `pb-6`, folded into
-        * one value so the total gap above the buttons to the true edge
-        * is unchanged) plus `px-4 sm:px-6` restores the original
-        * visual spacing.
-        *
-        * Second follow-up, same day (owner: "the top still has a
-        * sliver") — same over-correction as the breadcrumb row's own
-        * second pass, mirrored: this originally also set `bottom:
-        * -1.5rem` reasoning it needed to match `-mb-6`, which pushed
-        * the stuck threshold 24px past where the margin trick had
-        * already put this row's natural position (flush with the
-        * scrollport's true bottom edge). Plain `bottom-0` needs no such
-        * extra offset — `-mb-6` alone already gets the row there. */}
-      {/* `-bottom-6`, not `bottom-0` — see the breadcrumb bar's
-        * comment: compensates Chrome's sticky margin-box pinning for
-        * this bar's `-mb-6`; clipped harmlessly on older engines. */}
-      {/* `after:` apron below — mirror of the breadcrumb bar's `before:`
-        * strip above; see its comment. */}
-      <div className="sticky -bottom-6 z-10 -mx-4 mt-6 -mb-6 flex items-center justify-between border-t border-line-soft bg-panel px-4 pb-7 pt-4 after:absolute after:inset-x-0 after:top-full after:h-6 after:bg-panel sm:-mx-6 sm:px-6">
+      {/* Real footer row — see the breadcrumb row's comment above. */}
+      <div className="flex shrink-0 items-center justify-between border-t border-line-soft px-4 py-4 sm:px-6">
         <Button type="button" variant="ghost" onClick={stepIndex === 0 ? requestClose : goBack}>
           {stepIndex === 0 ? 'Cancel' : '← Back'}
         </Button>
