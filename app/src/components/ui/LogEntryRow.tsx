@@ -248,11 +248,19 @@ export function LogEntryRow({
        * height on every hover; with the icons now `small` (16px, the
        * same follow-up) the reserved row is shallow enough to keep.
        * Touch devices reveal on tap for free (mobile browsers apply
-       * :hover then); `group-focus-within:` keeps the buttons reachable
-       * by keyboard, since they stay in the tab order while invisible.
-       * `pl-6` keeps them in the message's left indent. The compact-
-       * control exception (no 44px targets in this dense repeated row)
-       * carries over unchanged. */}
+       * :hover then); `group-has-[:focus-visible]:` keeps the buttons
+       * reachable by keyboard, since they stay in the tab order while
+       * invisible — deliberately NOT the broader `group-focus-within:`
+       * of the first pass, which held the row lit after any mouse CLICK
+       * on a button (browsers leave focus on a clicked button, so rows
+       * you'd used stayed stuck on until you clicked elsewhere — owner:
+       * "roll overs are getting stuck on"). `:focus-visible` only
+       * matches keyboard-driven focus, which is the only case the
+       * fallback exists for. `pointer-events-none` while hidden so the
+       * invisible buttons can't swallow a stray click in the reserved
+       * row. `pl-6` keeps them in the message's left indent. The
+       * compact-control exception (no 44px targets in this dense
+       * repeated row) carries over unchanged. */}
       {(canSpeak || onSaveAsNote) && (
         <div
           className={cx(
@@ -262,7 +270,7 @@ export function LogEntryRow({
             // pointer wanders off mid-narration.
             speaking || loading
               ? 'opacity-100'
-              : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
+              : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-has-[:focus-visible]:pointer-events-auto group-has-[:focus-visible]:opacity-100',
           )}
         >
           {canSpeak && (
