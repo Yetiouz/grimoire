@@ -299,9 +299,17 @@ export function JournalComposer({
                 {/* `currentColor` (inline, so it beats `stateColorClass`
                   * regardless of stylesheet order) makes the mark follow
                   * the chip's own text color — tinted when selected, dim
-                  * at rest — with no per-choice color plumbing. */}
-                <Icon name={c.icon} small style={{ color: 'currentColor' }} className="mr-1.5" />
-                <span className="xl:hidden">{c.short}</span>
+                  * at rest — with no per-choice color plumbing.
+                  *
+                  * Below xl:, only the SELECTED chip spells its label —
+                  * the rest are icon-only (owner, 2026-08-16: the icons
+                  * pushed Rules off the edge of a phone screen behind
+                  * the voice switch — "the tabs on the send button you
+                  * can't see"). Same recognize-don't-read treatment the
+                  * world rail's mobile tabs use; color + icon + position
+                  * carry the identity, and the row fits again. */}
+                <Icon name={c.icon} small style={{ color: 'currentColor' }} className={cx(isOn ? 'mr-1.5' : 'xl:mr-1.5')} />
+                <span className={cx('xl:hidden', !isOn && 'hidden')}>{c.short}</span>
                 <span className="hidden xl:inline">{c.label}</span>
               </button>
             </span>

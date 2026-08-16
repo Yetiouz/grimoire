@@ -547,13 +547,20 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         * negative margins, no pinning math for a browser update to
         * change out from under us — the full saga of what that cost
         * lives in this file's git history (a3350a8 through 5cdf20c). */}
-      <div className="flex shrink-0 flex-wrap gap-1.5 border-b border-line-soft px-4 py-4 sm:px-6">
+      {/* Below sm:, only the CURRENT step spells its name — the rest
+        * are bare numbers, one row, never wrapping (owner, 2026-08-16:
+        * seven labeled chips wrapped to three lines on a phone — "so
+        * many tabs it looks a bit crazy"). The green/faint/purple
+        * states already say done/current/upcoming without words, and
+        * the header's "Step N of 7" plus the current chip's own label
+        * cover the rest. Desktop (sm:+) keeps every label. */}
+      <div className="flex shrink-0 flex-nowrap gap-1.5 overflow-x-auto border-b border-line-soft px-4 py-4 sm:flex-wrap sm:px-6" style={{ scrollbarWidth: 'none' }}>
         {steps.map((key, index) => (
           <span
             key={key}
             className={cx(
               text.label,
-              'rounded-full border px-3 py-1 uppercase tracking-eyebrow',
+              'shrink-0 whitespace-nowrap rounded-full border px-3 py-1 uppercase tracking-eyebrow',
               index === stepIndex
                 ? 'border-purple bg-purple/15 text-ink'
                 : index < stepIndex
@@ -561,7 +568,8 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                   : 'border-line-soft text-ink-faint',
             )}
           >
-            {index + 1} {STEP_LABEL[key]}
+            {index + 1}
+            <span className={cx(index !== stepIndex && 'hidden sm:inline')}> {STEP_LABEL[key]}</span>
           </span>
         ))}
       </div>
@@ -657,14 +665,22 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
             const score = Number(entry.value)
             const mod = entry.value.trim() !== '' && !Number.isNaN(score) ? abilityModifier(module, score) : null
             return (
-              <div key={ability} className="flex flex-wrap items-center gap-3 rounded-[10px] border border-line-soft bg-panel2 p-3">
-                <span className={cx(text.label, 'w-10 text-ink-faint')}>{abilityLabel(ability)}</span>
-                <div className="flex w-24 gap-1">
+              // One line, always (owner, 2026-08-16: "the formatting on
+              // mobile... looks bad" — the shared 44px/px-6 Button
+              // wrapped below the fields on a phone, leaving each stat
+              // a tall card that was mostly empty). No `flex-wrap`;
+              // everything is compact below sm: (smaller dice boxes,
+              // tighter gaps, a hand-rolled compact Roll button — same
+              // precedent as the composer's send block) and back to the
+              // original desktop sizes at sm:+.
+              <div key={ability} className="flex items-center gap-2 rounded-[10px] border border-line-soft bg-panel2 p-2.5 sm:gap-3 sm:p-3">
+                <span className={cx(text.label, 'w-8 shrink-0 text-ink-faint sm:w-10')}>{abilityLabel(ability)}</span>
+                <div className="flex shrink-0 gap-1">
                   {(entry.dice ?? [null, null, null]).map((die, i) => (
                     <div
                       key={i}
                       className={cx(
-                        'flex h-6 w-6 items-center justify-center rounded-[6px] border font-mono text-[11px]',
+                        'flex h-5 w-5 items-center justify-center rounded-[6px] border font-mono text-[10px] sm:h-6 sm:w-6 sm:text-[11px]',
                         die === null ? 'border-dashed border-line-hover text-ink-faint opacity-40' : 'border-line-hover text-ink-dim',
                       )}
                     >
@@ -676,12 +692,22 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                   value={entry.value}
                   onChange={(e) => setStats((prev) => ({ ...prev, [ability]: { value: e.target.value, dice: null } }))}
                   inputMode="numeric"
-                  className="h-9 w-14 rounded-[8px] border border-line-hover bg-bg text-center font-mono text-[15px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50"
+                  className="h-9 w-12 shrink-0 rounded-[8px] border border-line-hover bg-bg text-center font-mono text-[15px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50 sm:w-14"
                 />
-                <span className={cx(text.caption, 'w-8 text-center', mod !== null && mod >= 0 ? 'text-green' : mod !== null ? 'text-red' : 'text-ink-faint')}>
+                <span className={cx(text.caption, 'w-7 shrink-0 text-center sm:w-8', mod !== null && mod >= 0 ? 'text-green' : mod !== null ? 'text-red' : 'text-ink-faint')}>
                   {mod !== null ? (mod >= 0 ? `+${mod}` : mod) : '—'}
                 </span>
-                <Button type="button" className="ml-auto" onClick={() => rollOneStat(ability)}>Roll</Button>
+                <button
+                  type="button"
+                  onClick={() => rollOneStat(ability)}
+                  className={cx(
+                    text.caption,
+                    'ml-auto inline-flex min-h-9 shrink-0 items-center justify-center rounded-button bg-purple px-3 font-semibold uppercase text-white shadow-[0_0_0_1px_rgba(155,92,255,0.25),0_8px_24px_-8px_rgba(155,92,255,0.55)] hover:bg-purple-hover sm:min-h-11 sm:px-6',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
+                  )}
+                >
+                  Roll
+                </button>
               </div>
             )
           })}
