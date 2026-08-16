@@ -565,7 +565,16 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         * rendered position is `max(-scrollTop, 0)`, which is already 0
         * at `scrollTop: 0` and stays exactly 0 for every scroll
         * position after, no transition to glitch through. */}
-      <div className="sticky top-0 z-10 -mx-4 -mt-4 flex flex-wrap gap-1.5 border-b border-line-soft bg-panel px-4 pb-4 pt-4 sm:-mx-6 sm:px-6">
+      {/* `-top-4`, not `top-0` (2026-08-15): Chrome changed sticky
+        * positioning to constrain the MARGIN box, so with this bar's
+        * `-mt-4` a `top-0` pin lands 16px below the scrollport edge and
+        * the sliver this bar's full-bleed treatment fixed came back —
+        * same code, new browser. `-top-4` compensates exactly; on
+        * engines with the old border-box behavior the bar would pin
+        * 16px above the scrollport instead, where the Overlay body's
+        * overflow clip swallows it. Flush on both behaviors. The
+        * footer's `-bottom-6` below is the same fix for its `-mb-6`. */}
+      <div className="sticky -top-4 z-10 -mx-4 -mt-4 flex flex-wrap gap-1.5 border-b border-line-soft bg-panel px-4 pb-4 pt-4 sm:-mx-6 sm:px-6">
         {steps.map((key, index) => (
           <span
             key={key}
@@ -1151,7 +1160,10 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         * already put this row's natural position (flush with the
         * scrollport's true bottom edge). Plain `bottom-0` needs no such
         * extra offset — `-mb-6` alone already gets the row there. */}
-      <div className="sticky bottom-0 z-10 -mx-4 mt-6 -mb-6 flex items-center justify-between border-t border-line-soft bg-panel px-4 pb-7 pt-4 sm:-mx-6 sm:px-6">
+      {/* `-bottom-6`, not `bottom-0` — see the breadcrumb bar's
+        * comment: compensates Chrome's sticky margin-box pinning for
+        * this bar's `-mb-6`; clipped harmlessly on older engines. */}
+      <div className="sticky -bottom-6 z-10 -mx-4 mt-6 -mb-6 flex items-center justify-between border-t border-line-soft bg-panel px-4 pb-7 pt-4 sm:-mx-6 sm:px-6">
         <Button type="button" variant="ghost" onClick={stepIndex === 0 ? requestClose : goBack}>
           {stepIndex === 0 ? 'Cancel' : '← Back'}
         </Button>
