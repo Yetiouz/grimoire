@@ -585,7 +585,15 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         * 16px above the scrollport instead, where the Overlay body's
         * overflow clip swallows it. Flush on both behaviors. The
         * footer's `-bottom-6` below is the same fix for its `-mb-6`. */}
-      <div ref={crumbRef} className="sticky -top-4 z-10 -mx-4 -mt-4 flex flex-wrap gap-1.5 border-b border-line-soft bg-panel px-4 pb-4 pt-4 sm:-mx-6 sm:px-6">
+      {/* The `before:` apron: an opaque bg-panel strip extending 16px
+        * past the bar's top edge. Belt to the `-top-4` suspenders —
+        * pinning math varies with browser version, display scaling and
+        * fractional zoom (the sliver reproduced on the owner's machine
+        * at 0px measured gap on another), and an apron of panel color
+        * over the gap zone is immune to all of it. Clipped by the
+        * Overlay body's overflow when pinned, so it can never cover
+        * anything real. */}
+      <div ref={crumbRef} className="sticky -top-4 z-10 -mx-4 -mt-4 flex flex-wrap gap-1.5 border-b border-line-soft bg-panel px-4 pb-4 pt-4 before:absolute before:inset-x-0 before:bottom-full before:h-4 before:bg-panel sm:-mx-6 sm:px-6">
         {steps.map((key, index) => (
           <span
             key={key}
@@ -1180,7 +1188,9 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
       {/* `-bottom-6`, not `bottom-0` — see the breadcrumb bar's
         * comment: compensates Chrome's sticky margin-box pinning for
         * this bar's `-mb-6`; clipped harmlessly on older engines. */}
-      <div className="sticky -bottom-6 z-10 -mx-4 mt-6 -mb-6 flex items-center justify-between border-t border-line-soft bg-panel px-4 pb-7 pt-4 sm:-mx-6 sm:px-6">
+      {/* `after:` apron below — mirror of the breadcrumb bar's `before:`
+        * strip above; see its comment. */}
+      <div className="sticky -bottom-6 z-10 -mx-4 mt-6 -mb-6 flex items-center justify-between border-t border-line-soft bg-panel px-4 pb-7 pt-4 after:absolute after:inset-x-0 after:top-full after:h-6 after:bg-panel sm:-mx-6 sm:px-6">
         <Button type="button" variant="ghost" onClick={stepIndex === 0 ? requestClose : goBack}>
           {stepIndex === 0 ? 'Cancel' : '← Back'}
         </Button>
