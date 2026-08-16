@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { TextInput } from '../ui/TextInput'
-import { Button } from '../ui/Button'
 import { Icon } from '../ui/Icon'
 import type { LogEntryKind } from '../ui/LogEntryRow'
 import type { GmTurnResult } from '../../lib/gm'
@@ -313,12 +312,15 @@ export function JournalComposer({
               // the two locations read identically: percentage against
               // the one shared daily pool, split by mode. GM only
               // renders when Ask GM/Ask Rules exist here at all; Voice
-              // only when the build's voice tier is on AND the player's
-              // own switch is — a meter for a feature the player just
-              // turned off would be noise the switch exists to remove.
+              // only when the build's voice tier is on. The Voice bar
+              // deliberately does NOT follow the player's own switch
+              // (owner, slice A follow-up: "voice used bar needs to
+              // stay") — it reports spend from the shared daily pool,
+              // which is real information whether or not this player is
+              // currently listening.
               <div className="flex shrink-0 flex-col items-end gap-1">
                 {gmAvailable && <GmBudgetBar label="GM" used={budgetByMode.textUsed} limit={budget.limit} />}
-                {ttsAvailable && aiVoiceOn !== false && <GmBudgetBar label="Voice" used={budgetByMode.voiceUsed} limit={budget.limit} />}
+                {ttsAvailable && <GmBudgetBar label="Voice" used={budgetByMode.voiceUsed} limit={budget.limit} />}
               </div>
             )}
           </div>
@@ -327,16 +329,16 @@ export function JournalComposer({
 
       {reply && <GmReply result={reply} onDismiss={() => setReply(null)} />}
 
-      {aiMode && submitting && (
-        <div className={cx(text.label, 'flex items-center gap-2')} style={{ color: selected.hex }} aria-live="polite">
-          <span className="flex gap-1" aria-hidden="true">
-            <span className="h-1 w-1 animate-pulse rounded-full" style={{ background: selected.hex }} />
-            <span className="h-1 w-1 animate-pulse rounded-full [animation-delay:150ms]" style={{ background: selected.hex }} />
-            <span className="h-1 w-1 animate-pulse rounded-full [animation-delay:300ms]" style={{ background: selected.hex }} />
-          </span>
-          {rulesMode ? 'Checking the rules' : 'The GM is thinking'}
-        </div>
-      )}
+      {/* Thinking state (slice A follow-up, 2026-08-16): the old
+        * dots-and-text row that appeared here while the AI worked made
+        * the whole composer grow and shift on every Ask. Replaced by the
+        * send button itself swapping its arrow for a pulsing thinking
+        * spark (below) — same information, zero layout change. The text
+        * lives on as a visually-hidden live region so screen readers
+        * still hear what sighted users now see as the pulse. */}
+      <span className="sr-only" aria-live="polite">
+        {aiMode && submitting ? (rulesMode ? 'Checking the rules' : 'The GM is thinking') : ''}
+      </span>
 
       <div className="flex gap-2">
         <div className="flex-1">
@@ -357,45 +359,44 @@ export function JournalComposer({
             aria-label={choice === 'gm' ? 'Message to the GM' : choice === 'rules' ? 'Rules question' : 'Journal entry'}
           />
         </div>
-        <Button
+        {/* The send control (slice A follow-up, 2026-08-16 — owner: "I
+          * like the send button in the mockup better"): the shared
+          * `Button` (a wide px-6 pill) is swapped for the mockup's
+          * compact 52px block — same `rounded-button` radius, arrow
+          * glyph — hand-rolled here rather than a new Button variant
+          * since no other call site wants this shape. It still wears
+          * the selection's color (mockup B); inline styles for the same
+          * stylesheet-order reason as the input border, shadow
+          * recomputed per selection so a green Roll button doesn't glow
+          * purple. While the AI works (`aiMode && submitting`) the
+          * arrow becomes the pulsing `thinking` spark — see the live
+          * region above for where the old text went. Disabled dimming
+          * is withheld in that state: the button is inert (`disabled`)
+          * but deliberately stays lit, because the pulse IS the
+          * feedback. */}
+        <button
+          type="button"
           onClick={() => void handleSubmit()}
           disabled={disabled || !body.trim()}
-          aria-label={submitLabel}
-          title={submitLabel}
-          // The send button wears the selection's color (mockup B, every
-          // choice in both rows — dark label for contrast on every hue).
-          // Inline for the same stylesheet-order reason as the input
-          // border; the shadow is recomputed per selection so, e.g., a
-          // green Roll button (still in `NON_AI_CHOICES`) doesn't glow
-          // purple.
+          aria-label={aiMode && submitting ? (rulesMode ? 'Checking the rules' : 'The GM is thinking') : submitLabel}
+          title={aiMode && submitting ? (rulesMode ? 'Checking the rules' : 'The GM is thinking') : submitLabel}
+          className={cx(
+            'flex w-[52px] shrink-0 items-center justify-center self-stretch rounded-button transition-opacity duration-150',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
+            !(aiMode && submitting) && 'disabled:opacity-40',
+          )}
           style={{
             background: selected.hex,
             color: '#0a0a0c',
             boxShadow: `0 0 0 1px ${selected.hex}40, 0 8px 24px -8px ${selected.hex}8c`,
           }}
         >
-          {/* Icon swap (2026-08-11, "change log send buttons to a send
-            * icon") — this used to render the word "Send" (aiMode: GM/
-            * Rules) or "Log" (Party/Notes/every NON_AI_CHOICES entry) as
-            * plain text. A single paper-plane glyph now covers both,
-            * since "submit this" reads the same regardless of which of
-            * the two words it used to be — the distinction those words
-            * carried (asking the AI vs. writing straight to the journal)
-            * is still fully conveyed by the chip row above and the
-            * button's own color, not lost by dropping the label here.
-            * `style` (not `state`) sets the icon's color: it must match
-            * the button's own hardcoded `#0a0a0c` contrast color exactly,
-            * which none of `Icon`'s three closed `IconState` tones are —
-            * see the `style` prop's doc comment on `Icon.tsx` for why an
-            * inline-style escape hatch was added rather than stretching
-            * `IconState` to cover a runtime, per-selection color.
-            * `aria-label`/`title` moved to the `Button` itself above
-            * (this icon stays `aria-hidden`, no `label` prop) — same
-            * "accessible name lives on the outer control, not the glyph"
-            * pattern `LogEntryRow`'s speak/saveNote icon buttons already
-            * use. */}
-          <Icon name="send" style={{ color: '#0a0a0c' }} />
-        </Button>
+          {aiMode && submitting ? (
+            <Icon name="thinking" small className="animate-pulse" style={{ color: '#0a0a0c' }} />
+          ) : (
+            <span aria-hidden="true" className="text-base leading-none">➤</span>
+          )}
+        </button>
       </div>
     </div>
   )

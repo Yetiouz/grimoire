@@ -107,8 +107,17 @@ import { cx } from '../../lib/cx'
  * `rules` glyph that the two tiles don't look like duplicates of each
  * other.
  */
+// `thinking` added for the journal composer's send button (2026-08-16,
+// slice A follow-up: "we need a thinking icon like claude has") — while
+// the AI GM is generating, the send button swaps its arrow for this
+// pulsing spark instead of the old expanding dots-and-text row, so the
+// composer's height never changes while waiting. Maps to the same
+// lucide glyph as `luck` (Sparkles) on purpose — the semantic names are
+// the closed set here, not the glyphs, and "a spark of thought" is
+// exactly the association Claude's own thinking indicator trades on.
 const icons = {
   hp: Heart,
+  thinking: Sparkles,
   ac: Shield,
   gear: Backpack,
   luck: Sparkles,
@@ -172,18 +181,27 @@ interface IconProps {
    * class). Omit for every ordinary icon — this only exists for the
    * one caller that needs to fight the default. */
   style?: CSSProperties
+  /** Second sanctioned size (2026-08-16, owner: "speaker and notes
+   * icons can be smaller, like in the Claude desktop") — 16px for
+   * dense, repeated inline utility controls (the feed's per-entry
+   * quick actions, the composer's thinking spark), where 24px reads as
+   * bulk rather than affordance. Still a closed set of exactly two
+   * sizes, not a free `size` number prop — same governance reasoning
+   * as the icon names themselves. */
+  small?: boolean
 }
 
 /** The only sanctioned way to render an icon in Grimoire — see the style
  * guide's Iconography section for the full rules. Every icon renders at
- * the same 24px grid and the same stroke weight (lucide's own defaults,
- * hardcoded here rather than exposed as props, so no call site can
+ * one of exactly two sizes (24px default, 16px via `small` — see that
+ * prop's doc comment) and the same stroke weight (lucide's defaults,
+ * hardcoded here rather than exposed as free props, so no call site can
  * quietly drift off them). */
-export function Icon({ name, state = 'default', className, label, style }: IconProps) {
+export function Icon({ name, state = 'default', className, label, style, small = false }: IconProps) {
   const LucideIcon = icons[name]
   return (
     <LucideIcon
-      size={24}
+      size={small ? 16 : 24}
       strokeWidth={2}
       className={cx(stateColorClass[state], className)}
       style={style}

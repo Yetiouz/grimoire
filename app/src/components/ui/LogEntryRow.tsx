@@ -238,28 +238,31 @@ export function LogEntryRow({
         </div>
       )}
       {/* Quick actions: below the message (2026-08-09, owner feedback —
-       * after the content they act on, not above it), and now revealed
-       * on demand rather than always-on (UI review slice A, 2026-08-16
+       * after the content they act on, not above it), revealed on
+       * hover/tap rather than always-on (UI review slice A, 2026-08-16
        * — the feed's #1 noise finding was permanent per-entry chrome
-       * repeated down the whole session). Hidden via max-h/opacity and
-       * slid in by `group-hover:` on the row — the same bottom position
-       * they always had, they just wait to be reached for. Touch
-       * devices get this for free (mobile browsers apply :hover on
-       * tap); `group-focus-within:` keeps the buttons reachable by
-       * keyboard, since they stay in the tab order while clipped.
+       * repeated down the whole session). Opacity-only reveal in a row
+       * whose space is always reserved (owner follow-up: "things don't
+       * expand when you roll over — just the icons are shown"): the
+       * first pass animated max-height, which shifted the entry's own
+       * height on every hover; with the icons now `small` (16px, the
+       * same follow-up) the reserved row is shallow enough to keep.
+       * Touch devices reveal on tap for free (mobile browsers apply
+       * :hover then); `group-focus-within:` keeps the buttons reachable
+       * by keyboard, since they stay in the tab order while invisible.
        * `pl-6` keeps them in the message's left indent. The compact-
        * control exception (no 44px targets in this dense repeated row)
-       * carries over from the always-on version unchanged. */}
+       * carries over unchanged. */}
       {(canSpeak || onSaveAsNote) && (
         <div
           className={cx(
-            'flex items-center gap-1 overflow-hidden pl-6 transition-all duration-200',
+            'flex items-center gap-1 pl-6 pt-0.5 transition-opacity duration-150',
             // Stays revealed while this row is talking (or warming up) —
             // otherwise the stop control would vanish the moment the
             // pointer wanders off mid-narration.
             speaking || loading
-              ? 'max-h-9 pt-1 opacity-100'
-              : 'max-h-0 pt-0 opacity-0 group-hover:max-h-9 group-hover:pt-1 group-hover:opacity-100 group-focus-within:max-h-9 group-focus-within:pt-1 group-focus-within:opacity-100',
+              ? 'opacity-100'
+              : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
           )}
         >
           {canSpeak && (
@@ -273,7 +276,7 @@ export function LogEntryRow({
                 loading && 'animate-pulse text-cyan',
               )}
             >
-              <Icon name="speak" state={speaking ? 'active' : 'default'} />
+              <Icon name="speak" small state={speaking ? 'active' : 'default'} />
             </button>
           )}
           {onSaveAsNote && (
@@ -284,7 +287,7 @@ export function LogEntryRow({
               title="Save as note"
               className="shrink-0 rounded p-1 text-ink-faint transition-colors hover:text-ink"
             >
-              <Icon name="saveNote" />
+              <Icon name="saveNote" small />
             </button>
           )}
         </div>
