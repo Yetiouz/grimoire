@@ -44,14 +44,28 @@
  * by hand (the landing page's own hero-wordmark makes the same
  * guarantee via `text-transform: uppercase` in index.html, for the same
  * reason).
+ *
+ * Widow/orphan prevention (2026-08-17) is baked into the two levels that
+ * actually wrap into multiple lines of reading content: `text-balance`
+ * on h1/h2/h3 (Tailwind's utility for CSS `text-wrap: balance`) evens
+ * out line lengths on short headline blocks instead of leaving a
+ * lopsided last line; `text-pretty` on body/bodySecondary (`text-wrap:
+ * pretty`) does the equivalent job for longer running copy — talent
+ * text, item descriptions, journal entries — specifically avoiding a
+ * single word stranded alone on the final line. Both are no-cost
+ * progressive enhancement: Chrome/Edge and Safari (26+) apply them,
+ * Firefox falls back to ordinary wrapping with no breakage. display/
+ * caption/label/numeric/dataDisplay are deliberately left out — display
+ * is a single all-caps word that never wraps, and the other three are
+ * short metadata values, not multi-line reading content.
  */
 export const text = {
   display: 'font-brand uppercase text-display sm:text-display-lg text-ink',
-  h1: 'font-heading uppercase font-normal tracking-h1 text-h1 text-ink',
-  h2: 'font-heading uppercase font-normal tracking-h2 text-h2 text-ink',
-  h3: 'font-heading uppercase font-normal tracking-h3 text-h3 text-ink',
-  body: 'font-sans text-body text-ink',
-  bodySecondary: 'font-sans text-body text-ink-dim',
+  h1: 'font-heading uppercase font-normal tracking-h1 text-h1 text-ink text-balance',
+  h2: 'font-heading uppercase font-normal tracking-h2 text-h2 text-ink text-balance',
+  h3: 'font-heading uppercase font-normal tracking-h3 text-h3 text-ink text-balance',
+  body: 'font-sans text-body text-ink text-pretty',
+  bodySecondary: 'font-sans text-body text-ink-dim text-pretty',
   caption: 'font-mono text-caption',
   label: 'font-mono text-label uppercase tracking-eyebrow text-ink-faint',
   numeric: 'font-mono tabular-nums text-numeric font-semibold text-ink',
