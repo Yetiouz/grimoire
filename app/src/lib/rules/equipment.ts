@@ -146,6 +146,24 @@ export function cpToGoldParts(totalCp: number): { gp: number; sp: number; cp: nu
   return { gp: g, sp: s, cp: c }
 }
 
+/** Exact (case-insensitive) name lookup against the Core catalog —
+ * added overnight 2026-08-17 alongside the item-icon set (see
+ * `ItemBustIcon` in `AncestryClassArt.tsx`) so `GearSlotGrid` can show
+ * an icon next to an owned gear line without owning any catalog
+ * knowledge itself. Deliberately EXACT match only, not a substring/
+ * keyword search: `equipment: string[]` also holds freeform typed
+ * items and 0-level gear-roll bundles like "Crawling kit: backpack,
+ * flint and steel, 2 torches, ..." that happen to contain a catalog
+ * word without BEING that item — a substring match would slap a
+ * dagger icon on a sentence that mentions daggers in passing. Same
+ * never-guess discipline `Shop`'s own `ownedCounts` comment already
+ * documents for the identical problem (a non-catalog line just gets
+ * no icon, same as it gets no owned-count/refund button there). */
+export function findEquipmentByName(name: string): RulesEquipmentItem | undefined {
+  const normalized = name.trim().toLowerCase()
+  return CORE_EQUIPMENT.find((item) => item.name.toLowerCase() === normalized)
+}
+
 /** Accepts the two gold shapes already in play across this app —
  * `CharacterGold` (numbers, possibly undefined, from `characters.gold`)
  * during play, and the Gear step's own string-valued `{gp,sp,cp}` text

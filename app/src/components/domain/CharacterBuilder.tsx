@@ -954,6 +954,34 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
       )}
 
       {step === 'background' && (
+        // Owner, overnight 2026-08-17/18 ("when you roll you dont know
+        // if it selected something and then the second part is always
+        // hidden... layout could be better") — two real bugs, not one:
+        //
+        // 1. No selected state. Rolling (or clicking) an entry below
+        //    only ever wrote into `backgroundText`; none of the option
+        //    buttons ever reflected which one — if any — matched it.
+        //    Every option always looked identically unselected, roll
+        //    or no roll. Fixed by comparing each entry's
+        //    `${name}. ${detail}` against `backgroundText` and applying
+        //    the same `cardSelected` treatment (border-purple bg-purple/10)
+        //    every other choice card in this wizard already uses —
+        //    Alignment and Deity right below both already did this;
+        //    Background was the one card style that never got it.
+        //
+        // 2. The readout was buried. Each background table has a full
+        //    20-entry d20 grid (`lib/rules/shadowdark.ts`) — 10 rows at
+        //    sm:grid-cols-2. The `TextInput` showing what your roll (or
+        //    click) actually produced sat BELOW that entire grid, so on
+        //    most screens confirming a roll meant scrolling past ~10
+        //    rows of options to find it — "the second part is always
+        //    hidden" was literal, not a figure of speech. Moved the
+        //    TextInput up to sit directly under the Roll button, so the
+        //    result is visible the instant you roll with zero
+        //    scrolling. The full option grid stays below for browsing,
+        //    now in its own `max-h-64 overflow-y-auto` panel so a
+        //    20-entry table can't push Alignment/Deity off-screen the
+        //    way it could when it rendered at full natural height.
         <div className="flex flex-col gap-5">
           <div>
             <div className="mb-2 flex flex-wrap gap-2">
@@ -976,20 +1004,27 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
               <Button type="button" onClick={rollBackground}>Roll (d20)</Button>
               <span className={cx(text.caption, 'text-ink-faint')}>or pick one below, or type your own</span>
             </div>
-            <div className="mb-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-              {backgroundTable?.entries.map((entry) => (
-                <button
-                  key={entry.roll}
-                  type="button"
-                  onClick={() => pickBackgroundEntry(entry.name, entry.detail)}
-                  className="rounded-[8px] border border-line-soft bg-panel2 px-2.5 py-1.5 text-left hover:border-line-hover"
-                >
-                  <span className={cx(text.caption, 'font-semibold')}>{entry.name}.</span>{' '}
-                  <span className={cx(text.caption, 'text-ink-faint')}>{entry.detail}</span>
-                </button>
-              ))}
+            <TextInput label="Background" value={backgroundText} onChange={(e) => setBackgroundText(e.target.value)} className="mb-3" />
+            <p className={cx(text.label, 'mb-2 text-ink-faint')}>Browse all</p>
+            <div className="mb-3 grid max-h-64 grid-cols-1 gap-1.5 overflow-y-auto rounded-[10px] border border-line-soft bg-bg/40 p-1.5 sm:grid-cols-2">
+              {backgroundTable?.entries.map((entry) => {
+                const isSelected = backgroundText === `${entry.name}. ${entry.detail}`
+                return (
+                  <button
+                    key={entry.roll}
+                    type="button"
+                    onClick={() => pickBackgroundEntry(entry.name, entry.detail)}
+                    className={cx(
+                      'rounded-[8px] border px-2.5 py-1.5 text-left',
+                      isSelected ? 'border-purple bg-purple/10' : 'border-line-soft bg-panel2 hover:border-line-hover',
+                    )}
+                  >
+                    <span className={cx(text.caption, 'font-semibold')}>{entry.name}.</span>{' '}
+                    <span className={cx(text.caption, 'text-ink-faint')}>{entry.detail}</span>
+                  </button>
+                )
+              })}
             </div>
-            <TextInput label="Background" value={backgroundText} onChange={(e) => setBackgroundText(e.target.value)} />
           </div>
 
           <div>

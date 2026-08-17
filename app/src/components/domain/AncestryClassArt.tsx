@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cx } from '../../lib/cx'
+import type { EquipmentCategory } from '../../lib/rules/equipment'
 
 /**
  * Sigil marks for the Character Builder's Ancestry and Class choice
@@ -529,6 +530,135 @@ export function AncestrySpriteArt({ k, baseHeightPx = 128, className }: { k: str
       aria-hidden="true"
       className={cx('pointer-events-none select-none', className)}
       style={{ height: baseHeightPx, width: 'auto', imageRendering: 'pixelated' }}
+    />
+  )
+}
+
+// Item icons, added overnight 2026-08-17 per the owner's own drop
+// (`Icons/item-icons`, 39 files) — same request as the Class bust
+// icons earlier the same day ("go ahead and push these on your own
+// when you are done"), applied to the Gear step's Shop catalog this
+// time. Source format is identical to the class-icons set (1254×1254,
+// white line art on solid black, 1-bit mode) and got the exact same
+// luminance-as-alpha + LANCZOS-to-128 treatment into
+// `public/item-icons/` before landing here — see this file's own
+// class-icons comment above for why that specific pipeline exists.
+//
+// Unlike Ancestry/Class, there's no per-item sigil map to reuse for
+// tint color — 35 individual items would be 35 individual color
+// decisions nobody asked for, and Shop already renders these packed
+// into a dense scrolling list (`CATEGORY_TABS`), where that much color
+// variety would read as noise rather than signal (the same reasoning
+// that flattened the Class step's source badges down to one neutral
+// tone, see `SOURCE_BADGE` in CharacterBuilder.tsx). Tinting by
+// `EquipmentCategory` instead — one color per Gear/Armor/Weapon tab —
+// gives the list a scannable rhythm without inventing a 35-color
+// palette. Colors are reused from the existing token set rather than
+// new ones, same "meaning is contextual" precedent already established
+// by e.g. `--color-green` covering both Ras-Godai's class accent and
+// the ability pill's unrelated "rolled 14+" state:
+//   - weapon -> red (existing danger/combat association, e.g.
+//     Knight-of-St-Ydris and Goblin)
+//   - armor  -> stone (existing metal/defense association, Dwarf)
+//   - gear   -> tan (existing "physical adventuring gear" association,
+//     the four Warrior-analog classes)
+const ITEM_CATEGORY_COLORS: Record<EquipmentCategory, string> = {
+  weapon: 'var(--color-red)',
+  armor: 'var(--color-stone)',
+  gear: 'var(--color-tan)',
+}
+
+// Keyed by `RulesEquipmentItem.key` (lib/rules/equipment.ts) — a 1:1
+// match against every CORE_EQUIPMENT entry except the four the owner's
+// asset drop included but the catalog deliberately left out (see
+// equipment.ts's own "left out of the catalog on purpose" comment):
+// gear-crawling-kit (a bundle of items already listed individually),
+// material-mithral (an armor modifier, not a standalone item), and
+// currency-coins/treasure-gem (Varies-priced loot categories, not
+// fixed shop stock). Those four PNGs are still processed into
+// `public/item-icons/` (no reason to throw away owner-provided art),
+// just not wired to anything here until there's a real UI spot that
+// wants them — same "don't guess at a use" discipline as everything
+// else in this map.
+const ITEM_ICONS: Record<string, string> = {
+  // Basic Gear
+  'arrows-20': '/item-icons/gear-arrows.png',
+  backpack: '/item-icons/gear-backpack.png',
+  caltrops: '/item-icons/gear-caltrops.png',
+  'crossbow-bolts-20': '/item-icons/gear-crossbow-bolts.png',
+  crowbar: '/item-icons/gear-crowbar.png',
+  'flask-or-bottle': '/item-icons/gear-flask-bottle.png',
+  'flint-and-steel': '/item-icons/gear-flint-steel.png',
+  'grappling-hook': '/item-icons/gear-grappling-hook.png',
+  'iron-spikes-10': '/item-icons/gear-iron-spikes.png',
+  lantern: '/item-icons/gear-lantern.png',
+  mirror: '/item-icons/gear-mirror.png',
+  'oil-flask': '/item-icons/gear-oil-flask.png',
+  pole: '/item-icons/gear-pole.png',
+  'rations-3': '/item-icons/gear-rations.png',
+  'rope-60': '/item-icons/gear-rope.png',
+  torch: '/item-icons/gear-torch.png',
+
+  // Armor
+  'leather-armor': '/item-icons/armor-leather.png',
+  chainmail: '/item-icons/armor-chainmail.png',
+  'plate-mail': '/item-icons/armor-plate-mail.png',
+  shield: '/item-icons/armor-shield.png',
+
+  // Weapons
+  'bastard-sword': '/item-icons/weapon-bastard-sword.png',
+  club: '/item-icons/weapon-club.png',
+  crossbow: '/item-icons/weapon-crossbow.png',
+  dagger: '/item-icons/weapon-dagger.png',
+  greataxe: '/item-icons/weapon-greataxe.png',
+  greatsword: '/item-icons/weapon-greatsword.png',
+  javelin: '/item-icons/weapon-javelin.png',
+  longbow: '/item-icons/weapon-longbow.png',
+  longsword: '/item-icons/weapon-longsword.png',
+  mace: '/item-icons/weapon-mace.png',
+  shortbow: '/item-icons/weapon-shortbow.png',
+  shortsword: '/item-icons/weapon-shortsword.png',
+  spear: '/item-icons/weapon-spear.png',
+  staff: '/item-icons/weapon-staff.png',
+  warhammer: '/item-icons/weapon-warhammer.png',
+}
+
+interface ItemBustIconProps {
+  /** `RulesEquipmentItem.key` — looked up directly in `ITEM_ICONS`
+   * rather than fuzzy-matched against anything, same never-guess
+   * discipline as the rest of this file's fallback handling. */
+  itemKey: string
+  category: EquipmentCategory
+  className?: string
+}
+
+/** Renders nothing (not a fallback mark) for an unmapped key — unlike
+ * Ancestry/Class, which always have a sigil to fall back to, there's no
+ * vector mark for gear. Both call sites (`Shop`, `GearSlotGrid`) treat
+ * "no icon" as an acceptable, expected state for anything outside the
+ * 35-item catalog rather than a bug to paper over. */
+export function ItemBustIcon({ itemKey, category, className }: ItemBustIconProps) {
+  const src = ITEM_ICONS[itemKey]
+  if (!src) return null
+
+  const color = ITEM_CATEGORY_COLORS[category]
+
+  return (
+    <span
+      aria-hidden="true"
+      className={cx('inline-block shrink-0 bg-current', className)}
+      style={{
+        color,
+        WebkitMaskImage: `url(${src})`,
+        maskImage: `url(${src})`,
+        WebkitMaskRepeat: 'no-repeat',
+        maskRepeat: 'no-repeat',
+        WebkitMaskPosition: 'center',
+        maskPosition: 'center',
+        WebkitMaskSize: 'contain',
+        maskSize: 'contain',
+        filter: `drop-shadow(0 0 4px color-mix(in srgb, ${color} 45%, transparent))`,
+      }}
     />
   )
 }

@@ -4,6 +4,7 @@ import { text } from '../../lib/typography'
 import { TextInput } from '../ui/TextInput'
 import { CORE_EQUIPMENT, formatCp } from '../../lib/rules/equipment'
 import type { EquipmentCategory, RulesEquipmentItem } from '../../lib/rules/equipment'
+import { ItemBustIcon } from './AncestryClassArt'
 
 interface ShopProps {
   /** Defaults to the Core catalog — the only one that exists today (see
@@ -141,6 +142,7 @@ export function Shop({ items = CORE_EQUIPMENT, goldCp, owned, onBuy, onReturn, d
               key={item.key}
               className="flex items-center gap-3 rounded-[9px] border border-line-soft bg-panel2 px-3 py-2"
             >
+              <ItemBustIcon itemKey={item.key} category={item.category} className="h-8 w-8" />
               <div className="min-w-0 flex-1">
                 <p className={cx(text.bodySecondary, 'font-semibold text-ink')}>{item.name}</p>
                 {item.detail && <p className={cx(text.caption, 'text-ink-faint')}>{item.detail}</p>}

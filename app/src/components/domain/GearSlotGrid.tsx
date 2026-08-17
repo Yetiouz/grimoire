@@ -1,5 +1,7 @@
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
+import { findEquipmentByName } from '../../lib/rules/equipment'
+import { ItemBustIcon } from './AncestryClassArt'
 import { Icon } from '../ui/Icon'
 
 interface GearSlotGridProps {
@@ -30,46 +32,61 @@ interface GearSlotGridProps {
  *
  * Icon badge added 2026-08-11 (reorganized Character Sheet mockup
  * review, "can I see slots with icons of what it is") — every chip
- * gets the same closed-set `gear` glyph (Icon.tsx's `Backpack`), not a
- * per-item weapon/armor/tool icon: `items` are freeform text with no
- * structured item-type field to key a per-item icon off of (the
- * doc-comment above already explains why this grid won't fabricate
- * per-slot numbering for the same reason — there's nothing in the data
- * to be precise about). A single consistent badge still gives every
- * entry a visual anchor without claiming to know what any one item
- * actually is. */
+ * originally got the same closed-set `gear` glyph (Icon.tsx's
+ * `Backpack`), not a per-item weapon/armor/tool icon, because `items`
+ * are freeform text with no structured item-type field to key a
+ * per-item icon off of.
+ *
+ * Overnight 2026-08-17, alongside the new `item-icons` art set landing
+ * in the Gear step's Shop (`ItemBustIcon` in `AncestryClassArt.tsx`):
+ * each chip now tries `findEquipmentByName` for an EXACT (not
+ * substring) match against the Core catalog and shows that item's real
+ * tinted icon when found — Shop pushes its catalog's own `name` string
+ * verbatim on every purchase, so anything bought through Shop matches
+ * here for free. A line that doesn't match (a freeform typed item, or
+ * a 0-level gear-roll bundle like "Crawling kit: backpack, flint and
+ * steel, ...") falls back to the same generic `gear` glyph as before —
+ * this grid still won't guess which single icon a multi-item bundle
+ * "is", for the same reason it won't fabricate slot numbers. */
 export function GearSlotGrid({ items, onRemove, removeDisabled, className }: GearSlotGridProps) {
   return (
     <div className={cx('grid grid-cols-1 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(240px,1fr))]', className)}>
-      {items.map((item, index) => (
-        <div
-          key={index}
-          className={cx(
-            'flex items-start gap-2.5 rounded-[9px] border border-line-soft bg-panel2 px-3 py-2',
-            text.bodySecondary,
-          )}
-        >
-          <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-line-soft bg-panel">
-            <Icon name="gear" className="h-4 w-4" />
-          </span>
-          <span className="min-w-0 flex-1 break-words">{item}</span>
-          {onRemove && (
-            <button
-              type="button"
-              disabled={removeDisabled}
-              onClick={() => onRemove(index)}
-              aria-label={`Drop ${item}`}
-              title="Drop this item"
-              className={cx(
-                text.label,
-                'mt-0.5 shrink-0 text-ink-faint hover:text-red disabled:pointer-events-none disabled:opacity-40',
+      {items.map((item, index) => {
+        const matched = findEquipmentByName(item)
+        return (
+          <div
+            key={index}
+            className={cx(
+              'flex items-start gap-2.5 rounded-[9px] border border-line-soft bg-panel2 px-3 py-2',
+              text.bodySecondary,
+            )}
+          >
+            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-line-soft bg-panel">
+              {matched ? (
+                <ItemBustIcon itemKey={matched.key} category={matched.category} className="h-4 w-4" />
+              ) : (
+                <Icon name="gear" className="h-4 w-4" />
               )}
-            >
-              Drop
-            </button>
-          )}
-        </div>
-      ))}
+            </span>
+            <span className="min-w-0 flex-1 break-words">{item}</span>
+            {onRemove && (
+              <button
+                type="button"
+                disabled={removeDisabled}
+                onClick={() => onRemove(index)}
+                aria-label={`Drop ${item}`}
+                title="Drop this item"
+                className={cx(
+                  text.label,
+                  'mt-0.5 shrink-0 text-ink-faint hover:text-red disabled:pointer-events-none disabled:opacity-40',
+                )}
+              >
+                Drop
+              </button>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
