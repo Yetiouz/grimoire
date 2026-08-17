@@ -374,3 +374,63 @@ export function AncestryBustIcon({ k, ghost, className }: ArtProps) {
     />
   )
 }
+
+// Owner follow-up, 2026-08-17 ("art for the right side is here" —
+// `Art/ancestry-characters-grim`) — the full-color full-body sprite that
+// bleeds off an Ancestry card's right edge, replacing the low-opacity
+// ghost SIGIL that used to sit there (the small bust icon up front stays
+// exactly as-is; this only changes the big background mark). Unlike the
+// bust icons, these are real full-color art, not a one-color mask
+// target — no tinting, just the source PNG with a fade.
+//
+// The six source PNGs (`public/ancestry-sprites/*.png`) are NOT the
+// owner's raw files — they're cropped to each character's own opaque
+// content bounding box (+3px), not the original 128×128 canvas. The raw
+// exports share one canvas size but not one in-canvas position: some
+// characters (e.g. Elf) are drawn narrower and left of center, so
+// right-aligning the UNCROPPED canvas would put empty transparent margin
+// at the card edge instead of the character for those ancestries, while
+// wide ones (Dwarf) would bleed almost to the edge — an inconsistent
+// "how close does this ancestry get to the corner" per card that has
+// nothing to do with the character art itself. Cropping first makes
+// every sprite's own visible pixels — not its canvas — the thing that
+// right-aligns, so the bleed distance reads the same across all six.
+// Confirmed via `Image.getbbox()` that every source shares the same
+// vertical extent (top≈6, bottom≈122 of 128), so height stayed uniform
+// across the crop and only width varies per character build — exactly
+// what a fixed-height, auto-width render wants.
+//
+// The mask (not just `opacity`) is what makes this read as art bleeding
+// INTO the card rather than a picture pasted on top of it: a flat
+// `opacity` alone would wash out the whole image evenly, fighting the
+// card's own text on the left where the two overlap; a left-to-right
+// alpha gradient instead fades the art in from nothing exactly where
+// the text lives and lets it come up to near-full color only right at
+// the edge, so the two never really compete for the same pixels.
+const ANCESTRY_SPRITES: Record<string, string> = {
+  dwarf: '/ancestry-sprites/dwarf.png',
+  elf: '/ancestry-sprites/elf.png',
+  goblin: '/ancestry-sprites/goblin.png',
+  'half-orc': '/ancestry-sprites/half-orc.png',
+  halfling: '/ancestry-sprites/halfling.png',
+  human: '/ancestry-sprites/human.png',
+}
+
+export function AncestrySpriteArt({ k, className }: { k: string; className?: string }) {
+  const src = ANCESTRY_SPRITES[k]
+  if (!src) return null
+
+  return (
+    <img
+      src={src}
+      alt=""
+      aria-hidden="true"
+      className={cx('pointer-events-none select-none', className)}
+      style={{
+        imageRendering: 'pixelated',
+        WebkitMaskImage: 'linear-gradient(to right, transparent 30%, black 70%)',
+        maskImage: 'linear-gradient(to right, transparent 30%, black 70%)',
+      }}
+    />
+  )
+}
