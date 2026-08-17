@@ -640,7 +640,18 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
       )}
 
       {step === 'stats' && (
-        <div className="flex flex-col gap-3">
+        // Owner, 2026-08-17 ("cut some height off the stat row... so
+        // things don't get hidden when the 14 warning comes up") — the
+        // reroll banner below only renders once all six stats are
+        // filled and none rolled 14+, so it was landing at the bottom
+        // of an already-tall stack and could end up below the fold.
+        // Trimmed gap-3 -> gap-2 here (between the intro line, the Roll
+        // All/Clear row, all six stat rows, and the banner) and each
+        // stat row's own p-2.5/sm:p-3 -> p-2/sm:p-2.5 below. Only
+        // padding and inter-row spacing moved — every touch target
+        // (the 44px Roll button, the input) is untouched, per CLAUDE.md's
+        // standing 44px-minimum rule for interactive controls.
+        <div className="flex flex-col gap-2">
           <p className={cx(text.bodySecondary, 'text-ink-faint')}>
             "Roll" fills a stat with a fresh {module.statMethod.formula} — every field is also just a number you can type
             into directly, so a score you already rolled on paper works the same way.
@@ -662,7 +673,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
               // tighter gaps, a hand-rolled compact Roll button — same
               // precedent as the composer's send block) and back to the
               // original desktop sizes at sm:+.
-              <div key={ability} className="flex items-center gap-2 rounded-[10px] border border-line-soft bg-panel2 p-2.5 sm:gap-3 sm:p-3">
+              <div key={ability} className="flex items-center gap-2 rounded-[10px] border border-line-soft bg-panel2 p-2 sm:gap-3 sm:p-2.5">
                 <span className={cx(text.label, 'w-8 shrink-0 text-ink-faint sm:w-10')}>{abilityLabel(ability)}</span>
                 <div className="flex shrink-0 gap-1">
                   {(entry.dice ?? [null, null, null]).map((die, i) => (
@@ -701,7 +712,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
             )
           })}
           {showRerollBanner && (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-yellow/35 bg-yellow/10 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-yellow/35 bg-yellow/10 p-2.5">
               <span className={cx(text.bodySecondary, 'text-yellow')}>⚠ {module.statMethod.rerollRule ?? ''}</span>
               <Button type="button" onClick={rollAllStats}>Reroll All</Button>
             </div>
