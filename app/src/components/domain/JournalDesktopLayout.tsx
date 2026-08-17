@@ -238,7 +238,12 @@ export function JournalDesktopLayout({
     // same fix, same column. The center journal's minmax(0,1fr) is
     // unchanged; both side columns' extra width comes entirely out of its
     // flexible share.
-    <div className="hidden flex-1 grid-cols-1 gap-3 p-4 xl:grid xl:min-h-0 xl:grid-cols-[20rem_minmax(0,1fr)_26rem]">
+    // Party column 20rem -> 22rem (2026-08-16, owner: "expand party
+    // panel so luck never wraps") — five stat spans (HP/AC/BAG/GP/LUCK)
+    // sat right at 20rem's edge, so a character with wider numerals
+    // (10/10) pushed LUCK onto its own line while a narrower one
+    // didn't; +2rem clears the widest real row with room.
+    <div className="hidden flex-1 grid-cols-1 gap-3 p-4 xl:grid xl:min-h-0 xl:grid-cols-[22rem_minmax(0,1fr)_26rem]">
       {/* LEFT: Party card + Tools card (v11: members grouped in one
         * card, tools in their own card below it) — each a ColumnCard,
         * the card-shell layout primitive (CLAUDE.md). */}

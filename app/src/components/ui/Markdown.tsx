@@ -87,12 +87,24 @@ function parseBlocks(source: string): Block[] {
   return blocks
 }
 
-// Matches **bold**, __bold__, *italic*, _italic_ — deliberately not
-// nested (a "small subset", per BOB_queue's own framing, not a full
+// Matches `code`, **bold**, __bold__, *italic*, _italic_ — deliberately
+// not nested (a "small subset", per BOB_queue's own framing, not a full
 // CommonMark implementation). Anything without a matching closing
 // marker (a stray '*' in ordinary text) just falls through as plain
 // text below.
-const INLINE_RE = /(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_)/g
+//
+// Two fixes from the UI review's Reference-overlay pass (2026-08-16,
+// the persona/house-rules packs are heavier markdown than the chat
+// answers this started on):
+// - `code` spans are real now — backticks used to fall through as
+//   literal characters ("shows literal backticks").
+// - underscore emphasis requires word boundaries, per CommonMark's own
+//   intraword rule: `_TOOLS/dice.py` and `ENCOUNTER_TREASURE_REFERENCE`
+//   were being eaten as italics ("underscore-swallowed names"). The
+//   lookarounds keep a mid-word `_` as plain text; `*` emphasis is
+//   untouched (CommonMark allows it intraword, and nothing real broke
+//   on it).
+const INLINE_RE = /(`[^`]+`|\*\*[^*]+\*\*|(?<![\w_])__[^_]+__(?![\w_])|\*[^*]+\*|(?<![\w_])_[^_]+_(?![\w_]))/g
 
 function renderInline(line: string, keyPrefix: string): ReactNode[] {
   const nodes: ReactNode[] = []
@@ -104,7 +116,13 @@ function renderInline(line: string, keyPrefix: string): ReactNode[] {
     if (match.index > lastIndex) nodes.push(line.slice(lastIndex, match.index))
     const token = match[0]
     const key = `${keyPrefix}-${idx++}`
-    if (token.startsWith('**') || token.startsWith('__')) {
+    if (token.startsWith('`')) {
+      nodes.push(
+        <code key={key} className="rounded bg-panel px-1 py-0.5 font-mono text-[0.85em] text-ink">
+          {token.slice(1, -1)}
+        </code>,
+      )
+    } else if (token.startsWith('**') || token.startsWith('__')) {
       nodes.push(
         <strong key={key} className="font-semibold text-ink">
           {token.slice(2, -2)}

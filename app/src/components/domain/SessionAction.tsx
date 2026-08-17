@@ -105,6 +105,18 @@ export function SessionAction({ open, paused, starting, ending, pausing, resumin
 
   return (
     <div className="flex items-center gap-2">
+      {/* Demoted to quiet ghosts at rest (UI review item 5, 2026-08-16,
+        * owner-approved mockup + "the colors can be on roll overs"): a
+        * permanently red STOP SESSION outranked everything on screen
+        * all session long, and ending a session isn't danger — it's
+        * routine. Pause/Resume/End now rest neutral (line border, dim
+        * ink) and take their tone color on hover only; full red still
+        * lives where it belongs, on EndSessionReview's actual confirm.
+        * Resume is the one exception kept tinted at rest: a paused
+        * session is a state you want visibly flagged, and the green
+        * play square IS that flag. Pause gains its word at sm:+ (it
+        * was a bare 16px glyph nobody could read); both stay icon-only
+        * squares on phones, where the header has no room to spare. */}
       {open && paused ? (
         <button
           type="button"
@@ -112,9 +124,10 @@ export function SessionAction({ open, paused, starting, ending, pausing, resumin
           disabled={resuming}
           aria-label="Resume session"
           title="Resume this session"
-          className={cx(base, 'w-11 border-green/45 bg-green/10 px-0 text-green')}
+          className={cx(base, 'border-green/45 bg-green/10 text-green', 'w-11 gap-2 px-0 sm:w-auto sm:px-4')}
         >
           <PlayGlyph />
+          <span className="hidden sm:inline">{resuming ? 'Resuming…' : 'Resume'}</span>
         </button>
       ) : (
         <button
@@ -123,9 +136,14 @@ export function SessionAction({ open, paused, starting, ending, pausing, resumin
           disabled={!open || pausing}
           aria-label="Pause session"
           title={open ? 'Pause this session' : 'Start a session to pause it'}
-          className={cx(base, 'w-11 border-yellow/45 bg-yellow/10 px-0 text-yellow')}
+          className={cx(
+            base,
+            'border-line text-ink-dim hover:border-yellow/45 hover:bg-yellow/10 hover:text-yellow',
+            'w-11 gap-2 px-0 sm:w-auto sm:px-4',
+          )}
         >
           <PauseGlyph />
+          <span className="hidden sm:inline">{pausing ? 'Pausing…' : 'Pause'}</span>
         </button>
       )}
       {open ? (
@@ -133,14 +151,18 @@ export function SessionAction({ open, paused, starting, ending, pausing, resumin
           type="button"
           onClick={onEnd}
           disabled={ending}
-          title="Stop this session"
-          aria-label="Stop Session"
-          className={cx(base, 'w-11 px-0 sm:w-auto sm:px-4', 'border-red/45 bg-red/10 text-red')}
+          title="End this session"
+          aria-label="End Session"
+          className={cx(
+            base,
+            'border-line text-ink-dim hover:border-red/45 hover:bg-red/10 hover:text-red',
+            'w-11 gap-2 px-0 sm:w-auto sm:px-4',
+          )}
         >
           <span className="sm:hidden">
             <StopGlyph />
           </span>
-          <span className="hidden sm:inline">{ending ? 'Stopping…' : 'Stop Session'}</span>
+          <span className="hidden sm:inline">{ending ? 'Ending…' : 'End Session'}</span>
         </button>
       ) : (
         <button
