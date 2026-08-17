@@ -46,14 +46,6 @@ function formatMod(mod: number): string {
   return mod >= 0 ? `+${mod}` : `−${Math.abs(mod)}`
 }
 
-function formatGold(gold: { gp?: number; sp?: number; cp?: number }): string {
-  const parts: string[] = []
-  if (gold.gp) parts.push(`${gold.gp} gp`)
-  if (gold.sp) parts.push(`${gold.sp} sp`)
-  if (gold.cp) parts.push(`${gold.cp} cp`)
-  return parts.length > 0 ? parts.join(' ') : '0 gp'
-}
-
 function clampPct(current: number, max: number): number {
   return max > 0 ? Math.max(0, Math.min(100, (current / max) * 100)) : 0
 }
