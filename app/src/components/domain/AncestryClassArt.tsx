@@ -376,37 +376,55 @@ export function AncestryBustIcon({ k, ghost, className }: ArtProps) {
 }
 
 // Owner follow-up, 2026-08-17 ("art for the right side is here" —
-// `Art/ancestry-characters-grim`) — the full-color full-body sprite that
-// bleeds off an Ancestry card's right edge, replacing the low-opacity
-// ghost SIGIL that used to sit there (the small bust icon up front stays
-// exactly as-is; this only changes the big background mark). Unlike the
-// bust icons, these are real full-color art, not a one-color mask
-// target — no tinting, just the source PNG with a fade.
+// `Art/ancestry-characters-grim`) — the full-color full-body sprite
+// shown beside an Ancestry card's text, replacing the low-opacity ghost
+// SIGIL that used to bleed off the card's right edge (the small bust
+// icon up front stays exactly as-is; this only changes the big
+// background mark). Unlike the bust icons, these are real full-color
+// art, not a one-color mask target — no tinting, just the source PNG.
+//
+// SECOND PASS, same day — the owner's first live look at this rejected
+// three things about the original bleed treatment:
+// 1. "the goblin is missing part of his head" — the old version was
+//    absolutely positioned at a fixed height against `bottom: 0` inside
+//    a card with `overflow: hidden`; a card whose TEXT was short enough
+//    to render shorter than that fixed height clipped the sprite's own
+//    top off. Fixed by putting the art back in normal flex flow as a
+//    real sibling of the text column instead of an absolutely
+//    positioned overlay — a flex row's height is the max of its
+//    children by definition, so the card can never end up shorter than
+//    the tallest thing in it, and nothing gets clipped.
+// 2. "no fades and no words over the top" — the same absolute-overlay
+//    approach was ALSO why a fade existed at all: text and art shared
+//    the same stacking space, so the art had to fade out under the text
+//    to stay legible. Two columns side by side instead of one stacked
+//    on the other removes the conflict outright — nothing to fade, art
+//    renders at full opacity, text is never touched by it.
+// 3. Tried a per-ancestry relative-height scale (Dwarf/Halfling/Goblin
+//    shorter than Human/Elf) here first — owner's call after seeing it
+//    live: "looks kinda funny like a mistake... maybe specific height
+//    is not a thing." Reverted; every ancestry now renders at the same
+//    `baseHeightPx`, the size the owner confirmed reading right on
+//    Human/Elf. `ANCESTRY_SPRITE_SCALE` is gone, not just zeroed out —
+//    don't reintroduce differential sizing without a fresh ask.
 //
 // The six source PNGs (`public/ancestry-sprites/*.png`) are NOT the
 // owner's raw files — they're cropped to each character's own opaque
-// content bounding box (+3px), not the original 128×128 canvas. The raw
-// exports share one canvas size but not one in-canvas position: some
-// characters (e.g. Elf) are drawn narrower and left of center, so
-// right-aligning the UNCROPPED canvas would put empty transparent margin
-// at the card edge instead of the character for those ancestries, while
-// wide ones (Dwarf) would bleed almost to the edge — an inconsistent
-// "how close does this ancestry get to the corner" per card that has
-// nothing to do with the character art itself. Cropping first makes
-// every sprite's own visible pixels — not its canvas — the thing that
-// right-aligns, so the bleed distance reads the same across all six.
-// Confirmed via `Image.getbbox()` that every source shares the same
-// vertical extent (top≈6, bottom≈122 of 128), so height stayed uniform
-// across the crop and only width varies per character build — exactly
-// what a fixed-height, auto-width render wants.
-//
-// The mask (not just `opacity`) is what makes this read as art bleeding
-// INTO the card rather than a picture pasted on top of it: a flat
-// `opacity` alone would wash out the whole image evenly, fighting the
-// card's own text on the left where the two overlap; a left-to-right
-// alpha gradient instead fades the art in from nothing exactly where
-// the text lives and lets it come up to near-full color only right at
-// the edge, so the two never really compete for the same pixels.
+// content bounding box (+3px), not the original 128×128 canvas (see
+// git history on this file for the full reasoning: the raw exports
+// share one canvas size but not one in-canvas position, so an uncropped
+// render would've made some ancestries look inexplicably smaller/more
+// inset than others for reasons that have nothing to do with the
+// character art itself). Dwarf and Half-Orc are ALSO horizontally
+// mirrored from the owner's raw export ("flip the orc and dwarf so
+// their weapons are on the same side as everything else") — in the
+// originals, every other ancestry's held weapon/tool reads on its own
+// left side of frame (Human's sword, Goblin's dagger, Elf's bow,
+// Halfling's dagger) while Dwarf and Half-Orc's axes were on the right,
+// reading as mismatched once all six sit in a row. The mirror is a
+// pixel-level flip of the already-cropped PNG, not a regenerated asset —
+// if these are ever re-exported from source, re-apply the flip to
+// whichever of the two still needs it.
 const ANCESTRY_SPRITES: Record<string, string> = {
   dwarf: '/ancestry-sprites/dwarf.png',
   elf: '/ancestry-sprites/elf.png',
@@ -416,7 +434,7 @@ const ANCESTRY_SPRITES: Record<string, string> = {
   human: '/ancestry-sprites/human.png',
 }
 
-export function AncestrySpriteArt({ k, className }: { k: string; className?: string }) {
+export function AncestrySpriteArt({ k, baseHeightPx = 128, className }: { k: string; baseHeightPx?: number; className?: string }) {
   const src = ANCESTRY_SPRITES[k]
   if (!src) return null
 
@@ -426,11 +444,7 @@ export function AncestrySpriteArt({ k, className }: { k: string; className?: str
       alt=""
       aria-hidden="true"
       className={cx('pointer-events-none select-none', className)}
-      style={{
-        imageRendering: 'pixelated',
-        WebkitMaskImage: 'linear-gradient(to right, transparent 30%, black 70%)',
-        maskImage: 'linear-gradient(to right, transparent 30%, black 70%)',
-      }}
+      style={{ height: baseHeightPx, width: 'auto', imageRendering: 'pixelated' }}
     />
   )
 }

@@ -726,21 +726,36 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         * leads with its mark in its own accent color, text to the
         * right. Ancestry's mark swapped 2026-08-17 from the sigil to a
         * real bust icon (`AncestryBustIcon` — see AncestryClassArt.tsx's
-        * doc comment on that swap); Class keeps its sigil below. The
-        * same day's follow-up ("art for the right side is here") swapped
-        * the low-opacity ghost SIGIL for real full-color character art
-        * (`AncestrySpriteArt`) bleeding off the card's right edge — see
-        * that component's doc comment for the crop/fade reasoning. */}
+        * doc comment on that swap); Class keeps its sigil below.
+        *
+        * Same day's follow-up ("art for the right side is here"), SECOND
+        * pass after the owner's first live look: full-color character
+        * art now sits in its own column to the right of the text — a
+        * real flex sibling, not an absolutely positioned overlay bleeding
+        * off the edge — specifically because the overlay version clipped
+        * (goblin's head) on any card whose text rendered shorter than
+        * the art's fixed height, and needed a fade to keep the two from
+        * visually fighting where they overlapped. Side-by-side columns
+        * make both problems structural non-issues: a flex row's height
+        * is always at least its tallest child, so nothing can clip, and
+        * art/text never occupy the same pixels, so there's nothing to
+        * fade. Every ancestry renders at the same height — a per-
+        * ancestry relative scale was tried and reverted same-day, see
+        * `AncestrySpriteArt`'s own doc comment. */}
       {step === 'ancestry' && (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {module.ancestries.map((a) => (
-            <button key={a.key} type="button" onClick={() => setAncestryKey(a.key)} className={cx(cardBase, 'relative flex items-start gap-3 overflow-hidden', ancestryKey === a.key && cardSelected)}>
-              <AncestrySpriteArt k={a.key} className="absolute bottom-0 right-2 h-[120px] w-auto opacity-[0.85]" />
-              <AncestryBustIcon k={a.key} className="mt-0.5 h-9 w-9 shrink-0" />
-              <span className="relative min-w-0 flex-1">
-                <span className="block font-semibold">{a.name}</span>
-                <span className={cx(text.caption, 'mt-1 block text-ink-faint')}>{a.languages.join(', ')}</span>
-                <span className={cx(text.bodySecondary, 'mt-1 block')}>{a.talent}</span>
+            <button key={a.key} type="button" onClick={() => setAncestryKey(a.key)} className={cx(cardBase, 'flex items-stretch justify-between gap-3', ancestryKey === a.key && cardSelected)}>
+              <span className="flex min-w-0 flex-1 items-start gap-3">
+                <AncestryBustIcon k={a.key} className="mt-0.5 h-9 w-9 shrink-0" />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold">{a.name}</span>
+                  <span className={cx(text.caption, 'mt-1 block text-ink-faint')}>{a.languages.join(', ')}</span>
+                  <span className={cx(text.bodySecondary, 'mt-1 block')}>{a.talent}</span>
+                </span>
+              </span>
+              <span className="flex shrink-0 items-end">
+                <AncestrySpriteArt k={a.key} baseHeightPx={116} />
               </span>
             </button>
           ))}
