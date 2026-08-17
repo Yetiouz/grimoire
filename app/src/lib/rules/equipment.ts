@@ -60,7 +60,10 @@ export interface RulesEquipmentItem {
    * properties for weapons. Omitted for Basic Gear, which the rulebook
    * gives no combat stats for. */
   detail?: string
-  source: 'Core'
+  /** Which catalog this row belongs to — 'Core' (Shadowdark) or 'CY'
+   * (CY_BORG, see ./cyborgEquipment.ts). Widened from the original
+   * 'Core' literal when the second system's shop landed (2026-08-17). */
+  source: 'Core' | 'CY'
 }
 
 function gp(n: number) {

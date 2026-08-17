@@ -22,6 +22,7 @@ import {
 import type { Character } from '../../lib/characters'
 import { goldDeltaForSpend, goldToCp } from '../../lib/rules/equipment'
 import type { RulesEquipmentItem } from '../../lib/rules/equipment'
+import { getShopCatalog } from '../../lib/rules'
 
 interface CharacterCommandsProps {
   character: Character
@@ -35,6 +36,12 @@ interface CharacterCommandsProps {
    * what the RPC returned" pattern every other command in the app
    * already uses. */
   onUpdate: (updated: Character) => void
+  /** The campaign's `system` (2026-08-17, second-system shop) — picks
+   * which catalog the Add-item Shop sells from and how money renders
+   * (`getShopCatalog`). Optional: omitted (or unknown) falls back to
+   * the Shadowdark Core list, so nothing changes for existing call
+   * sites until they thread it. */
+  system?: string | null
 }
 
 // Same visual treatment as `CharacterSheet.tsx`'s own `sectionLabelClass`
@@ -85,7 +92,8 @@ const tintButtonClass = (color: 'green' | 'red' | 'purple') =>
  * same stepper + tinted +/- shape as XP, since Luck has no natural
  * "damage/heal" verb pair the way HP does.
  */
-export function CharacterCommands({ character, sessionId, onUpdate }: CharacterCommandsProps) {
+export function CharacterCommands({ character, sessionId, onUpdate, system }: CharacterCommandsProps) {
+  const catalog = getShopCatalog(system)
   const [hpAmount, setHpAmount] = useState(1)
   const [hpMaxDraft, setHpMaxDraft] = useState('')
   const [xpAmount, setXpAmount] = useState(1)
@@ -317,7 +325,7 @@ export function CharacterCommands({ character, sessionId, onUpdate }: CharacterC
 
       <div className="flex flex-col gap-2">
         <span className={cx(text.label, 'text-ink-faint')}>General Store</span>
-        <Shop goldCp={goldToCp(readCharacterGold(character.gold))} owned={equipment} onBuy={shopBuy} onReturn={shopReturn} disabled={pending} />
+        <Shop items={catalog.items} currency={catalog.currency} goldCp={goldToCp(readCharacterGold(character.gold))} owned={equipment} onBuy={shopBuy} onReturn={shopReturn} disabled={pending} />
       </div>
 
       <div className="flex flex-col gap-2">

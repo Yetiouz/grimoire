@@ -13,6 +13,11 @@ interface CharacterSheetProps {
   /** The campaign's currently open session, if any — passed straight
    * through to `CharacterCommands` (BUILD_PLAN.md slice 6). */
   sessionId: string | null
+  /** The campaign's `system` — threaded to `CharacterCommands`' shop so
+   * a CY_BORG sheet sells CY_BORG gear (2026-08-17). Optional with a
+   * Shadowdark fallback downstream, same posture as every rules-module
+   * read. */
+  system?: string | null
   onClose: () => void
   /** Called with the row a `CharacterCommands` action's RPC returned —
    * the host screen (`JournalScreen`) echoes it into the party rail and
@@ -158,7 +163,7 @@ function VitalTile({
  * up top; ability modifiers are now color-coded green/red, matching
  * CharacterBuilder's own established rule instead of a flat ink-dim.
  */
-export function CharacterSheet({ character, sessionId, onClose, onUpdate }: CharacterSheetProps) {
+export function CharacterSheet({ character, sessionId, system, onClose, onUpdate }: CharacterSheetProps) {
   const open = character !== null
   const abilities = character ? readCharacterAbilities(character.abilities) : {}
   const sheet = character ? readCharacterSheet(character.sheet) : {}
@@ -316,7 +321,7 @@ export function CharacterSheet({ character, sessionId, onClose, onUpdate }: Char
             </Fragment>
           ))}
 
-          <CharacterCommands character={character} sessionId={sessionId} onUpdate={onUpdate} />
+          <CharacterCommands character={character} sessionId={sessionId} system={system} onUpdate={onUpdate} />
         </div>
       )}
     </Overlay>

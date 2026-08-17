@@ -6,12 +6,13 @@ import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { TextInput } from '../ui/TextInput'
 import { ErrorBanner } from '../ui/ErrorBanner'
+import { EmptyState } from '../ui/EmptyState'
 import { GearSlotGrid } from './GearSlotGrid'
 import { Shop } from './Shop'
 import { createCharacter } from '../../lib/characters'
 import type { Character, CharacterAbilities, CharacterSheetData, AbilityScore } from '../../lib/characters'
 import { AncestryBustIcon, AncestrySpriteArt, ClassBustIcon } from './AncestryClassArt'
-import { getRulesModule, abilityModifier, ABILITY_ORDER } from '../../lib/rules'
+import { getRulesModule, hasRulesModule, abilityModifier, ABILITY_ORDER } from '../../lib/rules'
 import type { Ability, RulesClass, RulesTalentTableRow } from '../../lib/rules'
 import { goldDeltaForSpend, goldToCp } from '../../lib/rules/equipment'
 import type { RulesEquipmentItem } from '../../lib/rules/equipment'
@@ -527,6 +528,34 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
     } finally {
       setSaving(false)
     }
+  }
+
+  // Unsupported-system gate (2026-08-17, owner: "all the Shadowdark
+  // stuff is not in the CY_BORG campaign"): `getRulesModule`'s
+  // defensive Shadowdark fallback is right for read paths, but HERE it
+  // would present the full Shadowdark wizard inside a CY_BORG campaign
+  // and happily build an elf into Cy. Until that system's builder slice
+  // lands (CYBORG_PACKAGE_PLAN.md, cyborg-3), an honest empty state
+  // beats the wrong wizard.
+  if (!hasRulesModule(system)) {
+    return (
+      <Overlay
+        open={open}
+        onClose={onClose}
+        header={
+          <div className="min-w-0">
+            <h2 className={cx(text.h2, 'truncate')}>New Character</h2>
+            <p className={cx(text.caption, 'mt-1 text-ink-faint')}>{system ?? 'unknown system'}</p>
+          </div>
+        }
+      >
+        <EmptyState
+          icon="party"
+          title="No builder for this system yet"
+          description="Guided character creation for this ruleset is coming. For now, roll your character with the GM in chat and it gets added to the party for you."
+        />
+      </Overlay>
+    )
   }
 
   return (

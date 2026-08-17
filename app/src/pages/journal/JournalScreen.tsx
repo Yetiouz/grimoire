@@ -590,6 +590,7 @@ export function JournalScreen({ campaign, authorName, isOwner, onCampaignUpdated
       <CharacterSheet
         character={openCharacter}
         sessionId={openSession?.id ?? null}
+        system={campaign.system}
         onClose={() => setOpenCharacter(null)}
         onUpdate={handleCharacterUpdate}
       />

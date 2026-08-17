@@ -3,6 +3,7 @@ import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { TextInput } from '../ui/TextInput'
 import { CORE_EQUIPMENT, formatCp } from '../../lib/rules/equipment'
+import { formatCredits } from '../../lib/rules/cyborgEquipment'
 import type { EquipmentCategory, RulesEquipmentItem } from '../../lib/rules/equipment'
 import { ItemBustIcon } from './AncestryClassArt'
 
@@ -45,6 +46,10 @@ interface ShopProps {
    * array index it lives at). Only enabled when the owned count for
    * that row is above zero. */
   onReturn: (item: RulesEquipmentItem) => void
+  /** How money renders (2026-08-17, second-system shop): 'coins'
+   * (default) keeps Shadowdark's gp/sp/cp formatting; 'credits' shows
+   * CY_BORG's ¤. Purely display — the costCp math is shared. */
+  currency?: 'coins' | 'credits'
   /** True while a buy/return is in flight (during play, an RPC round-
    * trip) — disables every row's +/− so a second click can't fire
    * before the first one's balance update lands. Creation has no
@@ -83,7 +88,8 @@ const CATEGORY_TABS: { key: 'all' | EquipmentCategory; label: string }[] = [
  * row's owned count is above zero, and always returns/charges the
  * catalog's own listed price, never a haggled or partial amount.
  */
-export function Shop({ items = CORE_EQUIPMENT, goldCp, owned, onBuy, onReturn, disabled, className }: ShopProps) {
+export function Shop({ items = CORE_EQUIPMENT, goldCp, owned, onBuy, onReturn, disabled, currency = 'coins', className }: ShopProps) {
+  const fmt = currency === 'credits' ? formatCredits : formatCp
   const [category, setCategory] = useState<'all' | EquipmentCategory>('all')
   const [query, setQuery] = useState('')
 
@@ -121,7 +127,7 @@ export function Shop({ items = CORE_EQUIPMENT, goldCp, owned, onBuy, onReturn, d
           ))}
         </div>
         <p className={cx(text.label, 'text-ink-faint')}>
-          You have <span className="text-ink">{formatCp(goldCp)}</span>
+          You have <span className="text-ink">{fmt(goldCp)}</span>
         </p>
       </div>
 
@@ -147,7 +153,7 @@ export function Shop({ items = CORE_EQUIPMENT, goldCp, owned, onBuy, onReturn, d
                 <p className={cx(text.bodySecondary, 'font-semibold text-ink')}>{item.name}</p>
                 {item.detail && <p className={cx(text.caption, 'text-ink-faint')}>{item.detail}</p>}
               </div>
-              <p className={cx(text.caption, 'shrink-0 text-ink-faint')}>{formatCp(item.costCp)}</p>
+              <p className={cx(text.caption, 'shrink-0 text-ink-faint')}>{fmt(item.costCp)}</p>
               <div className="flex shrink-0 items-center gap-1.5">
                 <button
                   type="button"
