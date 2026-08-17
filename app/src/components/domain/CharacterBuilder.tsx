@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { Overlay } from '../ui/Overlay'
+import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { TextInput } from '../ui/TextInput'
 import { ErrorBanner } from '../ui/ErrorBanner'
@@ -525,6 +526,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
   }
 
   return (
+    <>
     <Overlay
       open={open}
       onClose={requestClose}
@@ -578,20 +580,6 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
       {/* The scrolling middle — owns the padding the Overlay body used
         * to carry, plus the step-change scroll reset (the ref). */}
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
-
-      {confirmingClose && (
-        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-card border border-red/35 bg-red/10 px-3 py-2">
-          <span className={cx(text.caption, 'text-ink')}>Discard this character? Nothing is saved until you click Create.</span>
-          <div className="ml-auto flex gap-2">
-            <Button type="button" variant="ghost" onClick={() => setConfirmingClose(false)}>
-              Keep editing
-            </Button>
-            <Button type="button" onClick={handleClose}>
-              Discard
-            </Button>
-          </div>
-        </div>
-      )}
 
       {error && (
         <div className="mb-4">
@@ -1184,5 +1172,27 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         )}
       </div>
     </Overlay>
+    {/* A true fixed-position popup rather than a banner inside the
+      * builder's own scrolling middle column (what this replaced,
+      * 2026-08-17): that inline banner rendered at the TOP of the
+      * scroll container, so hitting close while scrolled deep into a
+      * step (e.g. Gear) left it off-screen above the viewport — "the
+      * discard notification is hidden until i scroll and find it".
+      * Rendered as a sibling AFTER </Overlay> (not nested inside it) so
+      * it's a later paint at the same z-50 stacking level and always
+      * wins, centered over the whole screen regardless of the
+      * builder's scroll position. */}
+    {confirmingClose && (
+      <Modal
+        title="Discard this character?"
+        onCancel={() => setConfirmingClose(false)}
+        onConfirm={handleClose}
+        cancelLabel="Keep editing"
+        confirmLabel="Discard"
+      >
+        Nothing is saved until you click Create.
+      </Modal>
+    )}
+    </>
   )
 }
