@@ -6,6 +6,7 @@ import { TalentRow } from './TalentRow'
 import { SpellCard } from './SpellCard'
 import { CharacterCommands } from './CharacterCommands'
 import { readCharacterAbilities, readCharacterGold, readCharacterSheet } from '../../lib/characters'
+import { getSystemDisplay } from '../../lib/rules'
 import type { AbilityScore, Character, CharacterAbilities, CharacterSheetData } from '../../lib/characters'
 
 interface CharacterSheetProps {
@@ -168,6 +169,12 @@ export function CharacterSheet({ character, sessionId, system, onClose, onUpdate
   const abilities = character ? readCharacterAbilities(character.abilities) : {}
   const sheet = character ? readCharacterSheet(character.sheet) : {}
   const gold = character ? readCharacterGold(character.gold) : {}
+  // Per-system display language (owner: "separate games using same
+  // interface") — see SystemDisplay's doc comment in lib/rules.
+  const display = getSystemDisplay(system)
+  // The cyborg abilities live under different keys than Shadowdark's
+  // typed CharacterAbilities — read them generically for that branch.
+  const rawAbilities = character ? ((character.abilities ?? {}) as Record<string, { score?: number; mod?: number }>) : {}
 
   const talents = sheet.attacks_talents ?? []
   const languages = sheet.languages ?? []
@@ -200,10 +207,14 @@ export function CharacterSheet({ character, sessionId, system, onClose, onUpdate
            * there's no delimiter in the data to split on safely. */}
           <div className="mb-5 flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line-soft pb-4 font-mono text-caption text-ink-dim">
             <span className="font-semibold text-ink">{character.class_title}</span>
-            <span className="text-ink-faint">·</span>
-            <span>
-              Level <span className="font-semibold text-ink">{character.level}</span>
-            </span>
+            {display.showProgression && (
+              <>
+                <span className="text-ink-faint">·</span>
+                <span>
+                  Level <span className="font-semibold text-ink">{character.level}</span>
+                </span>
+              </>
+            )}
             {character.alignment_title && (
               <>
                 <span className="text-ink-faint">·</span>
@@ -221,7 +232,7 @@ export function CharacterSheet({ character, sessionId, system, onClose, onUpdate
               barPct={clampPct(character.hp_current, character.hp_max)}
               barColorClass="bg-green"
             />
-            <VitalTile label="AC" value={character.ac} />
+            <VitalTile label={display.acLabel} value={display.showProgression ? character.ac : `Tier ${character.ac}`} />
             {character.gear_current != null && character.gear_max != null && (
               <VitalTile
                 label="Gear"
@@ -231,22 +242,46 @@ export function CharacterSheet({ character, sessionId, system, onClose, onUpdate
                 barColorClass="bg-purple"
               />
             )}
+            {display.showProgression && (
+              <VitalTile
+                label="XP"
+                value={character.xp_current}
+                max={character.xp_needed}
+                barPct={clampPct(character.xp_current, character.xp_needed)}
+                barColorClass="bg-cyan"
+              />
+            )}
+            <VitalTile label={display.moneyLabel} value={display.formatMoney(gold)} accentClass="text-yellow" />
             <VitalTile
-              label="XP"
-              value={character.xp_current}
-              max={character.xp_needed}
-              barPct={clampPct(character.xp_current, character.xp_needed)}
-              barColorClass="bg-cyan"
-            />
-            <VitalTile label="Gold" value={formatGold(gold)} accentClass="text-yellow" />
-            <VitalTile
-              label="Luck"
-              value={`${character.luck_tokens} token${character.luck_tokens === 1 ? '' : 's'}`}
+              label={display.luckLabel}
+              value={display.showProgression ? `${character.luck_tokens} token${character.luck_tokens === 1 ? '' : 's'}` : character.luck_tokens}
               accentClass="text-purple"
             />
           </div>
 
-          {ABILITY_ORDER.some(({ key }) => abilities[key]) && (
+          {/* Per-system abilities (cyborg: five −3..+3 scores, shown as
+            * the signed mod alone — there is no separate raw score to
+            * pair it with the way Shadowdark's tiles do). */}
+          {display.abilities !== null && display.abilities.some(({ key }) => rawAbilities[key]) && (
+            <>
+              <p className={sectionLabelClass}>Abilities</p>
+              <div className="grid grid-cols-5 gap-2">
+                {display.abilities.map(({ key, label }) => {
+                  const entry = rawAbilities[key]
+                  if (!entry) return null
+                  const mod = entry.mod ?? 0
+                  return (
+                    <div key={key} className="rounded-xl border border-line-soft bg-panel2 px-3 py-2.5 text-center">
+                      <p className={cx(text.label, 'text-ink-faint')}>{label}</p>
+                      <p className={cx('mt-1 font-mono text-numeric font-semibold tabular-nums', mod >= 0 ? 'text-green' : 'text-red')}>{formatMod(mod)}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
+
+          {display.abilities === null && ABILITY_ORDER.some(({ key }) => abilities[key]) && (
             <>
               <p className={sectionLabelClass}>Abilities</p>
               <div className="grid grid-cols-6 gap-2">

@@ -117,6 +117,10 @@ interface MobileJournalViewProps {
   onResolveCheck?: (check: GmCheck, source: ResolveSource, total?: number) => void
   resolvingCheckId?: string | null
   campaignId?: string
+  /** The campaign's system — threaded to every `PlayerCard` so party
+   * stat labels speak the right game's language (owner: "separate
+   * games using same interface"). */
+  system?: string | null
   /** Slice 16 — opens the rules transcript from the Tools tile. */
   onOpenRules?: () => void
   /** Opens `CampaignSearch` from the Tools tile's Search tile (2026-08-10)
@@ -274,6 +278,7 @@ export function MobileJournalView({
   onResolveCheck,
   resolvingCheckId,
   campaignId,
+  system,
   onOpenRules,
   onOpenSearch,
   onOpenGmReference,
@@ -336,6 +341,7 @@ export function MobileJournalView({
     <div className="flex min-h-0 flex-1 flex-col">
       {showSelfCard && activeCharacter && (
         <PlayerCard
+            system={system}
           character={activeCharacter}
           variant="compact"
           onClick={() => onOpenCharacter(activeCharacter)}
@@ -449,6 +455,7 @@ export function MobileJournalView({
               {characters.length > 0 ? (
                 characters.map((character) => (
                   <PlayerCard
+            system={system}
                     key={character.id}
                     character={character}
                     onClick={() => onOpenCharacter(character)}

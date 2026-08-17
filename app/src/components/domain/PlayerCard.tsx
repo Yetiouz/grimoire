@@ -3,9 +3,14 @@ import { text } from '../../lib/typography'
 import { Icon } from '../ui/Icon'
 import { PortraitAvatar } from '../ui/PortraitAvatar'
 import { readCharacterGold, readCharacterSheet } from '../../lib/characters'
+import { getSystemDisplay } from '../../lib/rules'
 import type { Character } from '../../lib/characters'
 
 interface PlayerCardProps {
+  /** The campaign's system — picks the stat-span label language (owner:
+   * "separate games using same interface"): AC/GP/LUCK for Shadowdark,
+   * ARM/¤/GLITCH for CY_BORG. Optional, Shadowdark fallback. */
+  system?: string | null
   character: Character
   onClick?: () => void
   /**
@@ -94,7 +99,7 @@ interface PlayerCardProps {
  * `useCampaignPresence`). Purely additive over everything above — the
  * dot is the only thing this slice changes about the card.
  */
-export function PlayerCard({ character, onClick, variant = 'full', className, isOnline, isActiveTurn }: PlayerCardProps) {
+export function PlayerCard({ character, onClick, variant = 'full', className, isOnline, isActiveTurn, system }: PlayerCardProps) {
   const gold = readCharacterGold(character.gold)
   const sheet = readCharacterSheet(character.sheet)
   const isAwaiting = character.status !== 'active'
@@ -102,6 +107,7 @@ export function PlayerCard({ character, onClick, variant = 'full', className, is
   const hpPct = character.hp_max > 0 ? Math.max(0, Math.min(100, (character.hp_current / character.hp_max) * 100)) : 0
   const activatable = Boolean(onClick)
 
+  const display = getSystemDisplay(system)
   const statSpans = (
     <>
       <span>
@@ -111,7 +117,7 @@ export function PlayerCard({ character, onClick, variant = 'full', className, is
         </b>
       </span>
       <span>
-        <span className="text-ink-faint">AC</span> <b className="font-semibold tabular-nums text-ink">{character.ac}</b>
+        <span className="text-ink-faint">{display.acShort}</span> <b className="font-semibold tabular-nums text-ink">{character.ac}</b>
       </span>
       {character.gear_current != null && character.gear_max != null && (
         <span>
@@ -123,11 +129,11 @@ export function PlayerCard({ character, onClick, variant = 'full', className, is
       )}
       {gold.gp != null && (
         <span>
-          <span className="text-ink-faint">GP</span> <b className="font-semibold tabular-nums text-ink">{gold.gp}</b>
+          <span className="text-ink-faint">{display.moneyShort}</span> <b className="font-semibold tabular-nums text-ink">{gold.gp}</b>
         </span>
       )}
       <span>
-        <span className="text-ink-faint">LUCK</span>{' '}
+        <span className="text-ink-faint">{display.luckShort}</span>{' '}
         <b className="font-semibold tabular-nums text-purple">{character.luck_tokens}</b>
       </span>
     </>

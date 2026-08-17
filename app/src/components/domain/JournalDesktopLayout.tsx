@@ -151,6 +151,10 @@ interface JournalDesktopLayoutProps {
   onResolveCheck?: (check: GmCheck, source: ResolveSource, total?: number) => void
   resolvingCheckId?: string | null
   campaignId: string
+  /** The campaign's system — threaded to every `PlayerCard` so party
+   * stat labels speak the right game's language (owner: "separate
+   * games using same interface"). */
+  system?: string | null
 }
 
 /**
@@ -214,6 +218,7 @@ export function JournalDesktopLayout({
   onResolveCheck,
   resolvingCheckId,
   campaignId,
+  system,
 }: JournalDesktopLayoutProps) {
   // "Save as note" quick action (2026-08-09): local to this layout, not
   // lifted to JournalScreen — JournalDesktopLayout and MobileJournalView
@@ -264,6 +269,7 @@ export function JournalDesktopLayout({
           <ColumnCard headerLeft="Party" bodyClassName="gap-2" className="xl:flex-1">
             {characters.map((character) => (
               <PlayerCard
+                system={system}
                 key={character.id}
                 character={character}
                 onClick={() => onOpenCharacter(character)}

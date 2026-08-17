@@ -39,6 +39,65 @@ export function hasRulesModule(system: string | null | undefined): boolean {
   return Boolean(system && RULES_BY_SYSTEM[system])
 }
 
+/** Per-system display language (owner, 2026-08-17: "separate games
+ * using same interface") — the shared components stay one interface,
+ * but every label that would misname another game's concept comes from
+ * here instead of being hardcoded Shadowdark. CY_BORG has no AC (armor
+ * TIERS), no gold (¤ credits), no luck tokens (GLITCHES), no XP/levels
+ * (improvement is diegetic), and five −3..+3 abilities instead of six
+ * scored ones. Falls back to Shadowdark labels for unknown/old
+ * systems, same posture as every other read in this file. */
+export interface SystemDisplay {
+  /** Vitals labels: full (sheet tiles) and short (party-card spans). */
+  acLabel: string
+  acShort: string
+  moneyLabel: string
+  moneyShort: string
+  luckLabel: string
+  luckShort: string
+  /** Format the gold jsonb for display ("20 gp 4 sp" vs "100¤"). */
+  formatMoney: (gold: { gp?: number; sp?: number; cp?: number }) => string
+  /** Whether XP + character level are real concepts in this system. */
+  showProgression: boolean
+  /** Non-null replaces the Shadowdark six in the sheet's Abilities
+   * grid: this system's ability list, rendered mod-only (−3..+3). */
+  abilities: Array<{ key: string; label: string }> | null
+}
+
+const SHADOWDARK_DISPLAY: SystemDisplay = {
+  acLabel: 'AC', acShort: 'AC',
+  moneyLabel: 'Gold', moneyShort: 'GP',
+  luckLabel: 'Luck', luckShort: 'LUCK',
+  formatMoney: (gold) => {
+    const parts: string[] = []
+    if (gold.gp) parts.push(`${gold.gp} gp`)
+    if (gold.sp) parts.push(`${gold.sp} sp`)
+    if (gold.cp) parts.push(`${gold.cp} cp`)
+    return parts.length > 0 ? parts.join(' ') : '0 gp'
+  },
+  showProgression: true,
+  abilities: null,
+}
+
+const CYBORG_DISPLAY: SystemDisplay = {
+  acLabel: 'Armor', acShort: 'ARM',
+  moneyLabel: '¤', moneyShort: '¤',
+  luckLabel: 'Glitches', luckShort: 'GLITCH',
+  formatMoney: (gold) => `${(gold.gp ?? 0).toLocaleString()}¤`,
+  showProgression: false,
+  abilities: [
+    { key: 'agility', label: 'AGI' },
+    { key: 'knowledge', label: 'KNO' },
+    { key: 'presence', label: 'PRE' },
+    { key: 'strength', label: 'STR' },
+    { key: 'toughness', label: 'TOU' },
+  ],
+}
+
+export function getSystemDisplay(system: string | null | undefined): SystemDisplay {
+  return system === 'cyborg' ? CYBORG_DISPLAY : SHADOWDARK_DISPLAY
+}
+
 /** The shop catalog for a campaign's system — `campaigns.system` IS the
  * owner's requested "toggle". CY_BORG prices are ¤ (credits) riding the
  * costCp field at ¤ ≡ gp (see cyborgEquipment.ts's header); `currency`

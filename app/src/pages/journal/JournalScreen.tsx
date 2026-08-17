@@ -519,6 +519,7 @@ export function JournalScreen({ campaign, authorName, isOwner, onCampaignUpdated
         onResolveCheck={(check, source, total) => void handleResolveCheck(check, source, total)}
         resolvingCheckId={resolvingCheckId}
         campaignId={campaign.id}
+        system={campaign.system}
       />
 
       {/* MOBILE: tab-bar shell, below xl: only. Renders even while data
@@ -577,6 +578,7 @@ export function JournalScreen({ campaign, authorName, isOwner, onCampaignUpdated
           onResolveCheck={(check, source, total) => void handleResolveCheck(check, source, total)}
           resolvingCheckId={resolvingCheckId}
           campaignId={campaign.id}
+          system={campaign.system}
           onOpenRules={aiGmActive ? () => setRulesOpen(true) : undefined}
           onOpenGmReference={() => setGmReferenceOpen(true)}
           onOpenSearch={() => setSearchOpen(true)}
