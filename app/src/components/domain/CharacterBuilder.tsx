@@ -103,22 +103,26 @@ const cardBase =
   'rounded-[12px] border border-line-soft bg-panel2 p-3 text-left transition-colors hover:border-line-hover'
 const cardSelected = 'border-purple bg-purple/10'
 
-// One color per sourcebook (owner request, 2026-08-15 — playtesting
+// Flat neutral, no per-book color (owner request, 2026-08-17: "let's
+// remove color from expansion" — see claude/grimoire-ancestry-class-
+// icon-colors.md §5 in the Shadowdark project, which had already
+// recorded this decision but the code still had the old per-sourcebook
+// coloring below until this pass caught it, same as the Class sigil
+// colors and ghost overlay that doc's §3/§6 also documented ahead of
+// actually shipping). One color per sourcebook (2026-08-15 — playtesting
 // surfaced that all three expansions rendered as the identical orange
-// badge, only Core stood apart). Reuses existing palette tokens rather
-// than inventing new ones (`grimoire-style-guide.md`'s "don't introduce
-// a new color without giving it a job first") — cyan and pink are
-// already documented as flexible "secondary indicator accent" slots,
-// and orange/yellow get a second job here the same way orange already
-// had one before this change (the badge itself, not "alert/attention").
-// Purple/green/red are left alone: they're this app's buttons, live-
-// status, and danger colors respectively, and a sourcebook badge reading
-// as any of those in a class list would be actively misleading.
+// badge, only Core stood apart) was the fix at the time, but per that
+// doc's §1, a per-book color here collided with the SAME seven tokens
+// meaning ancestry/class identity on the surrounding cards — "cyan"
+// meant Elf/Sea Wolf/Seer AND "this is Core content" depending on
+// which element you looked at. Flat neutral removes that collision
+// instead of managing it.
+const SOURCE_BADGE_CLASSES = 'border-line-hover text-ink-dim'
 const SOURCE_BADGE: Record<RulesClass['source'], string> = {
-  Core: 'border-cyan/35 text-cyan',
-  Diablerie: 'border-pink/35 text-pink',
-  'Red Sands': 'border-orange/35 text-orange',
-  'Midnight Sun': 'border-yellow/35 text-yellow',
+  Core: SOURCE_BADGE_CLASSES,
+  Diablerie: SOURCE_BADGE_CLASSES,
+  'Red Sands': SOURCE_BADGE_CLASSES,
+  'Midnight Sun': SOURCE_BADGE_CLASSES,
 }
 
 const STEP_LABEL: Record<StepKey, string> = {
@@ -646,11 +650,22 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         // filled and none rolled 14+, so it was landing at the bottom
         // of an already-tall stack and could end up below the fold.
         // Trimmed gap-3 -> gap-2 here (between the intro line, the Roll
-        // All/Clear row, all six stat rows, and the banner) and each
-        // stat row's own p-2.5/sm:p-3 -> p-2/sm:p-2.5 below. Only
-        // padding and inter-row spacing moved — every touch target
-        // (the 44px Roll button, the input) is untouched, per CLAUDE.md's
-        // standing 44px-minimum rule for interactive controls.
+        // All/Clear row, all six stat rows, and the banner).
+        //
+        // Follow-up same day, after the owner saw it live: the first
+        // pass only moved the row's own padding, but the per-row Roll
+        // button (min-h-9/sm:min-h-11, the 44px touch-target minimum)
+        // was still the tallest thing in the row and dominated its
+        // height regardless — "a lot of space above and below the stat
+        // roll... scale down the size of the buttons." Per-row Roll
+        // dropped the touch-target minimum entirely below, same
+        // deliberate, scoped exception CLAUDE.md already documents for
+        // JournalComposer's kind-toggle pills ("a deliberate, scoped
+        // exception to the standing... rule... not a change to the rule
+        // itself") — six of these sit in a tight list exactly like that
+        // pill row does, and the shared 44px Roll All/Clear buttons
+        // above remain full-size since those aren't part of the dense
+        // list.
         <div className="flex flex-col gap-2">
           <p className={cx(text.bodySecondary, 'text-ink-faint')}>
             "Roll" fills a stat with a fresh {module.statMethod.formula} — every field is also just a number you can type
@@ -671,9 +686,13 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
               // a tall card that was mostly empty). No `flex-wrap`;
               // everything is compact below sm: (smaller dice boxes,
               // tighter gaps, a hand-rolled compact Roll button — same
-              // precedent as the composer's send block) and back to the
-              // original desktop sizes at sm:+.
-              <div key={ability} className="flex items-center gap-2 rounded-[10px] border border-line-soft bg-panel2 p-2 sm:gap-3 sm:p-2.5">
+              // precedent as the composer's send block). Originally
+              // grew back to the shared Button's 44px size at sm:+;
+              // the 2026-08-17 pass (see the step-level comment above)
+              // made the Roll button compact at every breakpoint
+              // instead, since the owner's complaint about row height
+              // applied on desktop too, not just mobile.
+              <div key={ability} className="flex items-center gap-2 rounded-[10px] border border-line-soft bg-panel2 p-1.5 sm:gap-3 sm:p-2">
                 <span className={cx(text.label, 'w-8 shrink-0 text-ink-faint sm:w-10')}>{abilityLabel(ability)}</span>
                 <div className="flex shrink-0 gap-1">
                   {(entry.dice ?? [null, null, null]).map((die, i) => (
@@ -702,7 +721,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                   onClick={() => rollOneStat(ability)}
                   className={cx(
                     text.caption,
-                    'ml-auto inline-flex min-h-9 shrink-0 items-center justify-center rounded-button bg-purple px-3 font-semibold uppercase text-white shadow-[0_0_0_1px_rgba(155,92,255,0.25),0_8px_24px_-8px_rgba(155,92,255,0.55)] hover:bg-purple-hover sm:min-h-11 sm:px-6',
+                    'ml-auto inline-flex shrink-0 items-center justify-center rounded-button bg-purple px-3 py-1 font-semibold uppercase text-white shadow-[0_0_0_1px_rgba(155,92,255,0.25),0_8px_24px_-8px_rgba(155,92,255,0.55)] hover:bg-purple-hover sm:px-4 sm:py-1.5',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
                   )}
                 >
