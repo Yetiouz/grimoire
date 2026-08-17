@@ -35,10 +35,17 @@ interface Sigil {
 /** The shared faint arcane ring most sigils sit inside. */
 const RING = <circle cx="24" cy="24" r="19" opacity={0.35} />
 
+// Ancestry colors updated 2026-08-17 — six of the seven original
+// sigil-era assignments below were swapped in a live owner review
+// pass (see claude/grimoire-ancestry-class-icon-colors.md §4 in the
+// Shadowdark project for the full reasoning and the same-day
+// collision-and-fix history for Dwarf/Goblin/Half-Orc). Owner signed
+// off on rolling with these as locked working colors ahead of the
+// still-pending full Ancestry axis redo (§4's "next step").
 const ANCESTRY_SIGILS: Record<string, Sigil> = {
   // Mountain-anvil: peak, bar, and a setting star.
   dwarf: {
-    color: 'var(--color-orange)',
+    color: 'var(--color-stone)',
     nodes: (
       <>
         {RING}
@@ -50,7 +57,7 @@ const ANCESTRY_SIGILS: Record<string, Sigil> = {
   },
   // Vesica leaf split by the true line.
   elf: {
-    color: 'var(--color-cyan)',
+    color: 'var(--color-hunter-green)',
     nodes: (
       <>
         {RING}
@@ -62,7 +69,7 @@ const ANCESTRY_SIGILS: Record<string, Sigil> = {
   },
   // Eared shard — a listening stone.
   goblin: {
-    color: 'var(--color-green)',
+    color: 'var(--color-red)',
     nodes: (
       <>
         {RING}
@@ -74,7 +81,7 @@ const ANCESTRY_SIGILS: Record<string, Sigil> = {
   },
   // Tusk arc — the mighty rise.
   'half-orc': {
-    color: 'var(--color-red)',
+    color: 'var(--color-orange)',
     nodes: (
       <>
         {RING}
@@ -86,7 +93,7 @@ const ANCESTRY_SIGILS: Record<string, Sigil> = {
   },
   // Hearth ring — the small circle carries the fire.
   halfling: {
-    color: 'var(--color-yellow)',
+    color: 'var(--color-gold)',
     nodes: (
       <>
         <circle cx="24" cy="21" r="15" opacity={0.35} />
@@ -98,7 +105,7 @@ const ANCESTRY_SIGILS: Record<string, Sigil> = {
   },
   // Ambition rune — the arrow past its own ground line.
   human: {
-    color: 'var(--color-purple)',
+    color: 'var(--color-plum)',
     nodes: (
       <>
         {RING}
@@ -109,10 +116,16 @@ const ANCESTRY_SIGILS: Record<string, Sigil> = {
   },
 }
 
+// Class colors updated 2026-08-17 — the WoW-class-analog mapping
+// decided in an earlier session (see claude/grimoire-ancestry-class-
+// icon-colors.md §3 in the Shadowdark project) is implemented here for
+// the first time; the code previously still had the old sigil-era
+// colors. Tan is a genuinely new token shared by all four Warrior
+// analogs (Fighter, Pit Fighter, Desert Rider, Sea Wolf) — see index.css.
 const CLASS_SIGILS: Record<string, Sigil> = {
   // Crossed edge.
   fighter: {
-    color: 'var(--color-red)',
+    color: 'var(--color-tan)',
     nodes: (
       <>
         {RING}
@@ -124,7 +137,7 @@ const CLASS_SIGILS: Record<string, Sigil> = {
   },
   // Double cross.
   priest: {
-    color: 'var(--color-yellow)',
+    color: 'var(--color-ink)',
     nodes: (
       <>
         {RING}
@@ -135,7 +148,7 @@ const CLASS_SIGILS: Record<string, Sigil> = {
   },
   // Waning moon.
   thief: {
-    color: 'var(--color-green)',
+    color: 'var(--color-yellow)',
     nodes: (
       <>
         {RING}
@@ -146,7 +159,7 @@ const CLASS_SIGILS: Record<string, Sigil> = {
   },
   // Eight-fold star.
   wizard: {
-    color: 'var(--color-purple)',
+    color: 'var(--color-cyan)',
     nodes: (
       <>
         {RING}
@@ -157,7 +170,7 @@ const CLASS_SIGILS: Record<string, Sigil> = {
   },
   // Horned drop — the demon's bargain.
   'knight-of-st-ydris': {
-    color: 'var(--color-pink)',
+    color: 'var(--color-red)',
     nodes: (
       <>
         {RING}
@@ -169,7 +182,7 @@ const CLASS_SIGILS: Record<string, Sigil> = {
   },
   // Horned pact circle.
   warlock: {
-    color: 'var(--color-pink)',
+    color: 'var(--color-purple)',
     nodes: (
       <>
         <circle cx="24" cy="28" r="12" />
@@ -192,7 +205,7 @@ const CLASS_SIGILS: Record<string, Sigil> = {
   },
   // Sun over dunes.
   'desert-rider': {
-    color: 'var(--color-orange)',
+    color: 'var(--color-tan)',
     nodes: (
       <>
         <circle cx="24" cy="19" r="9" />
@@ -204,7 +217,7 @@ const CLASS_SIGILS: Record<string, Sigil> = {
   },
   // The pit, seen from above.
   'pit-fighter': {
-    color: 'var(--color-red)',
+    color: 'var(--color-tan)',
     nodes: (
       <>
         {RING}
@@ -228,7 +241,7 @@ const CLASS_SIGILS: Record<string, Sigil> = {
   },
   // Trident rune.
   'sea-wolf': {
-    color: 'var(--color-cyan)',
+    color: 'var(--color-tan)',
     nodes: (
       <>
         {RING}
@@ -239,7 +252,7 @@ const CLASS_SIGILS: Record<string, Sigil> = {
   },
   // Open eye.
   seer: {
-    color: 'var(--color-cyan)',
+    color: 'var(--color-purple)',
     nodes: (
       <>
         <path d="M6 24C13 14 35 14 42 24 35 34 13 34 6 24z" />
@@ -320,9 +333,9 @@ export function ClassArt({ k, ghost, className }: ArtProps) {
 // (confirmed against the raw pixel data, not just eyeballed — the
 // on-disk file really is pure white/alpha, no stray color). Tinting
 // reuses `ANCESTRY_SIGILS`' own `color` map rather than inventing a
-// second palette — same orange/cyan/green/red/yellow/purple assignment
-// per ancestry the sigil direction already established and the owner
-// already approved, so this reads as a style change to the MARK, not a
+// second palette — whatever per-ancestry color the sigil map assigns
+// (see that map's own 2026-08-17 update note) is what the bust icon
+// wears too, so this reads as a style change to the MARK, not a
 // second, uncoordinated color system living next to the first. CSS
 // `mask-image` (not an `<img>`) is what makes that reuse possible: the
 // element's own `background-color` (via Tailwind's `bg-current` +

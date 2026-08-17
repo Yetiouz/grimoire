@@ -70,6 +70,18 @@
   --color-orange: #ff8a3d;
   --color-pink: #ff3fd6;
   --color-cyan: #35f0ff;
+  /* Added 2026-08-17 alongside the Ancestry/Class icon-color pass (see
+   * claude/grimoire-ancestry-class-icon-colors.md in the Shadowdark
+   * project for the full reasoning). Each is a genuinely new hue, not
+   * a reuse of the seven above — --color-green already means
+   * Ras-Godai's WoW-Monk analog and the ability pill's "rolled 14+",
+   * so Elf's WoW-Hunter analog needed its own token rather than
+   * colliding with either of those meanings. */
+  --color-tan: #c69b6d;
+  --color-hunter-green: #abd473;
+  --color-gold: #d69a45;
+  --color-plum: #80528c;
+  --color-stone: #8c919c;
 
   --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
   --font-heading: 'Bebas Neue', ui-sans-serif, system-ui, sans-serif;

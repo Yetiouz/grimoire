@@ -766,15 +766,17 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
           </p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {module.classes.map((c) => (
-              <button key={c.key} type="button" onClick={() => selectClass(c)} className={cx(cardBase, 'relative flex items-start gap-3 overflow-hidden', classKey === c.key && cardSelected)}>
-                {/* Same sigil treatment as the Ancestry step above —
-                  * small glowing mark up front, big faint ghost copy
-                  * behind the text. Every class has a sigil (unknown
-                  * keys get the anonymous fallback mark) so no card
-                  * sits bare beside a marked one. */}
-                <span aria-hidden="true" className="pointer-events-none absolute -right-4 top-1/2 h-24 w-24 -translate-y-1/2 -rotate-[8deg] opacity-[0.12]">
-                  <ClassArt k={c.key} ghost className="h-full w-full" />
-                </span>
+              <button key={c.key} type="button" onClick={() => selectClass(c)} className={cx(cardBase, 'relative flex items-start gap-3', classKey === c.key && cardSelected)}>
+                {/* The big faint ghost-sigil overlay that used to bleed
+                  * off the card's right edge behind the text was
+                  * removed 2026-08-17 alongside the icon-color pass
+                  * (see claude/grimoire-ancestry-class-icon-colors.md
+                  * §6 in the Shadowdark project) — the owner didn't
+                  * want that "second overlay part" carried into the
+                  * new icon direction. Only the small glowing mark up
+                  * front remains, same as Ancestry. `overflow-hidden`
+                  * on the card came off with it — it existed only to
+                  * clip the ghost mark bleeding past the edge. */}
                 <ClassArt k={c.key} className="mt-0.5 h-9 w-9 shrink-0" />
                 <span className="relative min-w-0 flex-1">
                 <p className="font-semibold">
