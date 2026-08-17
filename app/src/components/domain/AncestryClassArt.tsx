@@ -1,226 +1,306 @@
 import type { ReactNode } from 'react'
+import { cx } from '../../lib/cx'
 
 /**
- * Choice-card pictograms for the Character Builder's Ancestry and Class
- * steps (2026-08-16, owner + playtest feedback: "races need visuals on
- * what they are" — a first-time player recognizes a mark faster than
- * she reads a name; style approved via ancestry-art-mockup.html).
+ * Sigil marks for the Character Builder's Ancestry and Class choice
+ * cards (2026-08-16, third pass — owner approved the sigil direction
+ * after rejecting both hand-drawn pictograms, "some of these look like
+ * a child's drawing", and icon-library silhouettes, "more icons I
+ * hate"; see sigil-exploration.html / the "grimoire-icon-style-
+ * exploration" artifact for the approved mockup).
  *
- * Hand-drawn 24×24 stroke paths in the app's own accent palette rather
- * than lucide: no icon library ships a goblin. Same 1.7 stroke weight
- * across every glyph so the set reads as one hand. Colors reference the
- * `--color-*` theme tokens directly (each mark's hue is per-glyph data,
- * not a component state — the same "arbitrary runtime color" reasoning
- * `senderColor` uses in LogEntryRow).
+ * The premise: small PICTURES of a dwarf either read childish (amateur
+ * vectors) or generic (clipart) — so these aren't pictures. Each
+ * ancestry/class gets an occult geometric sigil in a consistent
+ * grammar: a faint arcane ring, one ruler-and-compass construction,
+ * and a filled focus dot, glowing in the subject's accent color.
+ * Occult like the book, neon like the app.
  *
  * Keyed by the rules module's own `key` strings (`lib/rules/
- * shadowdark.ts`), with `null` for a key this file doesn't know — a
- * future system's ancestries simply render cardless-art until glyphs
- * are added here, nothing breaks. Every glyph is one map entry: easy to
- * swap any single one that doesn't land (owner's proviso when the
- * style was approved).
+ * shadowdark.ts`); an unknown key renders the anonymous fallback mark
+ * rather than nothing, so a future system's entries are never bare.
+ * Each sigil is ~4 lines of geometry — the owner expects to iterate on
+ * individual marks ("I may come up with stuff later"), and a swap
+ * touches exactly one map entry.
  */
 
-const ANCESTRY_ART: Record<string, { color: string; paths: ReactNode }> = {
+interface Sigil {
+  color: string
+  /** Inner SVG nodes on the shared 48×48 grid. Stroke color/width/caps
+   * inherit from the <svg> root; `opacity` marks faint construction
+   * lines; focus dots set `fill` explicitly (root is fill:none). */
+  nodes: ReactNode
+}
+
+/** The shared faint arcane ring most sigils sit inside. */
+const RING = <circle cx="24" cy="24" r="19" opacity={0.35} />
+
+const ANCESTRY_SIGILS: Record<string, Sigil> = {
+  // Mountain-anvil: peak, bar, and a setting star.
   dwarf: {
     color: 'var(--color-orange)',
-    paths: (
+    nodes: (
       <>
-        <path d="M13 9l-8 8 2 2 8-8" />
-        <path d="M12 4c2-2 6-2 8 0-2 .5-2.5 1-3 3 3 .5 4 2 4 4-2-1.5-4-1.5-6-.5L12 8c-1-2-1-3 0-4z" />
+        {RING}
+        <path d="M12 30L24 12l12 18z" />
+        <path d="M16 30h16M24 30v7" />
+        <circle cx="24" cy="21" r="2" fill="currentColor" stroke="none" />
       </>
     ),
   },
+  // Vesica leaf split by the true line.
   elf: {
     color: 'var(--color-cyan)',
-    paths: (
+    nodes: (
       <>
-        <path d="M20 4C10 4 4 10 4 20c10 0 16-6 16-16z" />
-        <path d="M4 20C9 15 13 11 17 7" />
+        {RING}
+        <path d="M24 8v32" />
+        <path d="M24 40C13 34 13 20 24 8c11 12 11 26 0 32z" />
+        <circle cx="24" cy="16" r="1.8" fill="currentColor" stroke="none" />
       </>
     ),
   },
+  // Eared shard — a listening stone.
   goblin: {
     color: 'var(--color-green)',
-    paths: (
+    nodes: (
       <>
-        <circle cx="12" cy="14" r="5" />
-        <path d="M8 11L2.5 5.5C6 5.5 8.5 7 9.5 9.5M16 11l5.5-5.5C18 5.5 15.5 7 14.5 9.5" />
-        <path d="M10 14h.01M14 14h.01" strokeLinecap="round" strokeWidth={2.2} />
+        {RING}
+        <path d="M24 14l9 9-9 11-9-11z" />
+        <path d="M15 23L8 12M33 23l7-11" />
+        <circle cx="24" cy="25" r="1.8" fill="currentColor" stroke="none" />
       </>
     ),
   },
+  // Tusk arc — the mighty rise.
   'half-orc': {
     color: 'var(--color-red)',
-    paths: (
+    nodes: (
       <>
-        <path d="M4 21c0-5 2-8 5-10M20 21c0-5-2-8-5-10" />
-        <path d="M9 11c-1.5-2-2-5-1-8 1.5 2 2 3 4 3s2.5-1 4-3c1 3 .5 6-1 8" />
-        <path d="M9 11h6" />
+        {RING}
+        <path d="M14 34c0-9 3-15 10-20 7 5 10 11 10 20" />
+        <path d="M14 34l-4 4M34 34l4 4" />
+        <path d="M19 25h10" />
       </>
     ),
   },
+  // Hearth ring — the small circle carries the fire.
   halfling: {
     color: 'var(--color-yellow)',
-    paths: (
+    nodes: (
       <>
-        <path d="M12 12c-1-4 1-7 4-8 1 3 0 6-4 8zM12 12c1-4-1-7-4-8-1 3 0 6 4 8zM12 12c4-1 7 1 8 4-3 1-6 0-8-4zM12 12c-4-1-7 1-8 4 3 1 6 0 8-4z" />
-        <path d="M12 12c0 4 1 6 3 8" />
+        <circle cx="24" cy="21" r="15" opacity={0.35} />
+        <circle cx="24" cy="30" r="8" />
+        <circle cx="24" cy="30" r="2" fill="currentColor" stroke="none" />
+        <path d="M24 6v7M17 9l3 5M31 9l-3 5" />
       </>
     ),
   },
+  // Ambition rune — the arrow past its own ground line.
   human: {
     color: 'var(--color-purple)',
-    paths: (
+    nodes: (
       <>
-        <circle cx="12" cy="7" r="3.5" />
-        <path d="M4.5 21c.5-5 3.5-8 7.5-8s7 3 7.5 8" />
+        {RING}
+        <path d="M24 5v38M24 5l7 7M24 5l-7 7" />
+        <path d="M14 34h20" />
       </>
     ),
   },
 }
 
-const CLASS_ART: Record<string, { color: string; paths: ReactNode }> = {
+const CLASS_SIGILS: Record<string, Sigil> = {
+  // Crossed edge.
   fighter: {
     color: 'var(--color-red)',
-    paths: (
+    nodes: (
       <>
-        <path d="M14.5 3H21v6.5L9 21.5 2.5 15z" />
-        <path d="M3 21l4-4M21 9.5L9.5 21" />
+        {RING}
+        <path d="M11 11l26 26M37 11L11 37" />
+        <path d="M11 11l6 1-1 6zM37 11l-6 1 1 6z" />
+        <circle cx="24" cy="24" r="2" fill="currentColor" stroke="none" />
       </>
     ),
   },
+  // Double cross.
   priest: {
     color: 'var(--color-yellow)',
-    paths: <path d="M12 3v18M6 9h12" />,
+    nodes: (
+      <>
+        {RING}
+        <path d="M24 7v34M15 16h18M18 24h12" />
+        <circle cx="24" cy="7" r="1.8" fill="currentColor" stroke="none" />
+      </>
+    ),
   },
+  // Waning moon.
   thief: {
     color: 'var(--color-green)',
-    paths: (
+    nodes: (
       <>
-        <path d="M12 3l1.8 4.5L12 20l-1.8-12.5z" />
-        <path d="M7.5 8h9M12 20v1.5" />
+        {RING}
+        <path d="M31 8a17 17 0 1 0 9 15A13 13 0 0 1 31 8z" />
+        <circle cx="31" cy="26" r="1.8" fill="currentColor" stroke="none" />
       </>
     ),
   },
+  // Eight-fold star.
   wizard: {
     color: 'var(--color-purple)',
-    paths: (
+    nodes: (
       <>
-        <path d="M4 20L15 5" />
-        <path
-          d="M17.5 2.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7zM20 10l.5 1.2 1.2.5-1.2.5-.5 1.2-.5-1.2-1.2-.5 1.2-.5z"
-          fill="currentColor"
-          stroke="none"
-        />
+        {RING}
+        <path d="M24 6v36M6 24h36M11 11l26 26M37 11L11 37" />
+        <circle cx="24" cy="24" r="4" />
       </>
     ),
   },
-  // Expansion classes (Cursed Scrolls) — same hand, one glyph each so
-  // no card in the grid ever renders bare next to an illustrated one.
+  // Horned drop — the demon's bargain.
   'knight-of-st-ydris': {
     color: 'var(--color-pink)',
-    paths: (
+    nodes: (
       <>
-        <path d="M12 3l7 2.5v5c0 4.5-3 8.5-7 10.5-4-2-7-6-7-10.5v-5z" />
-        <path d="M12 7v7M9 10.5h6" />
+        {RING}
+        <path d="M12 14l12 26 12-26z" />
+        <circle cx="24" cy="22" r="2" fill="currentColor" stroke="none" />
+        <path d="M12 14l-3-5M36 14l3-5" />
       </>
     ),
   },
+  // Horned pact circle.
   warlock: {
     color: 'var(--color-pink)',
-    paths: (
+    nodes: (
       <>
-        <path d="M5 4c0 4 1.5 6.5 4 8M19 4c0 4-1.5 6.5-4 8" />
-        <path d="M12 21c-3 0-5-2-5-5 0-2.5 2-4.5 5-4.5s5 2 5 4.5c0 3-2 5-5 5z" />
-        <path d="M10.5 15.5h.01M13.5 15.5h.01" strokeLinecap="round" strokeWidth={2.2} />
+        <circle cx="24" cy="28" r="12" />
+        <path d="M12 24C9 17 9 11 12 6c4 3 6 7 7 12M36 24c3-7 3-13 0-18-4 3-6 7-7 12" />
+        <circle cx="24" cy="28" r="2" fill="currentColor" stroke="none" />
       </>
     ),
   },
+  // Triple moon.
   witch: {
     color: 'var(--color-purple)',
-    paths: (
+    nodes: (
       <>
-        <path d="M3.5 18h17c-2-1.5-3-2.5-3.5-4L14 5l-4 1-2.5 8c-.5 1.5-2 2.5-4 4z" />
-        <path d="M8 18c2.5 1 5.5 1 8 0" />
+        <path d="M14 24a10 10 0 1 0 5-8.5A12 12 0 0 1 14 24z" />
+        <circle cx="30" cy="24" r="7" />
+        <path d="M41 16a12 12 0 0 0-5 8.5" opacity={0.35} />
+        <circle cx="30" cy="24" r="1.8" fill="currentColor" stroke="none" />
       </>
     ),
   },
+  // Sun over dunes.
   'desert-rider': {
     color: 'var(--color-orange)',
-    paths: (
+    nodes: (
       <>
-        <circle cx="12" cy="9" r="4" />
-        <path d="M12 2v1.5M18.5 4.5l-1 1M21 11h-1.5M5.5 4.5l1 1M3 11h1.5" />
-        <path d="M2 19c3-3 6-3 10-1s7 2 10-1" />
+        <circle cx="24" cy="19" r="9" />
+        <path d="M24 6v4M13 8l3 4M35 8l-3 4M8 19h5M35 19h5" />
+        <path d="M6 36c5-5 9-5 13-1s9 4 13-1" />
+        <circle cx="24" cy="19" r="1.8" fill="currentColor" stroke="none" />
       </>
     ),
   },
+  // The pit, seen from above.
   'pit-fighter': {
     color: 'var(--color-red)',
-    paths: (
+    nodes: (
       <>
-        <path d="M6 12V8.5a2 2 0 014 0V12M10 10.5V7a2 2 0 014 0v3.5M14 10.5V8a2 2 0 014 0v6c0 4-2.5 7-6.5 7S6 18 6 15v-3" />
+        {RING}
+        <path d="M15 15h18v18H15z" />
+        <path d="M20 10v10M28 10v10M20 28v10M28 28v10M10 20h10M10 28h10M28 20h10M28 28h10" opacity={0.35} />
+        <circle cx="24" cy="24" r="2" fill="currentColor" stroke="none" />
       </>
     ),
   },
+  // Smoke cut.
   'ras-godai': {
     color: 'var(--color-green)',
-    paths: (
+    nodes: (
       <>
-        <path d="M8 21c-2-3-2-6 0-9s2-6 0-9c4 2 6 5 6 9s-2 7-6 9z" />
-        <path d="M16 16c2-1 3.5-2.5 4.5-4.5" />
+        {RING}
+        <path d="M10 38C22 30 26 18 38 10" />
+        <path d="M14 20c2-6 6-10 12-12M34 28c-2 6-6 10-12 12" opacity={0.35} />
+        <circle cx="38" cy="10" r="1.8" fill="currentColor" stroke="none" />
       </>
     ),
   },
+  // Trident rune.
   'sea-wolf': {
     color: 'var(--color-cyan)',
-    paths: (
+    nodes: (
       <>
-        <path d="M2 15c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2" />
-        <path d="M2 19.5c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2" />
-        <path d="M7 11c1-4 4-6.5 8-7-1 2-1 3.5 0 5.5" />
+        {RING}
+        <path d="M24 10v22M15 14v10a9 9 0 0 0 18 0V14" />
+        <path d="M17 38h14" />
       </>
     ),
   },
+  // Open eye.
   seer: {
     color: 'var(--color-cyan)',
-    paths: (
+    nodes: (
       <>
-        <path d="M2.5 12C5 7.5 8 5.5 12 5.5s7 2 9.5 6.5c-2.5 4.5-5.5 6.5-9.5 6.5s-7-2-9.5-6.5z" />
-        <circle cx="12" cy="12" r="2.5" />
+        <path d="M6 24C13 14 35 14 42 24 35 34 13 34 6 24z" />
+        <circle cx="24" cy="24" r="6" />
+        <circle cx="24" cy="24" r="1.8" fill="currentColor" stroke="none" />
+        <path d="M24 8v5M24 35v5" opacity={0.35} />
       </>
     ),
   },
+}
+
+/** Anonymous mark for a key neither map knows — a faint ring holding a
+ * faint nameless peak. Renders in the neutral faint tone so an
+ * unmapped entry is visibly "unmarked" rather than wearing some other
+ * subject's sigil. */
+const FALLBACK: Sigil = {
+  color: 'var(--color-ink-faint)',
+  nodes: (
+    <>
+      {RING}
+      <path d="M18 30l6-12 6 12" opacity={0.35} />
+    </>
+  ),
 }
 
 interface ArtProps {
   /** The rules module's own key for this ancestry/class. */
   k: string
+  /** Ghost mode: the big faint background sigil the choice cards layer
+   * behind their text (see CharacterBuilder) — no glow, no own opacity
+   * (the caller's wrapper sets it, so one wrapper class tunes every
+   * card at once). */
+  ghost?: boolean
   className?: string
 }
 
-function Art({ entry, className }: { entry: { color: string; paths: ReactNode } | undefined; className?: string }) {
-  if (!entry) return null
+function SigilSvg({ sigil, ghost = false, className }: { sigil: Sigil; ghost?: boolean; className?: string }) {
   return (
     <svg
-      viewBox="0 0 24 24"
+      viewBox="0 0 48 48"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.7}
-      className={className}
-      style={{ color: entry.color }}
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cx('shrink-0', className)}
+      style={{
+        color: sigil.color,
+        filter: ghost ? undefined : `drop-shadow(0 0 5px color-mix(in srgb, ${sigil.color} 60%, transparent))`,
+      }}
       aria-hidden="true"
     >
-      {entry.paths}
+      {sigil.nodes}
     </svg>
   )
 }
 
-export function AncestryArt({ k, className }: ArtProps) {
-  return <Art entry={ANCESTRY_ART[k]} className={className} />
+export function AncestryArt({ k, ghost, className }: ArtProps) {
+  return <SigilSvg sigil={ANCESTRY_SIGILS[k] ?? FALLBACK} ghost={ghost} className={className} />
 }
 
-export function ClassArt({ k, className }: ArtProps) {
-  return <Art entry={CLASS_ART[k]} className={className} />
+export function ClassArt({ k, ghost, className }: ArtProps) {
+  return <SigilSvg sigil={CLASS_SIGILS[k] ?? FALLBACK} ghost={ghost} className={className} />
 }

@@ -728,9 +728,16 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
       {step === 'ancestry' && (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {module.ancestries.map((a) => (
-            <button key={a.key} type="button" onClick={() => setAncestryKey(a.key)} className={cx(cardBase, 'flex items-start gap-3', ancestryKey === a.key && cardSelected)}>
-              <AncestryArt k={a.key} className="mt-0.5 h-8 w-8 shrink-0" />
-              <span className="min-w-0 flex-1">
+            <button key={a.key} type="button" onClick={() => setAncestryKey(a.key)} className={cx(cardBase, 'relative flex items-start gap-3 overflow-hidden', ancestryKey === a.key && cardSelected)}>
+              {/* Ghost sigil (approved sigil mockup's card treatment): a
+                * big faint copy bleeding off the card's right edge
+                * behind the text — the card reads as a spell card, not
+                * a list row. */}
+              <span aria-hidden="true" className="pointer-events-none absolute -right-4 top-1/2 h-24 w-24 -translate-y-1/2 -rotate-[8deg] opacity-[0.12]">
+                <AncestryArt k={a.key} ghost className="h-full w-full" />
+              </span>
+              <AncestryArt k={a.key} className="mt-0.5 h-9 w-9 shrink-0" />
+              <span className="relative min-w-0 flex-1">
                 <span className="block font-semibold">{a.name}</span>
                 <span className={cx(text.caption, 'mt-1 block text-ink-faint')}>{a.languages.join(', ')}</span>
                 <span className={cx(text.bodySecondary, 'mt-1 block')}>{a.talent}</span>
@@ -756,14 +763,17 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
           </p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {module.classes.map((c) => (
-              <button key={c.key} type="button" onClick={() => selectClass(c)} className={cx(cardBase, 'flex items-start gap-3', classKey === c.key && cardSelected)}>
-                {/* Same pictogram treatment as the Ancestry step above —
-                  * every class in the grid has a glyph (core four from
-                  * the approved mockup, expansion classes drawn in the
-                  * same hand) so no card sits bare beside an
-                  * illustrated one. */}
-                <ClassArt k={c.key} className="mt-0.5 h-8 w-8 shrink-0" />
-                <span className="min-w-0 flex-1">
+              <button key={c.key} type="button" onClick={() => selectClass(c)} className={cx(cardBase, 'relative flex items-start gap-3 overflow-hidden', classKey === c.key && cardSelected)}>
+                {/* Same sigil treatment as the Ancestry step above —
+                  * small glowing mark up front, big faint ghost copy
+                  * behind the text. Every class has a sigil (unknown
+                  * keys get the anonymous fallback mark) so no card
+                  * sits bare beside a marked one. */}
+                <span aria-hidden="true" className="pointer-events-none absolute -right-4 top-1/2 h-24 w-24 -translate-y-1/2 -rotate-[8deg] opacity-[0.12]">
+                  <ClassArt k={c.key} ghost className="h-full w-full" />
+                </span>
+                <ClassArt k={c.key} className="mt-0.5 h-9 w-9 shrink-0" />
+                <span className="relative min-w-0 flex-1">
                 <p className="font-semibold">
                   {c.name}
                   <span className={cx(text.label, 'ml-2 rounded-full border px-2 py-0.5', SOURCE_BADGE[c.source])}>{c.source}</span>
