@@ -9,7 +9,7 @@ import { GearSlotGrid } from './GearSlotGrid'
 import { Shop } from './Shop'
 import { createCharacter } from '../../lib/characters'
 import type { Character, CharacterAbilities, CharacterSheetData, AbilityScore } from '../../lib/characters'
-import { AncestryArt, ClassArt } from './AncestryClassArt'
+import { AncestryBustIcon, ClassArt } from './AncestryClassArt'
 import { getRulesModule, abilityModifier, ABILITY_ORDER } from '../../lib/rules'
 import type { Ability, RulesClass, RulesTalentTableRow } from '../../lib/rules'
 import { goldDeltaForSpend, goldToCp } from '../../lib/rules/equipment'
@@ -724,19 +724,21 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
       {/* Pictograms (2026-08-16, "races need visuals on what they are"
         * — style approved via ancestry-art-mockup.html): each card
         * leads with its mark in its own accent color, text to the
-        * right. See AncestryClassArt.tsx for the glyphs. */}
+        * right. Ancestry's mark swapped 2026-08-17 from the sigil to a
+        * real bust icon (`AncestryBustIcon` — see AncestryClassArt.tsx's
+        * doc comment on that swap); Class keeps its sigil below. */}
       {step === 'ancestry' && (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {module.ancestries.map((a) => (
             <button key={a.key} type="button" onClick={() => setAncestryKey(a.key)} className={cx(cardBase, 'relative flex items-start gap-3 overflow-hidden', ancestryKey === a.key && cardSelected)}>
-              {/* Ghost sigil (approved sigil mockup's card treatment): a
+              {/* Ghost mark (approved sigil mockup's card treatment): a
                 * big faint copy bleeding off the card's right edge
                 * behind the text — the card reads as a spell card, not
                 * a list row. */}
               <span aria-hidden="true" className="pointer-events-none absolute -right-4 top-1/2 h-24 w-24 -translate-y-1/2 -rotate-[8deg] opacity-[0.12]">
-                <AncestryArt k={a.key} ghost className="h-full w-full" />
+                <AncestryBustIcon k={a.key} ghost className="h-full w-full" />
               </span>
-              <AncestryArt k={a.key} className="mt-0.5 h-9 w-9 shrink-0" />
+              <AncestryBustIcon k={a.key} className="mt-0.5 h-9 w-9 shrink-0" />
               <span className="relative min-w-0 flex-1">
                 <span className="block font-semibold">{a.name}</span>
                 <span className={cx(text.caption, 'mt-1 block text-ink-faint')}>{a.languages.join(', ')}</span>

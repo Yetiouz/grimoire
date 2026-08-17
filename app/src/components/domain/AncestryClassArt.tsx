@@ -304,3 +304,73 @@ export function AncestryArt({ k, ghost, className }: ArtProps) {
 export function ClassArt({ k, ghost, className }: ArtProps) {
   return <SigilSvg sigil={CLASS_SIGILS[k] ?? FALLBACK} ghost={ghost} className={className} />
 }
+
+// Owner request, 2026-08-17 ("use the icons for now on the ancestry
+// section") — a real asset drop (`public/ancestry-icons/*.png`, sourced
+// from the owner's own `Icons/ancestry-icons-1bit-busts` set) supersedes
+// the sigil marks above FOR ANCESTRY ONLY. Class keeps its sigils —
+// there's no matching bust-icon set for classes yet, and nothing here
+// asked to touch that step. The owner also has a full-body pixel-art
+// sprite set in progress (`Art/ancestry-pixel-art`) meant to sit "next
+// to" this icon, explicitly called not-final ("leave that out for
+// now") — deliberately not wired in below; when it's ready this is the
+// spot to add it, not a reason to touch the icon side again.
+//
+// Each source PNG is ONE opaque white color on a transparent background
+// (confirmed against the raw pixel data, not just eyeballed — the
+// on-disk file really is pure white/alpha, no stray color). Tinting
+// reuses `ANCESTRY_SIGILS`' own `color` map rather than inventing a
+// second palette — same orange/cyan/green/red/yellow/purple assignment
+// per ancestry the sigil direction already established and the owner
+// already approved, so this reads as a style change to the MARK, not a
+// second, uncoordinated color system living next to the first. CSS
+// `mask-image` (not an `<img>`) is what makes that reuse possible: the
+// element's own `background-color` (via Tailwind's `bg-current` +
+// `color` in `style`) shows through only where the PNG is opaque, so
+// one asset serves every ancestry's accent color with no per-color
+// image export. `-webkit-` prefixed mask properties are included
+// alongside the unprefixed ones for Safari.
+const ANCESTRY_BUST_ICONS: Record<string, string> = {
+  dwarf: '/ancestry-icons/dwarf.png',
+  elf: '/ancestry-icons/elf.png',
+  goblin: '/ancestry-icons/goblin.png',
+  'half-orc': '/ancestry-icons/half-orc.png',
+  halfling: '/ancestry-icons/halfling.png',
+  human: '/ancestry-icons/human.png',
+}
+
+export function AncestryBustIcon({ k, ghost, className }: ArtProps) {
+  const src = ANCESTRY_BUST_ICONS[k]
+  const sigil = ANCESTRY_SIGILS[k] ?? FALLBACK
+
+  // No bust art for this key (a future ancestry the owner's asset drop
+  // hasn't covered yet) — same "never bare" fallback the sigil map
+  // itself follows, just falling back to the sigil mark rather than a
+  // blank box.
+  if (!src) {
+    return <SigilSvg sigil={sigil} ghost={ghost} className={className} />
+  }
+
+  const maskProps = {
+    WebkitMaskImage: `url(${src})`,
+    maskImage: `url(${src})`,
+    WebkitMaskRepeat: 'no-repeat' as const,
+    maskRepeat: 'no-repeat' as const,
+    WebkitMaskPosition: 'center' as const,
+    maskPosition: 'center' as const,
+    WebkitMaskSize: 'contain' as const,
+    maskSize: 'contain' as const,
+  }
+
+  return (
+    <span
+      aria-hidden="true"
+      className={cx('inline-block shrink-0 bg-current', className)}
+      style={{
+        color: sigil.color,
+        ...maskProps,
+        filter: ghost ? undefined : `drop-shadow(0 0 5px color-mix(in srgb, ${sigil.color} 60%, transparent))`,
+      }}
+    />
+  )
+}
