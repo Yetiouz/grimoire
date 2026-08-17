@@ -10,7 +10,7 @@ import { GearSlotGrid } from './GearSlotGrid'
 import { Shop } from './Shop'
 import { createCharacter } from '../../lib/characters'
 import type { Character, CharacterAbilities, CharacterSheetData, AbilityScore } from '../../lib/characters'
-import { AncestryBustIcon, AncestrySpriteArt, ClassArt } from './AncestryClassArt'
+import { AncestryBustIcon, AncestrySpriteArt, ClassBustIcon } from './AncestryClassArt'
 import { getRulesModule, abilityModifier, ABILITY_ORDER } from '../../lib/rules'
 import type { Ability, RulesClass, RulesTalentTableRow } from '../../lib/rules'
 import { goldDeltaForSpend, goldToCp } from '../../lib/rules/equipment'
@@ -713,8 +713,13 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         * — style approved via ancestry-art-mockup.html): each card
         * leads with its mark in its own accent color, text to the
         * right. Ancestry's mark swapped 2026-08-17 from the sigil to a
-        * real bust icon (`AncestryBustIcon` — see AncestryClassArt.tsx's
-        * doc comment on that swap); Class keeps its sigil below.
+        * real bust icon (`AncestryBustIcon`); Class got its own matching
+        * bust-icon set the same day (`ClassBustIcon` — see
+        * AncestryClassArt.tsx's doc comments on both swaps). Neither
+        * step uses its sigil mark for this front icon anymore — the
+        * sigil maps (`ANCESTRY_SIGILS` / `CLASS_SIGILS`) still exist
+        * because both bust icons reuse them for tint color and as the
+        * "no art yet for this key" fallback.
         *
         * Same day's follow-up ("art for the right side is here"), SECOND
         * pass after the owner's first live look: full-color character
@@ -777,7 +782,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                   * front remains, same as Ancestry. `overflow-hidden`
                   * on the card came off with it — it existed only to
                   * clip the ghost mark bleeding past the edge. */}
-                <ClassArt k={c.key} className="mt-0.5 h-9 w-9 shrink-0" />
+                <ClassBustIcon k={c.key} className="mt-0.5 h-9 w-9 shrink-0" />
                 <span className="relative min-w-0 flex-1">
                 <p className="font-semibold">
                   {c.name}

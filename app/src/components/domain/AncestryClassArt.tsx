@@ -388,6 +388,77 @@ export function AncestryBustIcon({ k, ghost, className }: ArtProps) {
   )
 }
 
+// Class bust icons, added 2026-08-17 (same day as the ghost-sigil
+// removal and the §3 Class recolor — see claude/grimoire-ancestry-
+// class-icon-colors.md in the Shadowdark project, §6's implementation
+// notes call this out explicitly: "the AncestryBustIcon pattern... is
+// the right mechanism to reuse for a new ClassBustIcon"). Class finally
+// has a matching bust-icon set (`Icons/class-icons/class-*.png`,
+// owner-provided) the way Ancestry already did.
+//
+// Unlike the ancestry source PNGs (already transparent), these arrived
+// as 1254×1254 white line art on a solid BLACK background, 1-bit mode.
+// Per §6's plan, each was chroma-keyed (luminance-as-alpha: black→0,
+// white→255) and downscaled to 128×128 before landing in
+// `public/class-icons/` — the same shape of prep the ancestry sprites
+// needed (cropping) before their own masking trick would work.
+//
+// Tinting reuses `CLASS_SIGILS`' own `color` map, same reasoning as
+// `AncestryBustIcon` reusing `ANCESTRY_SIGILS`: one asset serves every
+// class's WoW-analog accent color (§3) with no per-color image export,
+// and a color change to the sigil map is a color change to the bust
+// icon for free rather than two places to keep in sync.
+const CLASS_BUST_ICONS: Record<string, string> = {
+  fighter: '/class-icons/fighter.png',
+  'pit-fighter': '/class-icons/pit-fighter.png',
+  'desert-rider': '/class-icons/desert-rider.png',
+  'sea-wolf': '/class-icons/sea-wolf.png',
+  priest: '/class-icons/priest.png',
+  thief: '/class-icons/thief.png',
+  wizard: '/class-icons/wizard.png',
+  'knight-of-st-ydris': '/class-icons/knight-of-st-ydris.png',
+  warlock: '/class-icons/warlock.png',
+  witch: '/class-icons/witch.png',
+  'ras-godai': '/class-icons/ras-godai.png',
+  seer: '/class-icons/seer.png',
+}
+
+export function ClassBustIcon({ k, ghost, className }: ArtProps) {
+  const src = CLASS_BUST_ICONS[k]
+  const sigil = CLASS_SIGILS[k] ?? FALLBACK
+
+  // No bust art for this key (a future class the asset drop hasn't
+  // covered yet) — same "never bare" fallback both the sigil map and
+  // AncestryBustIcon follow, falling back to the sigil mark rather
+  // than a blank box.
+  if (!src) {
+    return <SigilSvg sigil={sigil} ghost={ghost} className={className} />
+  }
+
+  const maskProps = {
+    WebkitMaskImage: `url(${src})`,
+    maskImage: `url(${src})`,
+    WebkitMaskRepeat: 'no-repeat' as const,
+    maskRepeat: 'no-repeat' as const,
+    WebkitMaskPosition: 'center' as const,
+    maskPosition: 'center' as const,
+    WebkitMaskSize: 'contain' as const,
+    maskSize: 'contain' as const,
+  }
+
+  return (
+    <span
+      aria-hidden="true"
+      className={cx('inline-block shrink-0 bg-current', className)}
+      style={{
+        color: sigil.color,
+        ...maskProps,
+        filter: ghost ? undefined : `drop-shadow(0 0 5px color-mix(in srgb, ${sigil.color} 60%, transparent))`,
+      }}
+    />
+  )
+}
+
 // Owner follow-up, 2026-08-17 ("art for the right side is here" —
 // `Art/ancestry-characters-grim`) — the full-color full-body sprite
 // shown beside an Ancestry card's text, replacing the low-opacity ghost
