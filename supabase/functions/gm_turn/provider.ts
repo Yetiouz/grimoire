@@ -161,6 +161,19 @@ function safeParse(s: string | undefined): unknown {
 }
 
 // ── retry with backoff, for the free tier's low requests-per-minute ──
+//
+// 2026-08-18: widened from [1000, 3000, 8000] (12s total) after a real
+// session showed rate_limited surfacing to the player repeatedly even
+// though each individual burst cleared within a minute or so — the old
+// budget just wasn't long enough to wait out a free-tier per-minute
+// window. This is a mitigation, not a fix: it makes an occasional
+// rate-limited call quietly succeed instead of erroring, but it cannot
+// create request budget that free-tier quota doesn't have. If the
+// account moves off the free tier (billing enabled → ~30x more RPM),
+// these delays stop mattering because 429s stop happening in the first
+// place. Kept under TURN_TIMEOUT_MS (index.ts, default 60s) with room
+// to spare for the request itself and any other tool round-trips in the
+// same turn — that ceiling is why this isn't wider still.
 export async function complete(
   system: string,
   messages: Message[],
@@ -169,7 +182,7 @@ export async function complete(
 ): Promise<Completion> {
   if (MODE === "stub") return await stubComplete(messages, signal);
 
-  const delays = [1000, 3000, 8000];
+  const delays = [1500, 4000, 9000, 15000];
   for (let attempt = 0; ; attempt++) {
     try {
       return await liveComplete(system, messages, tools, signal);
