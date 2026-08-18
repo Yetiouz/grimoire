@@ -29,11 +29,13 @@ const TTS_BASE = Deno.env.get("FISH_TTS_BASE") ?? "https://api.fish.audio/v1/tts
  * instead of a hard quota. Swappable by secret (e.g. to a paid tier)
  * with no redeploy: FISH_TTS_MODEL. */
 const TTS_MODEL = Deno.env.get("FISH_TTS_MODEL") ?? "s2.1-pro-free";
-/** Voice model id. "Dark Story" — the owner's pick from Fish Audio's
- * public voice library (fish.audio/discovery), tried live and approved
- * ("dark story is fire") before this became the default. Swappable by
+/** Voice model id. Swapped 2026-08-18 (owner's pick from Fish Audio's
+ * text-to-speech picker — https://fish.audio/app/text-to-speech/?modelId=
+ * a5971a1fd805441aaf3b0bbe8c9f1ab6) off "Dark Story"
+ * (2832d3fa41e246589ffa41187dafa9b1, the prior default, tried live and
+ * approved back on 2026-08-10 — "dark story is fire"). Swappable by
  * secret, no redeploy: FISH_TTS_REFERENCE_ID. */
-const TTS_REFERENCE_ID = Deno.env.get("FISH_TTS_REFERENCE_ID") ?? "2832d3fa41e246589ffa41187dafa9b1";
+const TTS_REFERENCE_ID = Deno.env.get("FISH_TTS_REFERENCE_ID") ?? "a5971a1fd805441aaf3b0bbe8c9f1ab6";
 /** Fish Audio takes a numeric prosody knob, not a natural-language style
  * instruction the way Gemini's generateContent did — there's no
  * equivalent of the old "read slowly, in a low, unhurried, ominous
