@@ -4,6 +4,7 @@ import { text } from '../../lib/typography'
 import { TextInput } from '../ui/TextInput'
 import { Icon } from '../ui/Icon'
 import type { IconName } from '../ui/Icon'
+import { ThinkingRune } from '../ui/ThinkingRune'
 import type { LogEntryKind } from '../ui/LogEntryRow'
 import type { GmTurnResult } from '../../lib/gm'
 import { GmReply } from './GmReply'
@@ -109,10 +110,15 @@ interface JournalComposerProps {
    * `VITE_GM_ENABLED` is set — the Ask chips never render and the row
    * is just the four kinds. */
   gmEnabled?: boolean
-  onAskGm?: (input: string) => Promise<GmTurnResult>
+  /** The optional `signal` param (2026-08-18) lets this composer's own
+   * Stop button abort an in-flight turn — see `handleSubmit`'s
+   * `AbortController` and `askGm`'s own doc comment on what a stop
+   * does and doesn't guarantee. Both callers just forward it straight
+   * to `askGm`. */
+  onAskGm?: (input: string, signal?: AbortSignal) => Promise<GmTurnResult>
   /** Out-of-character lookups: never reach the journal, stored in
    * gm_chat and read back from Tools -> Rules. */
-  onAskRules?: (input: string) => Promise<GmTurnResult>
+  onAskRules?: (input: string, signal?: AbortSignal) => Promise<GmTurnResult>
   /** Only needed to read the day's remaining GM turns on mount. */
   campaignId?: string
   /** Whether the voice tier exists in this build (`VITE_GM_TTS`), same
@@ -162,6 +168,12 @@ export function JournalComposer({
   const [submitting, setSubmitting] = useState(false)
   const [reply, setReply] = useState<GmTurnResult | null>(null)
   const bodyInputRef = useRef<HTMLInputElement>(null)
+  // The in-flight ask's own AbortController (2026-08-18) — created fresh
+  // in `handleSubmit` for every aiMode turn, cleared in its `finally`.
+  // `handleStop` reads it to abort whatever turn is currently running;
+  // null between turns (and for non-AI Log submissions, which never set
+  // it at all) so a stray Stop click has nothing to do.
+  const abortControllerRef = useRef<AbortController | null>(null)
   // Tracks the last seed object this composer has already consumed, so
   // the effect below fires once per distinct "save as note" tap (new
   // object from the host layout) rather than on every re-render, and so
@@ -217,7 +229,13 @@ export function JournalComposer({
     try {
       if (aiMode) {
         const ask = rulesMode ? onAskRules! : onAskGm!
-        const result = await ask(trimmed)
+        // A fresh controller per turn (2026-08-18) — `handleStop` below
+        // aborts whichever one is current; cleared in `finally` so a
+        // Stop click after the turn has already settled has nothing
+        // stale to abort.
+        const controller = new AbortController()
+        abortControllerRef.current = controller
+        const result = await ask(trimmed, controller.signal)
         // The edge function's reply carries a fresh combined figure
         // (`result.budget`) as a side effect of the turn it just ran,
         // but the hook owns that state now (2026-08-10 fold-in) — rather
@@ -245,7 +263,19 @@ export function JournalComposer({
       }
     } finally {
       setSubmitting(false)
+      abortControllerRef.current = null
     }
+  }
+
+  // The composer's own half of the Stop control (2026-08-18) —
+  // `abortControllerRef` is only ever set while an aiMode turn is in
+  // flight (see `handleSubmit`), so this is a no-op if there's nothing
+  // to stop. Aborting resolves `askGm`'s promise with `status:
+  // 'stopped'` (see that function's own doc comment on what a stop
+  // does and doesn't guarantee) — `handleSubmit`'s `finally` still runs
+  // normally from there, same as any other outcome.
+  function handleStop() {
+    abortControllerRef.current?.abort()
   }
 
   // Accessible name for the icon-only submit button below — same text
@@ -253,6 +283,10 @@ export function JournalComposer({
   // log send buttons to a send icon"). Kept as a variable since both
   // `aria-label` and `title` want the exact same string.
   const submitLabel = aiMode ? 'Send' : 'Log'
+  // True while the button should read as Stop instead of Send/Log
+  // (2026-08-18) — only for an in-flight AI turn; a plain Log submit is
+  // a fast local write with nothing worth offering to cancel.
+  const stopping = aiMode && submitting
 
   return (
     <div className={cx('flex flex-col gap-2', className)}>
@@ -349,16 +383,39 @@ export function JournalComposer({
 
       {reply && <GmReply result={reply} onDismiss={() => setReply(null)} />}
 
-      {/* Thinking state (slice A follow-up, 2026-08-16): the old
-        * dots-and-text row that appeared here while the AI worked made
-        * the whole composer grow and shift on every Ask. Replaced by the
-        * send button itself swapping its arrow for a pulsing thinking
-        * spark (below) — same information, zero layout change. The text
-        * lives on as a visually-hidden live region so screen readers
-        * still hear what sighted users now see as the pulse. */}
-      <span className="sr-only" aria-live="polite">
-        {aiMode && submitting ? (rulesMode ? 'Checking the rules' : 'The GM is thinking') : ''}
-      </span>
+      {/* Thinking state, rebuilt 2026-08-18 (owner: "the thinking line
+        * is in the chat window before it loads, like this" — the Claude
+        * chat pattern of a visible status line where the next message
+        * will land, not a hidden announcement). The 2026-08-16 version
+        * of this row hid the text entirely (sr-only) and put the whole
+        * signal on the send button's own pulsing spark, specifically to
+        * avoid the composer growing/shifting on every Ask — this version
+        * keeps that promise (still exactly one row, same position, no
+        * layout jump into or out of existence beyond this row's own
+        * height) while actually showing the text and the new
+        * `ThinkingRune` animation. `role="status" aria-live="polite"`
+        * on the row itself carries the screen-reader announcement now,
+        * so `ThinkingRune`'s own `label` is withheld (`label=""`) to
+        * avoid announcing the same text twice. */}
+      {aiMode && submitting && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={cx(
+            'flex items-center gap-2.5 rounded-card border px-3 py-2.5',
+            rulesMode ? 'border-orange/30 bg-orange/[0.07]' : 'border-cyan/30 bg-cyan/[0.07]',
+          )}
+        >
+          <ThinkingRune
+            label=""
+            className="h-6 w-6"
+            style={{ color: rulesMode ? '#ff8a3d' : '#35f0ff' }}
+          />
+          <span className={cx(text.body, rulesMode ? 'text-orange' : 'text-cyan')}>
+            {rulesMode ? 'Checking the rules…' : 'The GM is thinking…'}
+          </span>
+        </div>
+      )}
 
       <div className="flex gap-2">
         <div className="flex-1">
@@ -389,21 +446,24 @@ export function JournalComposer({
           * stylesheet-order reason as the input border, shadow
           * recomputed per selection so a green Roll button doesn't glow
           * purple. While the AI works (`aiMode && submitting`) the
-          * arrow becomes the pulsing `thinking` spark — see the live
-          * region above for where the old text went. Disabled dimming
-          * is withheld in that state: the button is inert (`disabled`)
-          * but deliberately stays lit, because the pulse IS the
-          * feedback. */}
+          * arrow becomes a real Stop control
+          * (2026-08-18, owner: "the button switches to a stop button" —
+          * see `handleStop`/`stopping` above and the visible thinking
+          * row above this for where the old hidden text went).
+          * Deliberately re-ENABLED in that state — the button is a live
+          * control again, not an inert one, and stays lit (no
+          * `disabled:opacity-40`) for the same "the state IS the
+          * feedback" reason the old pulsing version did. */}
         <button
           type="button"
-          onClick={() => void handleSubmit()}
-          disabled={disabled || !body.trim()}
-          aria-label={aiMode && submitting ? (rulesMode ? 'Checking the rules' : 'The GM is thinking') : submitLabel}
-          title={aiMode && submitting ? (rulesMode ? 'Checking the rules' : 'The GM is thinking') : submitLabel}
+          onClick={() => (stopping ? handleStop() : void handleSubmit())}
+          disabled={stopping ? false : disabled || !body.trim()}
+          aria-label={stopping ? (rulesMode ? 'Stop checking the rules' : 'Stop the GM') : submitLabel}
+          title={stopping ? 'Stop' : submitLabel}
           className={cx(
             'flex w-[52px] shrink-0 items-center justify-center self-stretch rounded-button transition-opacity duration-150',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
-            !(aiMode && submitting) && 'disabled:opacity-40',
+            !stopping && 'disabled:opacity-40',
           )}
           style={{
             background: selected.hex,
@@ -411,8 +471,8 @@ export function JournalComposer({
             boxShadow: `0 0 0 1px ${selected.hex}40, 0 8px 24px -8px ${selected.hex}8c`,
           }}
         >
-          {aiMode && submitting ? (
-            <Icon name="thinking" small className="animate-pulse" style={{ color: '#0a0a0c' }} />
+          {stopping ? (
+            <Icon name="stop" small style={{ color: '#0a0a0c' }} />
           ) : (
             <span aria-hidden="true" className="text-base leading-none">➤</span>
           )}

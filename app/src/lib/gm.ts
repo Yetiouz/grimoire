@@ -1,15 +1,24 @@
 import { supabase } from './supabase'
 
-/** Every outcome the `gm_turn` edge function can report. Note that none
- * of these are exceptional: the function deliberately answers HTTP 200
- * with a structured body on every path, including its own failures, so
- * that a bad turn renders as a message rather than an unhandled throw.
- * (`capped` / `looped` / `timeout` are its three loop brakes.) */
+/** Every outcome the `gm_turn` edge function can report, plus one the
+ * CLIENT reports on its own: `stopped`, added 2026-08-18 when the
+ * composer's send button became a real Stop control (see `askGm`'s
+ * `signal` param below). Every other member of this union is exceptional
+ * only insofar as the edge function deliberately answers HTTP 200 with a
+ * structured body on every path, including its own failures, so that a
+ * bad turn renders as a message rather than an unhandled throw.
+ * (`capped` / `looped` / `timeout` are its three loop brakes.) `stopped`
+ * fits the same "not an error, a real outcome" shape, which is exactly
+ * why `GmReply` needed no changes to render it: its tone switch already
+ * buckets anything that isn't `ok`/`budget_exhausted`/`error` into the
+ * yellow "Stopped" tone (`capped`/`looped`/`timeout` all shared that
+ * label already), and `stopped` falls into that same bucket for free. */
 export type GmTurnStatus =
   | 'ok'
   | 'capped'
   | 'looped'
   | 'timeout'
+  | 'stopped'
   | 'budget_exhausted'
   | 'disabled'
   | 'error'
@@ -74,6 +83,13 @@ export interface GmTurnResult {
  * settles, which is exactly the lockout this slice set out to remove. */
 const CLIENT_TIMEOUT_MS = 65_000
 
+/** Distinguishes a stop from the invoke/timeout branches in the race
+ * below without risking a false match against real response data (an
+ * object shape like `{ stopped: true }` could theoretically collide
+ * with something the edge function returns; a module-private Symbol
+ * can't). */
+const STOPPED = Symbol('askGm-stopped')
+
 /** Wraps the `gm_turn` edge function (slice 16). Mirrors `dice.ts`'s
  * boundary rule — no UI knowledge, no journal writes, callers decide
  * what to do with the result.
@@ -82,22 +98,59 @@ const CLIENT_TIMEOUT_MS = 65_000
  * normalised into an `error` result, because a thrown promise here is
  * how the composer would get stuck: the whole point of the design is
  * that no GM failure can leave the UI unusable. Callers should switch
- * on `status`, not wrap this in try/catch. */
+ * on `status`, not wrap this in try/catch. A stop (`signal`, below)
+ * keeps that same contract — it resolves, it never rejects either. */
 export async function askGm(
   campaignId: string,
   sessionId: string | null,
   input: string,
   mode: GmMode = 'play',
+  /** Owner request 2026-08-18 ("the button switches to a stop
+   * button"): when the composer aborts this signal, `askGm` settles
+   * immediately with `status: 'stopped'` rather than leaving the
+   * caller waiting on the original request. This is a CLIENT-SIDE
+   * short-circuit only — this supabase-js version's invoke options
+   * have no documented `signal` passthrough, and guessing at an
+   * undocumented one isn't worth risking a real request breaking over
+   * — so the in-flight call to the edge function keeps running
+   * server-side and, if it completes, its result is simply never read.
+   * Same tolerance `useGmJournalHandlers.ts`'s own doc comment already
+   * accepts for a failed journal write after a successful reply: the
+   * GM may still answer after a stop, the player just won't see it
+   * until the next reload, which beats leaving the button stuck. */
+  signal?: AbortSignal,
 ): Promise<GmTurnResult> {
   try {
-    const result = await Promise.race([
+    const racers: Promise<unknown>[] = [
       supabase.functions.invoke('gm_turn', {
         body: { campaignId, sessionId, input, mode },
       }),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('The GM did not respond.')), CLIENT_TIMEOUT_MS),
       ),
-    ])
+    ]
+    if (signal) {
+      racers.push(
+        new Promise<typeof STOPPED>((resolve) => {
+          if (signal.aborted) {
+            resolve(STOPPED)
+            return
+          }
+          signal.addEventListener('abort', () => resolve(STOPPED), { once: true })
+        }),
+      )
+    }
+
+    // `any` past this point, matching the permissive `as` casts the
+    // rest of this function already uses on the invoke result below —
+    // the race's branches are heterogeneous (the SDK's response shape,
+    // a never-resolving timeout, and the STOPPED sentinel), and there's
+    // no single real type all three share worth fighting for here.
+    const result: any = await Promise.race(racers)
+
+    if (result === STOPPED) {
+      return { status: 'stopped', message: 'Stopped.', requestCount: 0 }
+    }
 
     if (result.error) {
       return {

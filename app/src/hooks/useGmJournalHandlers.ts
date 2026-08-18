@@ -49,6 +49,11 @@ interface UseGmJournalHandlersArgs {
  * check-resolution handler (`handleResolveCheck`) — split out of
  * `JournalScreen.tsx` alongside `useJournalScreenData`, same follow-up
  * cut. Ask* moved verbatim, not redesigned; handleResolveCheck is new.
+ * Both Ask handlers picked up an optional `signal` param 2026-08-18 —
+ * pure pass-through to `askGm`, so the composer's new Stop button can
+ * abort a turn without either handler needing its own cancellation
+ * logic (a stopped turn already returns cleanly via `status: 'stopped'`,
+ * same non-throwing contract every other outcome here already has).
  *
  * `handleAskGm`: Slice 16, same thin-wrapper boundary as the dice
  * roller — the composer never touches Supabase itself. No try/catch, no
@@ -107,8 +112,8 @@ export function useGmJournalHandlers({
 }: UseGmJournalHandlersArgs) {
   const [resolvingCheckId, setResolvingCheckId] = useState<string | null>(null)
 
-  async function handleAskGm(input: string): Promise<GmTurnResult> {
-    const result = await askGm(campaignId, sessionId, input)
+  async function handleAskGm(input: string, signal?: AbortSignal): Promise<GmTurnResult> {
+    const result = await askGm(campaignId, sessionId, input, 'play', signal)
 
     if (result.status === 'ok') void refetchChecks()
 
@@ -145,8 +150,8 @@ export function useGmJournalHandlers({
     return result
   }
 
-  async function handleAskRules(input: string): Promise<GmTurnResult> {
-    const result = await askGm(campaignId, sessionId, input, 'rules')
+  async function handleAskRules(input: string, signal?: AbortSignal): Promise<GmTurnResult> {
+    const result = await askGm(campaignId, sessionId, input, 'rules', signal)
     if (result.status === 'ok') void refetchRules()
     return result
   }

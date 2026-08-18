@@ -22,6 +22,7 @@ import {
   Shield,
   Sparkle,
   Sparkles,
+  Square,
   StickyNote,
   UserPlus,
   Users,
@@ -110,25 +111,36 @@ import { cx } from '../../lib/cx'
  * `rules` glyph that the two tiles don't look like duplicates of each
  * other.
  */
-// `thinking` added for the journal composer's send button (2026-08-16,
-// slice A follow-up: "we need a thinking icon like claude has") — while
-// the AI GM is generating, the send button swaps its arrow for this
-// pulsing spark instead of the old expanding dots-and-text row, so the
-// composer's height never changes while waiting. Maps to the same
-// lucide glyph as `luck` (Sparkles) on purpose — the semantic names are
-// the closed set here, not the glyphs, and "a spark of thought" is
-// exactly the association Claude's own thinking indicator trades on.
+// `thinking` (Sparkles, 2026-08-16 slice A follow-up) lived here until
+// 2026-08-18: while the AI GM generated, the send button swapped its
+// arrow for this pulsing spark. Superseded, not just recolored — the
+// owner dropped in a real branded asset (`ThinkingRune.tsx`, a rune-ring
+// animation, not a lucide glyph) AND changed the interaction it serves:
+// the send button now becomes a real Stop control while thinking (see
+// `stop` below), and the "thinking" signal itself moved to a visible
+// status row in `JournalComposer.tsx` rather than living on the button.
+// Removed here rather than left dead — this closed set's whole point is
+// that every entry is a real, current call site (see the set's own
+// top-of-file doc comment).
 // `gm` and `clock` added for UI review slices B/C (2026-08-16, owner +
 // playtest feedback: "she wanted icons or pictures to help identify
 // what she was picking" — recognition over reading). `gm` (Eye, the
 // all-seeing GM) marks the composer's GM mode chip; `clock` (Clock3)
 // marks the world rail's Clocks tab. Both are recognition marks for
 // dense chip/tab rows, not new features.
+// `stop` added 2026-08-18 alongside `ThinkingRune` — the journal
+// composer's send button becomes a real Stop control while the AI GM is
+// generating (owner: "when you hit send the button switches to a stop
+// button"), matching the abort affordance every chat UI this is modeled
+// on already has. `Square` is the universal media-control stop glyph —
+// deliberately not reusing `close`'s X, which already means "dismiss/
+// cancel this whole thing" (the banner, the modal) rather than "halt an
+// in-progress action and let me act again."
 const icons = {
   hp: Heart,
-  thinking: Sparkles,
   gm: Eye,
   clock: Clock3,
+  stop: Square,
   // Factions get their own mark rather than sharing `world`'s Globe —
   // the mobile tab bar's World tab wears the globe, and two different
   // destinations with one glyph would defeat the recognition the icons

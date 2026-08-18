@@ -131,8 +131,12 @@ interface JournalDesktopLayoutProps {
    * own doc comment on `onOpenGmReference` for why. */
   onOpenGmReference?: () => void
   onLog: (kind: LogEntryKind, body: string) => Promise<void>
-  onAskGm?: (input: string) => Promise<GmTurnResult>
-  onAskRules?: (input: string) => Promise<GmTurnResult>
+  /** Both picked up an optional `signal` param 2026-08-18 — pure
+   * pass-through to `JournalComposer`'s new Stop button, same as
+   * `useGmJournalHandlers.ts`'s own widened signature. This component
+   * doesn't create or touch the signal itself. */
+  onAskGm?: (input: string, signal?: AbortSignal) => Promise<GmTurnResult>
+  onAskRules?: (input: string, signal?: AbortSignal) => Promise<GmTurnResult>
   /** Global voice switch (UI review slice A, 2026-08-16) — the pair now
    * feeds `JournalComposer`'s single `AiVoiceToggle` (the per-row pill
    * is gone), and `aiVoiceOn` alone is additionally forwarded to

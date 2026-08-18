@@ -92,7 +92,11 @@ interface MobileJournalViewProps {
    * its own `gm_mode`-gated value here (`aiGmActive` in `JournalScreen`)
    * — this component doesn't know or care about that distinction. */
   gmEnabled?: boolean
-  onAskGm?: (input: string) => Promise<GmTurnResult>
+  /** Both Ask props picked up an optional `signal` param 2026-08-18 —
+   * pure pass-through to `JournalComposer`'s new Stop button, same as
+   * `useGmJournalHandlers.ts`'s own widened signature. This component
+   * doesn't create or touch the signal itself. */
+  onAskGm?: (input: string, signal?: AbortSignal) => Promise<GmTurnResult>
   /** Global voice switch (UI review slice A, 2026-08-16) — the pair now
    * feeds `JournalComposer`'s single `AiVoiceToggle` (the per-row pill
    * is gone), and `aiVoiceOn` alone is additionally forwarded to
@@ -110,7 +114,7 @@ interface MobileJournalViewProps {
    * Rules" was reachable on mobile but silently fell through to logging
    * the raw question as a journal entry instead. Fixed alongside the
    * rest of this task since both files were already open for it. */
-  onAskRules?: (input: string) => Promise<GmTurnResult>
+  onAskRules?: (input: string, signal?: AbortSignal) => Promise<GmTurnResult>
   /** Slice 17: forwarded straight to `JournalFeed` — see its own doc
    * comment. Both optional, same "omit for read-only" convention every
    * other feed callback here already follows. */
