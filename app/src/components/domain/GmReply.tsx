@@ -26,11 +26,26 @@ export function GmReply({ result, onDismiss }: { result: GmTurnResult; onDismiss
         ? 'bad'
         : 'stop'
 
+  // 2026-08-18 bugfix: `tone === 'bad'` covers TWO different statuses —
+  // `budget_exhausted` and `error` — but the label used to collapse both
+  // into a flat 'Budget', so a plain provider error (a 503, a timeout,
+  // anything not actually about the daily budget) read as a budget
+  // problem it wasn't. Caught live: the GM hit a real "high demand, try
+  // again later" error from the model provider and the strip said
+  // "BUDGET" — confusing when the daily budget hadn't been touched at
+  // all. Keyed off `result.status` directly now instead of the coarser
+  // tone bucket, which still only exists to pick a color.
   const label = unfiled
     ? 'Not filed'
     : isRules && tone === 'gm'
       ? 'Rules'
-      : tone === 'gm' ? 'GM' : tone === 'bad' ? 'Budget' : 'Stopped'
+      : tone === 'gm'
+        ? 'GM'
+        : result.status === 'budget_exhausted'
+          ? 'Budget'
+          : result.status === 'error'
+            ? 'Error'
+            : 'Stopped'
 
   return (
     <div
