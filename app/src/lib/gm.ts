@@ -46,6 +46,38 @@ export interface GmChatMessage {
   created_at: string
 }
 
+/** The composer's own in-flight/settled turn, lifted out of
+ * `JournalComposer` (2026-08-18, owner: "the animation needs to go
+ * outside the box, in the chat feed itself... when it's stopped it
+ * acts like an indicator of where we are") so `JournalFeed` can render
+ * it at the exact spot the next reply will land, rather than the
+ * composer showing it next to the input. `JournalComposer` reports this
+ * up via `onPendingTurnChange`; `JournalDesktopLayout`/`MobileJournalView`
+ * hold the one piece of state and feed it to both `JournalComposer`
+ * (which only needs to know a turn is running, for its Stop button) and
+ * `JournalFeed` (which renders it — see `GmTurnIndicator`).
+ *
+ * `mode` is captured at submit time, separately from `result.mode`:
+ * `askGm`'s own `stopped` short-circuit and its network-error branch
+ * never echo a `mode` back (there's no edge-function response to read
+ * it from), so the 'thinking' phase's color would have nothing to key
+ * off if it relied on the result instead. */
+export interface PendingGmTurn {
+  mode: GmMode
+  /** 'thinking': a turn is in flight, `GmTurnIndicator` animates.
+   * 'settled': it resolved to an outcome with nowhere else to go
+   * (stopped, a brake, budget_exhausted, an error, or an ok reply whose
+   * journal write failed) — the rune freezes in place and the outcome
+   * renders beside it, staying there as a "this is where we left off"
+   * mark until the next turn overwrites it or the player dismisses it.
+   * A reply that made it into the journal never reaches this phase at
+   * all — `JournalComposer` clears back to `null` instead, since the
+   * real entry in the feed already shows where things landed. */
+  phase: 'thinking' | 'settled'
+  /** Only set once `phase` is 'settled'. */
+  result?: GmTurnResult
+}
+
 export interface GmTurnResult {
   status: GmTurnStatus
   message: string

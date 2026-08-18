@@ -36,13 +36,23 @@ interface ThinkingRuneProps {
    * same text (avoids a double announcement) — see the composer's own
    * thinking row, which does exactly that. */
   label?: string
+  /** Added 2026-08-18 for `GmTurnIndicator`'s settled state (owner:
+   * "when it's stopped it acts like an indicator of where we are") —
+   * the same rune, chasing pass stopped dead rather than swapped for a
+   * different glyph, so it reads as one animation that ran and then
+   * came to rest, not two different marks. Applies a modifier class
+   * (below) rather than an inline style, since overriding a shorthand
+   * `animation` from outside would need `!important` to beat the
+   * scoped rule's equal specificity — the modifier's extra selector
+   * segment wins on its own. */
+  frozen?: boolean
 }
 
-export function ThinkingRune({ className, style, label = 'Thinking' }: ThinkingRuneProps) {
+export function ThinkingRune({ className, style, label = 'Thinking', frozen = false }: ThinkingRuneProps) {
   return (
     <svg
       viewBox="0 0 128 128"
-      className={cx('shrink-0', className)}
+      className={cx('shrink-0', frozen && 'grimoire-thinking-rune--frozen', className)}
       style={style}
       role={label ? 'img' : undefined}
       aria-hidden={label ? undefined : true}
@@ -68,6 +78,10 @@ export function ThinkingRune({ className, style, label = 'Thinking' }: ThinkingR
         @keyframes grimoire-thinking-pass {
           0%, 28%, 100% { opacity: .22; }
           12% { opacity: 1; }
+        }
+        .grimoire-thinking-rune--frozen .grimoire-thinking-rune-path {
+          animation: none;
+          opacity: .5;
         }
         @media (prefers-reduced-motion: reduce) {
           .grimoire-thinking-rune-path { animation: none; opacity: .65; }

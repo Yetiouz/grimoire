@@ -16,7 +16,7 @@ import { ToolsDock } from './ToolsDock'
 import type { LogEntryKind } from '../ui/LogEntryRow'
 import type { FeedItem } from '../../lib/feed'
 import type { GmCheck, ResolveSource } from '../../lib/checks'
-import type { GmTurnResult } from '../../lib/gm'
+import type { GmTurnResult, PendingGmTurn } from '../../lib/gm'
 import type { CampaignSession, JournalEntry } from '../../lib/campaigns'
 import type { Character } from '../../lib/characters'
 import type { Quest } from '../../lib/quests'
@@ -230,6 +230,13 @@ export function JournalDesktopLayout({
   // toggle which one is visible), so each keeps its own independent
   // seed state rather than sharing one the other could stomp.
   const [noteSeed, setNoteSeed] = useState<{ body: string } | null>(null)
+  // The composer's in-flight/settled AI turn (2026-08-18) — same
+  // per-layout independence as `noteSeed` above, and for the same
+  // reason: this layout's `JournalComposer` and `JournalFeed` are two
+  // separate children here, so the one piece of state they share has to
+  // live at this level, not inside either of them. See `PendingGmTurn`'s
+  // own doc comment for why it moved out of `JournalComposer` at all.
+  const [pendingTurn, setPendingTurn] = useState<PendingGmTurn | null>(null)
   return (
     // Right column widened 20rem -> 26rem (2026-08-10, owner: "widen quest
     // log panel so the top nav fits") — WorldTabs' tab row (Quests/People/
@@ -352,6 +359,7 @@ export function JournalDesktopLayout({
             gmEnabled={gmEnabled}
             onAskGm={onAskGm}
             onAskRules={onAskRules}
+            onPendingTurnChange={setPendingTurn}
             campaignId={campaignId}
             ttsAvailable={ttsAvailable}
             aiVoiceOn={aiVoiceOn}
@@ -379,6 +387,8 @@ export function JournalDesktopLayout({
             voiceEnabled={aiVoiceOn}
             onResolveCheck={onResolveCheck}
             resolvingCheckId={resolvingCheckId}
+            pendingTurn={pendingTurn}
+            onDismissPendingTurn={() => setPendingTurn(null)}
           />
         )}
       </ColumnCard>

@@ -4,10 +4,8 @@ import { text } from '../../lib/typography'
 import { TextInput } from '../ui/TextInput'
 import { Icon } from '../ui/Icon'
 import type { IconName } from '../ui/Icon'
-import { ThinkingRune } from '../ui/ThinkingRune'
 import type { LogEntryKind } from '../ui/LogEntryRow'
-import type { GmTurnResult } from '../../lib/gm'
-import { GmReply } from './GmReply'
+import type { GmTurnResult, PendingGmTurn } from '../../lib/gm'
 import { AiVoiceToggle } from './AiVoiceToggle'
 import { GmBudgetBar } from './GmBudgetBar'
 import { useGmBudget } from '../../hooks/useGmBudget'
@@ -119,6 +117,15 @@ interface JournalComposerProps {
   /** Out-of-character lookups: never reach the journal, stored in
    * gm_chat and read back from Tools -> Rules. */
   onAskRules?: (input: string, signal?: AbortSignal) => Promise<GmTurnResult>
+  /** Reports this composer's in-flight/settled AI turn up to the host
+   * layout (2026-08-18) so `JournalFeed` can render it — see
+   * `PendingGmTurn`'s own doc comment for the full "why lifted" story.
+   * Called with a 'thinking' turn the moment an Ask submits, with
+   * `null` the moment a reply lands in the journal (the real entry is
+   * the resting mark then), or with a 'settled' turn for every other
+   * outcome (stopped, a brake, budget_exhausted, an error, or an
+   * unfiled ok reply). Omit for a composer with no feed to report to. */
+  onPendingTurnChange?: (pending: PendingGmTurn | null) => void
   /** Only needed to read the day's remaining GM turns on mount. */
   campaignId?: string
   /** Whether the voice tier exists in this build (`VITE_GM_TTS`), same
@@ -156,6 +163,7 @@ export function JournalComposer({
   gmEnabled = false,
   onAskGm,
   onAskRules,
+  onPendingTurnChange,
   campaignId,
   ttsAvailable = false,
   aiVoiceOn,
@@ -166,7 +174,6 @@ export function JournalComposer({
   const [choice, setChoice] = useState<Choice>('action')
   const [body, setBody] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [reply, setReply] = useState<GmTurnResult | null>(null)
   const bodyInputRef = useRef<HTMLInputElement>(null)
   // The in-flight ask's own AbortController (2026-08-18) — created fresh
   // in `handleSubmit` for every aiMode turn, cleared in its `finally`.
@@ -219,7 +226,15 @@ export function JournalComposer({
   const budgetEnabled = meterRelevant && Boolean(campaignId)
   const { budget, remaining, refetch: refetchBudget } = useGmBudget(campaignId ?? '', budgetEnabled)
   const { byMode: budgetByMode, refetch: refetchBudgetByMode } = useGmBudgetByMode(campaignId ?? '', budgetEnabled)
-  const outOfBudget = reply?.status === 'budget_exhausted' || remaining === 0
+  // Immediate lock the instant a turn comes back budget_exhausted — this
+  // composer used to read that off the local `reply` state it kept for
+  // the strip it rendered; now that the strip (and the state) lives with
+  // `pendingTurn` up in the host layout (2026-08-18), this one-field
+  // mirror is all `outOfBudget` actually needs, rather than reaching
+  // back up for the lifted state. `refetchBudget` above will bring
+  // `remaining` to 0 too, just not synchronously in this same render.
+  const [budgetJustExhausted, setBudgetJustExhausted] = useState(false)
+  const outOfBudget = budgetJustExhausted || remaining === 0
   const disabled = !sessionOpen || submitting
 
   async function handleSubmit() {
@@ -229,6 +244,12 @@ export function JournalComposer({
     try {
       if (aiMode) {
         const ask = rulesMode ? onAskRules! : onAskGm!
+        const turnMode = rulesMode ? 'rules' : 'gm'
+        // Reported up before the await, not after — this is the signal
+        // `JournalFeed` animates on (2026-08-18, see `PendingGmTurn`'s
+        // own doc comment for why this moved out of this component
+        // entirely rather than just relocating the JSX).
+        onPendingTurnChange?.({ mode: turnMode, phase: 'thinking' })
         // A fresh controller per turn (2026-08-18) — `handleStop` below
         // aborts whichever one is current; cleared in `finally` so a
         // Stop click after the turn has already settled has nothing
@@ -248,10 +269,14 @@ export function JournalComposer({
         // no new cost, just the same call routed through the hook.
         void refetchBudget()
         void refetchBudgetByMode()
-        // A reply that reached the journal needs no strip — it is already
-        // in the feed above. Everything else (brakes, budget, errors, a
-        // failed journal write) still surfaces here.
-        setReply(result.status === 'ok' && result.logged ? null : result)
+        setBudgetJustExhausted(result.status === 'budget_exhausted')
+        // A reply that reached the journal needs no resting mark — the
+        // real entry is already in the feed. Everything else (brakes,
+        // budget, errors, a failed journal write) settles in place
+        // instead, right where the thinking row was.
+        onPendingTurnChange?.(
+          result.status === 'ok' && result.logged ? null : { mode: turnMode, phase: 'settled', result },
+        )
         // Only clear the box on a real answer — if a brake fired or the
         // budget ran out, the player hasn't had their turn yet and
         // shouldn't have to retype it.
@@ -381,41 +406,16 @@ export function JournalComposer({
         )}
       </div>
 
-      {reply && <GmReply result={reply} onDismiss={() => setReply(null)} />}
-
-      {/* Thinking state, rebuilt 2026-08-18 (owner: "the thinking line
-        * is in the chat window before it loads, like this" — the Claude
-        * chat pattern of a visible status line where the next message
-        * will land, not a hidden announcement). The 2026-08-16 version
-        * of this row hid the text entirely (sr-only) and put the whole
-        * signal on the send button's own pulsing spark, specifically to
-        * avoid the composer growing/shifting on every Ask — this version
-        * keeps that promise (still exactly one row, same position, no
-        * layout jump into or out of existence beyond this row's own
-        * height) while actually showing the text and the new
-        * `ThinkingRune` animation. `role="status" aria-live="polite"`
-        * on the row itself carries the screen-reader announcement now,
-        * so `ThinkingRune`'s own `label` is withheld (`label=""`) to
-        * avoid announcing the same text twice. */}
-      {aiMode && submitting && (
-        <div
-          role="status"
-          aria-live="polite"
-          className={cx(
-            'flex items-center gap-2.5 rounded-card border px-3 py-2.5',
-            rulesMode ? 'border-orange/30 bg-orange/[0.07]' : 'border-cyan/30 bg-cyan/[0.07]',
-          )}
-        >
-          <ThinkingRune
-            label=""
-            className="h-6 w-6"
-            style={{ color: rulesMode ? '#ff8a3d' : '#35f0ff' }}
-          />
-          <span className={cx(text.body, rulesMode ? 'text-orange' : 'text-cyan')}>
-            {rulesMode ? 'Checking the rules…' : 'The GM is thinking…'}
-          </span>
-        </div>
-      )}
+      {/* The thinking row (and the settled reply strip that used to
+        * live here as `GmReply`) moved into `JournalFeed` (2026-08-18,
+        * owner: "the animation needs to go outside the box, in the chat
+        * feed itself... when it's stopped it acts like an indicator of
+        * where we are") — see `onPendingTurnChange` above and
+        * `GmTurnIndicator` for what renders there now. This composer no
+        * longer shows either one next to the input; `stopping` below
+        * (still local — it only decides the send button's own icon) is
+        * the last thing here that still cares whether a turn is in
+        * flight. */}
 
       <div className="flex gap-2">
         <div className="flex-1">

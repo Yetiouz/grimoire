@@ -3,11 +3,13 @@ import type { ReactNode } from 'react'
 import { LogEntryRow } from '../ui/LogEntryRow'
 import type { LogEntryKind } from '../ui/LogEntryRow'
 import { CheckCard } from './CheckCard'
+import { GmTurnIndicator } from './GmTurnIndicator'
 import { SceneDivider } from '../ui/SceneDivider'
 import { EmptyState } from '../ui/EmptyState'
 import type { CampaignSession } from '../../lib/campaigns'
 import type { FeedItem } from '../../lib/feed'
 import type { GmCheck, ResolveSource } from '../../lib/checks'
+import type { PendingGmTurn } from '../../lib/gm'
 
 interface JournalFeedProps {
   /** BOB_queue task 1: render-ready rows, already merged from
@@ -56,6 +58,18 @@ interface JournalFeedProps {
   /** The one check currently mid-resolve, if any — see `CheckCard`'s own
    * `resolving` prop. */
   resolvingCheckId?: string | null
+  /** The composer's in-flight/settled AI turn (2026-08-18), lifted out
+   * of `JournalComposer` so it can render here — right where the next
+   * reply will land — instead of next to the input. See
+   * `PendingGmTurn`'s own doc comment for the full "why here" reasoning
+   * and `GmTurnIndicator` for what actually renders. Omit (or leave
+   * null) for every read-only/non-AI feed — same optional-callback
+   * convention `onResolveCheck` already follows. */
+  pendingTurn?: PendingGmTurn | null
+  /** Clears `pendingTurn` — wired to the settled row's dismiss button
+   * (via `GmTurnIndicator` -> `GmReply`'s existing `onDismiss`). Only
+   * meaningful once `pendingTurn` is set; unused while it's null. */
+  onDismissPendingTurn?: () => void
   className?: string
 }
 
@@ -86,6 +100,8 @@ export function JournalFeed({
   voiceEnabled,
   onResolveCheck,
   resolvingCheckId,
+  pendingTurn,
+  onDismissPendingTurn,
   className,
 }: JournalFeedProps) {
   const visible = filter ? items.filter(filter) : items
@@ -100,11 +116,15 @@ export function JournalFeed({
   // though `bottomRef` has nothing to attach to in that branch. Rides
   // index.css's global `scroll-behavior: smooth` rather than overriding
   // it per-call, so mount and live updates animate the same way.
+  // Also re-runs when `pendingTurn` changes (a new Ask starting, or one
+  // settling) — 2026-08-18, so the thinking/settled row this effect now
+  // shares the feed with is scrolled into view the same way a new entry
+  // already was, rather than landing off-screen below the fold.
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: 'end' })
-  }, [visible.length])
+  }, [visible.length, pendingTurn])
 
-  if (visible.length === 0) {
+  if (visible.length === 0 && !pendingTurn) {
     return (
       <div className={className}>
         <EmptyState icon="journal" title="No entries yet" description="The pages await." />
@@ -160,6 +180,14 @@ export function JournalFeed({
             </Fragment>
           )
         })}
+        {/* Right where the next reply lands (2026-08-18) — see
+          * `PendingGmTurn`'s own doc comment for why this moved here
+          * from the composer. Last row in the same gap-2 flex column as
+          * every entry above it, not a separate section, so it reads as
+          * part of the conversation rather than UI chrome bolted on. */}
+        {pendingTurn && (
+          <GmTurnIndicator pending={pendingTurn} onDismiss={() => onDismissPendingTurn?.()} />
+        )}
       </div>
       <div ref={bottomRef} aria-hidden="true" />
       {composer}

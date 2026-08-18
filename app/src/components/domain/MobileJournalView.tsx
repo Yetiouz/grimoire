@@ -18,7 +18,7 @@ import { WorldTabs } from './WorldTabs'
 import { MapsPanel } from './MapsPanel'
 import { CampaignInviteModal } from './CampaignInvite'
 import type { LogEntryKind } from '../ui/LogEntryRow'
-import type { GmTurnResult } from '../../lib/gm'
+import type { GmTurnResult, PendingGmTurn } from '../../lib/gm'
 import type { FeedItem } from '../../lib/feed'
 import type { GmCheck, ResolveSource } from '../../lib/checks'
 import type { CampaignSession } from '../../lib/campaigns'
@@ -297,6 +297,11 @@ export function MobileJournalView({
   // the seed state, independent of JournalDesktopLayout's — same
   // always-mounted-siblings reasoning as that component's copy.
   const [noteSeed, setNoteSeed] = useState<{ body: string } | null>(null)
+  // The composer's in-flight/settled AI turn (2026-08-18) — this view's
+  // own copy, same always-mounted-siblings reasoning as `noteSeed`
+  // above. See `PendingGmTurn`'s own doc comment for why it moved out
+  // of `JournalComposer` at all.
+  const [pendingTurn, setPendingTurn] = useState<PendingGmTurn | null>(null)
   // Owner-only Invite modal (2026-08-11) — its own open state, same
   // "two different buttons, two different open flags" split
   // `CampaignInviteModal`'s own doc comment documents against the
@@ -446,6 +451,8 @@ export function MobileJournalView({
                 voiceEnabled={aiVoiceOn}
                 onResolveCheck={onResolveCheck}
                 resolvingCheckId={resolvingCheckId}
+                pendingTurn={pendingTurn}
+                onDismissPendingTurn={() => setPendingTurn(null)}
               />
             </div>
           ) : activeView === 'party' ? (
@@ -519,6 +526,7 @@ export function MobileJournalView({
             gmEnabled={gmEnabled}
             onAskGm={onAskGm}
             onAskRules={onAskRules}
+            onPendingTurnChange={setPendingTurn}
             campaignId={campaignId}
             ttsAvailable={ttsAvailable}
             aiVoiceOn={aiVoiceOn}
