@@ -124,6 +124,67 @@ export async function setCharacterHpMax(
   return data
 }
 
+// ── Dying, stabilizing (migration 0035, encounter mode phase 3) ─────
+// `death_timer_rounds` itself is set/cleared entirely inside
+// `adjust_character_hp` (see that migration's own doc comment) --
+// nothing here writes it directly. These two commands are the two
+// things that can happen ON a dying character's own turn or an ally's:
+// resolve the death-timer roll, or attempt to stop it early.
+
+/** Wraps `resolve_dying_turn` -- called once per the dying character's
+ * own turn (rulebook p.89: roll a d20 each turn while dying; natural
+ * 20 rises with 1 HP, some talents widen that range -- see the
+ * migration's own comment on how it reads the character's sheet text
+ * for "Last Stand" rather than hardcoding a class). Throws server-side
+ * if the character isn't currently dying (`death_timer_rounds` null).
+ * The returned character reflects whichever of the three outcomes
+ * happened -- rose (hp_current 1, timer null), still dying (timer
+ * decremented), or perished (status 'dead', timer 0) -- there's no
+ * separate flag to read; compare against the character passed in if
+ * the caller needs to know which branch fired. */
+export async function resolveDyingTurn(characterId: string, sessionId?: string | null): Promise<Character> {
+  const { data, error } = await supabase.rpc('resolve_dying_turn', {
+    p_character_id: characterId,
+    p_session_id: sessionId ?? undefined,
+  })
+  if (error) throw error
+  return data
+}
+
+/** A dying-turn roll, resolved -- distinct from `Character` since a
+ * failed check is a real, meaningful outcome with nothing to echo back
+ * on the row (see `resolve_stabilize_check`'s own doc comment). */
+export interface StabilizeCheckResult {
+  success: boolean
+  roll: number
+  dc: number
+  character: Character
+}
+
+/** Wraps `resolve_stabilize_check` -- one ally attempts a DC 15 INT
+ * check (rulebook p.89, "at Close range") to stop a dying character's
+ * timer early. `helperCharacterId` is who's attempting it, not the
+ * caller's own identity -- any campaign member can call this for any
+ * two characters in their campaign, matching `adjustCharacterHp`'s own
+ * permissive trust model. Throws server-side if the target isn't
+ * dying. On success the timer clears (still unconscious, no longer at
+ * risk); on failure nothing about the target changes -- `success` is
+ * the only way to tell which happened, the row's own `death_timer_rounds`
+ * won't have moved either way you need to check it. */
+export async function resolveStabilizeCheck(
+  characterId: string,
+  helperCharacterId: string,
+  sessionId?: string | null,
+): Promise<StabilizeCheckResult> {
+  const { data, error } = await supabase.rpc('resolve_stabilize_check', {
+    p_character_id: characterId,
+    p_helper_character_id: helperCharacterId,
+    p_session_id: sessionId ?? undefined,
+  })
+  if (error) throw error
+  return data as unknown as StabilizeCheckResult
+}
+
 export async function adjustCharacterXp(
   characterId: string,
   delta: number,

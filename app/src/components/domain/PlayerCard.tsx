@@ -72,10 +72,20 @@ interface PlayerCardProps {
  * the real `status` value is shown instead.
  *
  * `hp_current <= 0` gets the mockup's `.pcard.down` border/background
- * treatment — real, derivable from data already on hand — but not its
- * down-timer countdown line, which needs stabilize-DC/rounds-remaining
- * data this schema doesn't carry (Encounter mode phase 3, not built
- * yet).
+ * treatment — real, derivable from data already on hand.
+ *
+ * Down-timer line (Encounter mode phase 3, migration
+ * `0035_dying_stabilize_morale.sql`, closing the gap this doc comment
+ * used to flag here): `character.death_timer_rounds` is non-null
+ * exactly while dying (set/cleared by `adjust_character_hp`, moved by
+ * `resolve_dying_turn`/`resolve_stabilize_check` — see `lib/characters.ts`),
+ * so this card can now show "Dying — N rounds left" directly off real
+ * data instead of a fabricated placeholder. `status === 'dead'` (the
+ * one true terminal state `resolve_dying_turn` can reach) shows "Dead"
+ * in its place — both read in red, the same color `isDown` already
+ * uses for the HP figure, so a downed-but-not-yet-dying character (0 HP
+ * from something other than combat, or freshly stabilized) still reads
+ * distinctly from one actually on the clock.
  *
  * Active-turn ring (Encounter mode phase 2, 2026-08-14): a purple
  * `ring` around the whole card plus a small "Active" caption next to the
@@ -104,6 +114,13 @@ export function PlayerCard({ character, onClick, variant = 'full', className, is
   const sheet = readCharacterSheet(character.sheet)
   const isAwaiting = character.status !== 'active'
   const isDown = character.hp_current <= 0
+  const isDead = character.status === 'dead'
+  const isDying = character.death_timer_rounds != null
+  const dyingLabel = isDead
+    ? 'Dead'
+    : isDying
+      ? `Dying — ${character.death_timer_rounds} round${character.death_timer_rounds === 1 ? '' : 's'} left`
+      : null
   const hpPct = character.hp_max > 0 ? Math.max(0, Math.min(100, (character.hp_current / character.hp_max) * 100)) : 0
   const activatable = Boolean(onClick)
 
@@ -181,6 +198,7 @@ export function PlayerCard({ character, onClick, variant = 'full', className, is
             {character.name}
             {isActiveTurn && <span className={cx(text.caption, 'ml-2 font-mono uppercase text-purple')}>Active</span>}
           </p>
+          {dyingLabel && <p className={cx(text.caption, 'mt-0.5 font-mono uppercase text-red')}>{dyingLabel}</p>}
           <div className={cx('mt-1 flex flex-wrap gap-3', text.caption, 'text-ink-dim')}>{statSpans}</div>
           <div className="mt-2 h-[6px] overflow-hidden rounded-full bg-line">
             <div className={cx('h-full rounded-full', isDown ? 'bg-red' : 'bg-green')} style={{ width: `${hpPct}%` }} />
@@ -221,8 +239,9 @@ export function PlayerCard({ character, onClick, variant = 'full', className, is
           </p>
           <p className={cx(text.caption, 'truncate uppercase tracking-eyebrow text-ink-faint')}>
             {character.class_title} {character.level}
-            {isAwaiting && ` · ${character.status}`}
+            {isAwaiting && !isDead && ` · ${character.status}`}
           </p>
+          {dyingLabel && <p className={cx(text.caption, 'font-mono uppercase text-red')}>{dyingLabel}</p>}
         </div>
         {sheet.active_blessing && (
           <span

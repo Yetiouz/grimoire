@@ -282,6 +282,10 @@ export type Database = {
           class_title: string
           color: string | null
           created_at: string
+          // 0035_dying_stabilize_morale.sql: null unless dying, set by
+          // adjust_character_hp the moment HP hits 0. See resolve_dying_turn/
+          // resolve_stabilize_check for how it moves from there.
+          death_timer_rounds: number | null
           gear_current: number | null
           gear_max: number | null
           gold: Json
@@ -306,6 +310,7 @@ export type Database = {
           class_title: string
           color?: string | null
           created_at?: string
+          death_timer_rounds?: number | null
           gear_current?: number | null
           gear_max?: number | null
           gold?: Json
@@ -330,6 +335,7 @@ export type Database = {
           class_title?: string
           color?: string | null
           created_at?: string
+          death_timer_rounds?: number | null
           gear_current?: number | null
           gear_max?: number | null
           gold?: Json
@@ -1209,6 +1215,7 @@ export type Database = {
           class_title: string
           color: string | null
           created_at: string
+          death_timer_rounds: number | null
           gear_current: number | null
           gear_max: number | null
           gold: Json
@@ -1301,6 +1308,7 @@ export type Database = {
           class_title: string
           color: string | null
           created_at: string
+          death_timer_rounds: number | null
           gear_current: number | null
           gear_max: number | null
           gold: Json
@@ -1334,6 +1342,7 @@ export type Database = {
           class_title: string
           color: string | null
           created_at: string
+          death_timer_rounds: number | null
           gear_current: number | null
           gear_max: number | null
           gold: Json
@@ -1367,6 +1376,7 @@ export type Database = {
           class_title: string
           color: string | null
           created_at: string
+          death_timer_rounds: number | null
           gear_current: number | null
           gear_max: number | null
           gold: Json
@@ -1400,6 +1410,7 @@ export type Database = {
           class_title: string
           color: string | null
           created_at: string
+          death_timer_rounds: number | null
           gear_current: number | null
           gear_max: number | null
           gold: Json
@@ -1551,6 +1562,7 @@ export type Database = {
           class_title: string
           color: string | null
           created_at: string
+          death_timer_rounds: number | null
           gear_current: number | null
           gear_max: number | null
           gold: Json
@@ -1811,6 +1823,7 @@ export type Database = {
           class_title: string
           color: string | null
           created_at: string
+          death_timer_rounds: number | null
           gear_current: number | null
           gear_max: number | null
           gold: Json
@@ -1834,6 +1847,48 @@ export type Database = {
         }
       }
       remove_map_marker: { Args: { p_marker_id: string }; Returns: undefined }
+      resolve_dying_turn: {
+        Args: { p_character_id: string; p_session_id?: string }
+        Returns: {
+          abilities: Json
+          ac: number
+          alignment_title: string | null
+          background: string | null
+          campaign_id: string
+          class_title: string
+          color: string | null
+          created_at: string
+          death_timer_rounds: number | null
+          gear_current: number | null
+          gear_max: number | null
+          gold: Json
+          hp_current: number
+          hp_max: number
+          id: string
+          level: number
+          luck_tokens: number
+          member_id: string | null
+          name: string
+          sheet: Json
+          status: string
+          xp_current: number
+          xp_needed: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "characters"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      resolve_morale_check: {
+        Args: { p_monster_id: string; p_session_id?: string; p_wis_mod?: number }
+        Returns: Json
+      }
+      resolve_stabilize_check: {
+        Args: { p_character_id: string; p_helper_character_id: string; p_session_id?: string }
+        Returns: Json
+      }
       resolve_check: {
         Args: { p_check_id: string; p_source: string; p_total?: number }
         Returns: Json
@@ -1849,6 +1904,7 @@ export type Database = {
           class_title: string
           color: string | null
           created_at: string
+          death_timer_rounds: number | null
           gear_current: number | null
           gear_max: number | null
           gold: Json
@@ -1953,6 +2009,7 @@ export type Database = {
           class_title: string
           color: string | null
           created_at: string
+          death_timer_rounds: number | null
           gear_current: number | null
           gear_max: number | null
           gold: Json

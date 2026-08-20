@@ -14,10 +14,12 @@ import {
   damageEncounterMonster,
   endEncounter,
   readCombatants,
+  resolveMoraleCheck,
   rollInitiative,
   setMonsterVisibility,
   startEncounter,
 } from '../../lib/encounters'
+import type { Json } from '../../lib/database.types'
 import type { TurnOrder } from '../../lib/encounters'
 
 interface EncounterPanelProps {
@@ -165,6 +167,37 @@ export function EncounterPanel({ campaignId, isOwner, sessionId, turnOrder, onTu
     }
   }
 
+  /** Encounter mode phase 3 (migration 0035) — `resolve_morale_check`
+   * itself already deletes the monster's row and pulls it out of
+   * `turn_order.combatants` server-side when it fails; this just brings
+   * that same outcome into the two pieces of local/lifted state this
+   * panel already owns, same "echo what the RPC returned" pattern every
+   * other handler above uses. A held check (`fled: false`) touches
+   * neither — the monster's row genuinely didn't change. */
+  async function handleMoraleCheck(monsterId: string, wisMod: number) {
+    setBusyMonsterId(monsterId)
+    try {
+      const result = await resolveMoraleCheck(monsterId, wisMod, sessionId)
+      if (result.fled) {
+        setMonsters((prev) => (prev ?? []).filter((monster) => monster.id !== monsterId))
+        onTurnOrderChange((prev) =>
+          prev
+            ? {
+                ...prev,
+                combatants: readCombatants(prev.combatants).filter(
+                  (combatant) => combatant.combatant_id !== monsterId,
+                ) as unknown as Json,
+              }
+            : prev,
+        )
+      }
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Could not resolve the morale check.')
+    } finally {
+      setBusyMonsterId(null)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4 border-t border-line-soft pt-4">
       <p className={cx(text.caption, 'uppercase tracking-eyebrow text-ink-faint')}>Encounter</p>
@@ -225,6 +258,7 @@ export function EncounterPanel({ campaignId, isOwner, sessionId, turnOrder, onTu
                   busy={busyMonsterId === monster.id}
                   onDamage={(delta) => void handleDamage(monster.id, delta)}
                   onToggleVisibility={(input) => void handleToggleVisibility(monster.id, input)}
+                  onMoraleCheck={(wisMod) => void handleMoraleCheck(monster.id, wisMod)}
                 />
               ))}
             </div>

@@ -595,6 +595,7 @@ export function JournalScreen({ campaign, authorName, isOwner, onCampaignUpdated
         system={campaign.system}
         onClose={() => setOpenCharacter(null)}
         onUpdate={handleCharacterUpdate}
+        party={characters ?? []}
       />
 
       <CharacterBuilder

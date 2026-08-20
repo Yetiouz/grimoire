@@ -24,6 +24,14 @@ interface CharacterSheetProps {
    * the host screen (`JournalScreen`) echoes it into the party rail and
    * back into this open sheet. */
   onUpdate: (updated: Character) => void
+  /** The campaign's full character list (Encounter mode phase 3,
+   * migration 0035) — threaded straight through to `CharacterCommands`'
+   * stabilize-check helper picker, which needs every OTHER character in
+   * the campaign to choose an ally attempting the DC 15 INT check.
+   * Optional, defaulting to empty: every other section of the sheet
+   * works fine without it (the stabilize control just has nothing to
+   * offer), same graceful-without posture `system` already has. */
+  party?: Character[]
 }
 
 const ABILITY_ORDER: Array<{ key: keyof CharacterAbilities; label: string }> = [
@@ -156,7 +164,7 @@ function VitalTile({
  * up top; ability modifiers are now color-coded green/red, matching
  * CharacterBuilder's own established rule instead of a flat ink-dim.
  */
-export function CharacterSheet({ character, sessionId, system, onClose, onUpdate }: CharacterSheetProps) {
+export function CharacterSheet({ character, sessionId, system, onClose, onUpdate, party }: CharacterSheetProps) {
   const open = character !== null
   const abilities = character ? readCharacterAbilities(character.abilities) : {}
   const sheet = character ? readCharacterSheet(character.sheet) : {}
@@ -348,7 +356,13 @@ export function CharacterSheet({ character, sessionId, system, onClose, onUpdate
             </Fragment>
           ))}
 
-          <CharacterCommands character={character} sessionId={sessionId} system={system} onUpdate={onUpdate} />
+          <CharacterCommands
+            character={character}
+            sessionId={sessionId}
+            system={system}
+            onUpdate={onUpdate}
+            party={party ?? []}
+          />
         </div>
       )}
     </Overlay>

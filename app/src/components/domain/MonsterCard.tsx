@@ -11,6 +11,16 @@ interface MonsterCardProps {
   busy: boolean
   onDamage: (delta: number) => void
   onToggleVisibility: (input: { visibleToPlayers?: boolean; hpVisibleToPlayers?: boolean }) => void
+  /** Encounter mode phase 3 (migration 0035) — rulebook p.90: a group
+   * reduced to half its number (or a solo enemy to half HP) flees on a
+   * failed DC 15 WIS check, one roll, the leader's modifier. `wisMod` is
+   * this card's own local stepper value, since no monster stat_block
+   * field tracks WIS today (see `resolveMoraleCheck`'s own doc comment)
+   * — the GM supplies it per check. A failed check deletes this
+   * monster's row server-side, so a fleeing card simply disappears from
+   * `EncounterPanel`'s list on the next state update; nothing here
+   * renders a "fled" state of its own. */
+  onMoraleCheck: (wisMod: number) => void
 }
 
 const ZONE_LABEL: Record<string, string> = { close: 'Close', near: 'Near', far: 'Far' }
@@ -32,8 +42,9 @@ const ZONE_LABEL: Record<string, string> = { close: 'Close', near: 'Near', far: 
  * behind-the-scenes tactics, not something a monster being visible
  * implies a player should read.
  */
-export function MonsterCard({ monster, isOwner, busy, onDamage, onToggleVisibility }: MonsterCardProps) {
+export function MonsterCard({ monster, isOwner, busy, onDamage, onToggleVisibility, onMoraleCheck }: MonsterCardProps) {
   const [damageAmount, setDamageAmount] = useState(1)
+  const [wisMod, setWisMod] = useState(0)
   const statBlock = readMonsterStatBlock(monster.stat_block)
   const hasHp = statBlock.hp_max != null
   const showHp = isOwner || monster.hp_visible_to_players
@@ -131,6 +142,26 @@ export function MonsterCard({ monster, isOwner, busy, onDamage, onToggleVisibili
               HP {monster.hp_visible_to_players ? 'shown' : 'hidden'}
             </button>
           )}
+        </div>
+      )}
+
+      {isOwner && (
+        <div className="flex flex-wrap items-center gap-2 border-t border-line-soft pt-2">
+          <span className={cx(text.caption, 'text-ink-faint')}>Morale WIS mod</span>
+          <Stepper value={wisMod} onChange={setWisMod} min={-10} max={10} label="WIS modifier" />
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onMoraleCheck(wisMod)}
+            className={cx(
+              'inline-flex h-9 items-center justify-center rounded-button border px-3 font-mono uppercase',
+              text.caption,
+              'border-yellow/45 bg-yellow/10 text-yellow disabled:pointer-events-none disabled:opacity-40',
+            )}
+            title="DC 15 WIS check — fails and this monster flees the encounter"
+          >
+            Morale
+          </button>
         </div>
       )}
     </div>

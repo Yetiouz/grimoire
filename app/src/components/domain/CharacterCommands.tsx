@@ -16,6 +16,8 @@ import {
   readCharacterGold,
   readCharacterSheet,
   removeCharacterGear,
+  resolveDyingTurn,
+  resolveStabilizeCheck,
   restCharacter,
   setCharacterHpMax,
 } from '../../lib/characters'
@@ -42,6 +44,13 @@ interface CharacterCommandsProps {
    * the Shadowdark Core list, so nothing changes for existing call
    * sites until they thread it. */
   system?: string | null
+  /** Every character in the campaign (Encounter mode phase 3, migration
+   * 0035) — the Dying section's stabilize control needs someone other
+   * than `character` themself to pick as the ally attempting the DC 15
+   * INT check. Defaults to empty (the control just has nobody to offer)
+   * rather than being required, so existing call sites that haven't
+   * threaded this through yet don't break. */
+  party?: Character[]
 }
 
 // Same visual treatment as `CharacterSheet.tsx`'s own `sectionLabelClass`
@@ -92,7 +101,7 @@ const tintButtonClass = (color: 'green' | 'red' | 'purple') =>
  * same stepper + tinted +/- shape as XP, since Luck has no natural
  * "damage/heal" verb pair the way HP does.
  */
-export function CharacterCommands({ character, sessionId, onUpdate, system }: CharacterCommandsProps) {
+export function CharacterCommands({ character, sessionId, onUpdate, system, party = [] }: CharacterCommandsProps) {
   const catalog = getShopCatalog(system)
   const [hpAmount, setHpAmount] = useState(1)
   const [hpMaxDraft, setHpMaxDraft] = useState('')
@@ -105,6 +114,15 @@ export function CharacterCommands({ character, sessionId, onUpdate, system }: Ch
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Dying/stabilize (Encounter mode phase 3, migration 0035). Helper
+  // defaults to the first eligible ally rather than a blank/placeholder
+  // option -- there's usually exactly one other PC at the table, and an
+  // empty default would make "Attempt Stabilize" silently do nothing on
+  // a first click for no visible reason.
+  const eligibleHelpers = party.filter((p) => p.id !== character.id && p.status !== 'dead')
+  const [helperCharacterId, setHelperCharacterId] = useState(eligibleHelpers[0]?.id ?? '')
+  const [stabilizeOutcome, setStabilizeOutcome] = useState<string | null>(null)
+
   const equipment = readCharacterSheet(character.sheet).equipment ?? []
 
   async function run(action: () => Promise<Character>) {
@@ -114,6 +132,39 @@ export function CharacterCommands({ character, sessionId, onUpdate, system }: Ch
       onUpdate(await action())
     } catch (err) {
       setError(err instanceof Error ? err.message : 'That command failed.')
+    } finally {
+      setPending(false)
+    }
+  }
+
+  async function runDyingTurn() {
+    setPending(true)
+    setError(null)
+    try {
+      onUpdate(await resolveDyingTurn(character.id, sessionId))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not resolve the dying turn.')
+    } finally {
+      setPending(false)
+    }
+  }
+
+  async function runStabilize() {
+    if (!helperCharacterId) return
+    setPending(true)
+    setError(null)
+    setStabilizeOutcome(null)
+    try {
+      const result = await resolveStabilizeCheck(character.id, helperCharacterId, sessionId)
+      onUpdate(result.character)
+      const helperName = party.find((p) => p.id === helperCharacterId)?.name ?? 'Helper'
+      setStabilizeOutcome(
+        result.success
+          ? `${helperName} stabilizes ${character.name} (rolled ${result.roll} vs DC ${result.dc}).`
+          : `${helperName} fails to stabilize ${character.name} (rolled ${result.roll} vs DC ${result.dc}).`,
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not attempt the stabilize check.')
     } finally {
       setPending(false)
     }
@@ -168,12 +219,74 @@ export function CharacterCommands({ character, sessionId, onUpdate, system }: Ch
 
       {error && <ErrorBanner onRetry={() => setError(null)}>{error}</ErrorBanner>}
 
+      {/* Dying (Encounter mode phase 3, migration 0035) -- only ever
+        * rendered while `death_timer_rounds` is actually set (or the
+        * character has just perished), same "real data or nothing" rule
+        * every other conditional section in this file already follows.
+        * `resolve_dying_turn` is the roll for the dying character's OWN
+        * turn; `resolve_stabilize_check` is an ally's Close-range DC 15
+        * INT attempt to stop the timer early -- both real command calls,
+        * never a local-only edit, matching this whole file's own
+        * standing rule. */}
+      {(character.death_timer_rounds != null || character.status === 'dead') && (
+        <div className="flex flex-col gap-3 rounded-card border border-red/45 bg-red/5 p-3">
+          <p className={cx(text.label, 'font-mono uppercase text-red')}>
+            {character.status === 'dead'
+              ? 'Dead'
+              : `Dying — ${character.death_timer_rounds} round${character.death_timer_rounds === 1 ? '' : 's'} left`}
+          </p>
+
+          {character.status !== 'dead' && (
+            <>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => void runDyingTurn()}
+                className={tintButtonClass('red')}
+              >
+                Resolve Dying Turn
+              </button>
+
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="flex flex-col gap-1">
+                  <span className={text.label}>Stabilize — helper</span>
+                  <select
+                    value={helperCharacterId}
+                    onChange={(event) => setHelperCharacterId(event.target.value)}
+                    disabled={pending || eligibleHelpers.length === 0}
+                    className="min-h-11 rounded-button border border-line bg-panel2 px-3 py-2 font-sans text-base text-ink disabled:opacity-40"
+                  >
+                    {eligibleHelpers.length === 0 && <option value="">No one else available</option>}
+                    {eligibleHelpers.map((helper) => (
+                      <option key={helper.id} value={helper.id}>
+                        {helper.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  disabled={pending || !helperCharacterId}
+                  onClick={() => void runStabilize()}
+                  className={tintButtonClass('purple')}
+                  title="DC 15 INT check, Close range — stops the timer without healing HP"
+                >
+                  Attempt Stabilize
+                </button>
+              </div>
+
+              {stabilizeOutcome && <p className={cx(text.caption, 'text-ink-dim')}>{stabilizeOutcome}</p>}
+            </>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
         <span className={cx(text.label, 'w-12 text-ink-faint')}>HP</span>
         <Stepper value={hpAmount} onChange={setHpAmount} min={1} max={character.hp_max} label="amount" />
         <button
           type="button"
-          disabled={pending}
+          disabled={pending || character.status === 'dead'}
           onClick={() => void run(() => adjustCharacterHp(character.id, -hpAmount, sessionId))}
           className={tintButtonClass('red')}
         >
@@ -181,7 +294,7 @@ export function CharacterCommands({ character, sessionId, onUpdate, system }: Ch
         </button>
         <button
           type="button"
-          disabled={pending}
+          disabled={pending || character.status === 'dead'}
           onClick={() => void run(() => adjustCharacterHp(character.id, hpAmount, sessionId))}
           className={tintButtonClass('green')}
         >
@@ -189,7 +302,7 @@ export function CharacterCommands({ character, sessionId, onUpdate, system }: Ch
         </button>
         <button
           type="button"
-          disabled={pending || character.hp_current >= character.hp_max}
+          disabled={pending || character.hp_current >= character.hp_max || character.status === 'dead'}
           onClick={() => void run(() => restCharacter(character.id, sessionId))}
           className={tintButtonClass('purple')}
           title="Restore HP to max"

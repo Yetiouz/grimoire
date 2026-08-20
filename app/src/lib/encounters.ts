@@ -192,3 +192,45 @@ export async function endEncounter(campaignId: string, sessionId?: string | null
   })
   if (error) throw error
 }
+
+// -- Morale (0035_dying_stabilize_morale.sql, encounter mode phase 3) --
+
+/** A morale roll, resolved. Same "roll may not have changed anything"
+ * shape `StabilizeCheckResult` (lib/characters.ts) already established
+ * for a check that can genuinely fail with no row-level side effect
+ * (`success: true` -- the monster held, its row is untouched) as well
+ * as one that does (`success: false` -- it fled, its row is gone). */
+export interface MoraleCheckResult {
+  success: boolean
+  roll: number
+  dc: number
+  fled: boolean
+  label: string
+}
+
+/** Wraps `resolve_morale_check` -- GM-only. Rulebook p.90: a group
+ * reduced to half its number (or a solo enemy to half HP) flees on a
+ * failed DC 15 WIS check, one roll, the leader's modifier. Scoped to
+ * one monster row at a time -- `encounter_monsters` has no group
+ * concept (see the migration's own comment on why), so a GM checking a
+ * whole group calls this once per row they judge is part of it.
+ * `wisMod` is supplied by the caller since no monster stat_block field
+ * tracks WIS today, same trust-the-client posture `addEncounterMonster`
+ * already takes for a monster's whole stat block. A failed check
+ * deletes the monster's row (it left the fight) and pulls it out of
+ * `turn_order.combatants` -- the caller should drop it from local
+ * `encounter_monsters` state and refresh `turn_order` the same way
+ * `endEncounter`'s callers already handle a monster disappearing. */
+export async function resolveMoraleCheck(
+  monsterId: string,
+  wisMod: number,
+  sessionId?: string | null,
+): Promise<MoraleCheckResult> {
+  const { data, error } = await supabase.rpc('resolve_morale_check', {
+    p_monster_id: monsterId,
+    p_wis_mod: wisMod,
+    p_session_id: sessionId ?? undefined,
+  })
+  if (error) throw error
+  return data as unknown as MoraleCheckResult
+}
