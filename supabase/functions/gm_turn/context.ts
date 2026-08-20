@@ -47,18 +47,22 @@ export async function buildContext(
   /** Rules mode omits the journal. A rules question needs the sheet, not
    * the story, and dropping ~3k tokens of narration off every lookup is
    * the difference between rules chat being cheap and it quietly eating
-   * the same daily budget as play. */
+   * the same daily budget as play. Encounter/turn-order state rides on
+   * this same flag — it's play state exactly like the journal and the
+   * pending check, not something a rules lookup needs either. */
   includeJournal = true,
 ): Promise<BuiltContext> {
   // Parallel: these are independent reads and the turn is latency-bound.
-  const [campaignRes, sessionRes, charRes, questRes, npcRes, factionRes, treasureRes, entryRes, checksRes] =
-    await Promise.all([
+  const [
+    campaignRes, sessionRes, charRes, questRes, npcRes, factionRes, treasureRes,
+    entryRes, checksRes, turnOrderRes, monsterRes,
+  ] = await Promise.all([
       supabase.from("campaigns").select("name, system, canon").eq("id", campaignId).maybeSingle(),
       supabase.from("sessions").select("number, title, started_at")
         .eq("campaign_id", campaignId).is("ended_at", null).maybeSingle(),
       supabase.from("characters").select(
         "name, class_title, background, alignment_title, level, xp_current, xp_needed," +
-        "hp_current, hp_max, ac, gear_current, gear_max, gold, abilities, sheet, status",
+        "hp_current, hp_max, ac, gear_current, gear_max, gold, abilities, sheet, status, death_timer_rounds",
       ).eq("campaign_id", campaignId).order("name"),
       supabase.from("quests").select("code, title, status, claimant, goal, summary")
         .eq("campaign_id", campaignId).order("sort_order"),
@@ -82,6 +86,24 @@ export async function buildContext(
       includeJournal
         ? supabase.rpc("gm_list_checks", { p_campaign_id: campaignId })
         : Promise.resolve({ data: [] }),
+      // Phase 4 (AI GM combat tools): turn_order is one row per campaign,
+      // absent entirely when no encounter has ever been started. Same
+      // includeJournal gate as the journal/checks above — combat state
+      // is play state, not something a rules lookup needs.
+      includeJournal
+        ? supabase.from("turn_order").select("combatants, active_index, round_number")
+          .eq("campaign_id", campaignId).maybeSingle()
+        : Promise.resolve({ data: null }),
+      // RLS here (0031's own policy) already limits this to
+      // visible_to_players=true rows unless the caller is the owner —
+      // exactly the same "the GM only knows what this signed-in user
+      // could know" boundary every other read in this function already
+      // respects, so no extra filtering is needed here.
+      includeJournal
+        ? supabase.from("encounter_monsters").select(
+            "id, label, stat_block, zone, visible_to_players, hp_visible_to_players",
+          ).eq("campaign_id", campaignId).order("created_at")
+        : Promise.resolve({ data: [] }),
     ]);
 
   const campaign = campaignRes.data as { name?: string; system?: string; canon?: string | null } | null;
@@ -97,6 +119,11 @@ export async function buildContext(
   // 'pending' here can never surface more than a single row in practice.
   const pendingChecks = ((checksRes.data ?? []) as Record<string, unknown>[])
     .filter((c) => c.status === "pending");
+  const turnOrder = turnOrderRes.data as
+    { combatants: unknown; active_index: number; round_number: number } | null;
+  const combatants = (Array.isArray(turnOrder?.combatants) ? turnOrder!.combatants : []) as
+    { combatant_type: string; combatant_id: string; label: string; initiative_roll: number; acted: boolean; moved: boolean }[];
+  const monsters = (monsterRes.data ?? []) as Record<string, unknown>[];
 
   // Trim the journal from the OLD end until it fits. Budgeting by
   // characters rather than entry count matters because entries vary
@@ -172,6 +199,25 @@ ${pendingChecks.length === 0
     `abandon it. Narrate around it, or wait, until it resolves.`,
   ).join("\n")}`);
 
+    // Phase 4 (AI GM combat tools): mirrors EncounterPanel's own reading
+    // of turn_order/encounter_monsters — a combatant's own place in
+    // `combatants` is the source of truth for whose turn it is, not a
+    // separately-tracked flag. No combatants (or no turn_order row at
+    // all) reads as "no active encounter", same as the human UI's own
+    // `encounterOpen = turnOrder !== null` check.
+    parts.push(`## Encounter
+${!turnOrder || combatants.length === 0
+  ? "(no active encounter — call start_encounter when combat begins, then add_monster and roll_initiative)"
+  : `Round ${turnOrder.round_number}. It is ${combatants[turnOrder.active_index]?.label ?? "?"}'s turn.
+
+Turn order:
+${combatants.map((c, i) =>
+  `${i === turnOrder.active_index ? "-> " : "   "}${c.label} (${c.combatant_type}, init ${c.initiative_roll})${c.acted ? " [acted]" : ""}`,
+).join("\n")}
+
+Monsters:
+${monsters.length === 0 ? "(none)" : monsters.map(renderMonster).join("\n")}`}`);
+
     parts.push(`## Recent journal${truncated ? " (older entries omitted — this is not the whole campaign)" : ""}
 ${rendered.length === 0 ? "(empty)" : rendered.join("\n")}`);
   }
@@ -197,9 +243,29 @@ function renderCharacter(c: Record<string, unknown>): string {
     ? Object.entries(c.abilities as Record<string, unknown>)
       .map(([k, v]) => `${k.toUpperCase()} ${v}`).join(" ")
     : "";
+  const dying = c.death_timer_rounds != null
+    ? `\nDYING — ${c.death_timer_rounds} round${Number(c.death_timer_rounds) === 1 ? "" : "s"} left on the death timer. ` +
+      `Call resolve_dying_turn on this character's own turn.`
+    : "";
   return `### ${c.name}
 ${c.class_title} ${c.level} · ${c.alignment_title ?? ""} · ${c.background ?? ""} [${c.status}]
 HP ${c.hp_current}/${c.hp_max} · AC ${c.ac} · XP ${c.xp_current}/${c.xp_needed} · Gold ${c.gold} · Gear ${c.gear_current}/${c.gear_max}
 ${abilities}
-${c.sheet ? JSON.stringify(c.sheet) : ""}`.trim();
+${c.sheet ? JSON.stringify(c.sheet) : ""}${dying}`.trim();
+}
+
+// Phase 4 — full detail regardless of visible_to_players/hp_visible_to_players:
+// this is the GM's own private view of the encounter (same reasoning
+// MonsterCard.tsx's own doc comment gives for `notes` staying owner-only
+// in the UI — the GM needs to know everything about a monster to run it,
+// whether or not the players can currently see it or its HP).
+function renderMonster(m: Record<string, unknown>): string {
+  const sb = (m.stat_block ?? {}) as Record<string, unknown>;
+  const hp = sb.hp_max != null ? `${sb.hp_current ?? sb.hp_max}/${sb.hp_max} HP` : "HP not set";
+  const ac = sb.ac != null ? `AC ${sb.ac}` : "";
+  const attacks = Array.isArray(sb.attacks) && sb.attacks.length > 0 ? `Attacks: ${sb.attacks.join(", ")}` : "";
+  const notes = sb.notes ? `Notes: ${sb.notes}` : "";
+  const visibility = m.visible_to_players ? "visible to players" : "hidden from players";
+  return `- ${m.label} — ${hp}${ac ? `, ${ac}` : ""} [${m.zone}, ${visibility}]${
+    attacks ? `\n  ${attacks}` : ""}${notes ? `\n  ${notes}` : ""}`;
 }
