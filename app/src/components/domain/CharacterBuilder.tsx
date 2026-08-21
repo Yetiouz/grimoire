@@ -101,7 +101,13 @@ const emptyStats = (): Record<Ability, { value: string; dice: number[] | null }>
   >
 
 const cardBase =
-  'rounded-[12px] border border-line-soft bg-panel2 p-3 text-left transition-colors hover:border-line-hover'
+  // Padding bumped 3->4->5 (12px->16px->20px) 2026-08-20 (owner: "give
+  // things some more room to breathe", then "even more") — raised here
+  // rather than per-step so every card built on this base (Ancestry,
+  // Class, and anything later) stays consistent rather than drifting
+  // apart card-family by card-family the way the color systems did
+  // before grimoire-ancestry-class-icon-colors.md unified those.
+  'rounded-[12px] border border-line-soft bg-panel2 p-5 text-left transition-colors hover:border-line-hover'
 const cardSelected = 'border-purple bg-purple/10'
 
 // Flat neutral, no per-book color (owner request, 2026-08-17: "let's
@@ -795,15 +801,20 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         * ancestry relative scale was tried and reverted same-day, see
         * `AncestrySpriteArt`'s own doc comment. */}
       {step === 'ancestry' && (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {module.ancestries.map((a) => (
-            <button key={a.key} type="button" onClick={() => setAncestryKey(a.key)} className={cx(cardBase, 'flex items-stretch justify-between gap-3', ancestryKey === a.key && cardSelected)}>
-              <span className="flex min-w-0 flex-1 items-start gap-3">
+            <button key={a.key} type="button" onClick={() => setAncestryKey(a.key)} className={cx(cardBase, 'flex items-stretch justify-between gap-5', ancestryKey === a.key && cardSelected)}>
+              <span className="flex min-w-0 flex-1 items-start gap-5">
                 <AncestryBustIcon k={a.key} className="mt-0.5 h-9 w-9 shrink-0" />
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold">{a.name}</span>
-                  <span className={cx(text.caption, 'mt-1 block text-ink-faint')}>{a.languages.join(', ')}</span>
-                  <span className={cx(text.bodySecondary, 'mt-1 block')}>{a.talent}</span>
+                  <span className={cx(text.caption, 'mt-2 block text-ink-faint')}>{a.languages.join(', ')}</span>
+                  {/* leading-normal tightens off text-body's default 1.7
+                    * line-height (owner, 2026-08-20: "tighten leading a
+                    * bit on descriptions") — explicit leading-* wins
+                    * over the paired line-height text-body carries, so
+                    * this overrides cleanly rather than fighting it. */}
+                  <span className={cx(text.bodySecondary, 'mt-2.5 block leading-normal')}>{a.talent}</span>
                 </span>
               </span>
               <span className="flex shrink-0 items-end">
@@ -828,9 +839,9 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
             <span className="text-purple">Purple</span> = that class's spellcasting stat ·{' '}
             <span className="text-green">Green</span> = a stat you rolled 14+ on
           </p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {module.classes.map((c) => (
-              <button key={c.key} type="button" onClick={() => selectClass(c)} className={cx(cardBase, 'relative flex items-start gap-3', classKey === c.key && cardSelected)}>
+              <button key={c.key} type="button" onClick={() => selectClass(c)} className={cx(cardBase, 'relative flex items-start gap-5', classKey === c.key && cardSelected)}>
                 {/* The big faint ghost-sigil overlay that used to bleed
                   * off the card's right edge behind the text was
                   * removed 2026-08-17 alongside the icon-color pass
@@ -847,7 +858,19 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                   {c.name}
                   <span className={cx(text.label, 'ml-2 rounded-full border px-2 py-0.5', SOURCE_BADGE[c.source])}>{c.source}</span>
                 </p>
-                <p className={cx(text.caption, 'mt-1 text-ink-faint')}>
+                {/* 2026-08-20 (owner: "the ancestry page ... has info a
+                  * name and a description of what it is or does. the
+                  * classes all in info text") — every class already
+                  * carries a `blurb` in shadowdark.ts (same field shape
+                  * as Ancestry's `talent`), it just never made it into
+                  * this card. Same slot/style Ancestry uses for
+                  * `a.talent` above, so both steps now lead with a
+                  * description before the mechanical details.
+                  * leading-normal tightens off text-body's default 1.7
+                  * line-height (owner, follow-up: "tighten leading a
+                  * bit on descriptions"). */}
+                <p className={cx(text.bodySecondary, 'mt-2.5 leading-normal')}>{c.blurb}</p>
+                <p className={cx(text.caption, 'mt-2 text-ink-faint')}>
                   Weapons {c.weapons} · Armor {c.armor} · HP 1d{c.hpDie}/lvl
                 </p>
                 {/* Owner request, 2026-08-15 ("I may want a strength or
@@ -871,7 +894,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                   * silently collapse into just one of those two true
                   * facts. */}
                 {c.primaryAbilities.length > 0 && (
-                  <div className="mt-1.5 flex flex-wrap gap-1">
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
                     {c.primaryAbilities.map((ability) => {
                       const isCasting = c.spellcasting?.ability === ability
                       const isStrong = strongAbilities.has(ability)
