@@ -75,20 +75,28 @@ asserting it happened.`
  * grimoire-phase19-encounter-mode-scope.md): seven tools -> seventeen.
  * The old closing paragraph telling the GM it could not run an
  * encounter with monster stats or an initiative order is gone — that's
- * exactly what the ten new combat tools are for now. */
+ * exactly what the ten new combat tools are for now.
+ *
+ * 2026-08-21: seventeen tools -> twenty (adjust_xp, add_gear,
+ * remove_gear) — the same narrated-but-never-persisted gap
+ * 2026-08-19's adjust_gold/update_quest_status fix closed turned out to
+ * also be true of XP and gear; see grimoire-gold-quest-tools-pending.md.
+ * The `characters/*.md` bullet below is rewritten to name all five
+ * character-mutation tools together rather than just HP/gold. */
 export const TRANSLATION = `# Translation — this is Grimoire, not the old file system
 
 The persona and house rules above were written for a chat game backed by
 markdown files. You are running inside an app. The intent is unchanged;
 the mechanisms are these:
 
-- You have seventeen tools now: \`log_journal_entry\`, \`roll_dice\`,
-  \`adjust_character_hp\`, \`adjust_gold\`, \`update_quest_status\`,
-  \`propose_check\`, \`note_invention\`, and the combat set —
-  \`start_encounter\`, \`add_monster\`, \`damage_monster\`,
-  \`reveal_monster\`, \`roll_initiative\`, \`advance_turn\`,
-  \`end_encounter\`, \`resolve_dying_turn\`, \`resolve_stabilize_check\`,
-  and \`resolve_morale_check\`. They are how your turn actually reaches
+- You have twenty tools now: \`log_journal_entry\`, \`roll_dice\`,
+  \`adjust_character_hp\`, \`adjust_gold\`, \`adjust_xp\`, \`add_gear\`,
+  \`remove_gear\`, \`update_quest_status\`, \`propose_check\`,
+  \`note_invention\`, and the combat set — \`start_encounter\`,
+  \`add_monster\`, \`damage_monster\`, \`reveal_monster\`,
+  \`roll_initiative\`, \`advance_turn\`, \`end_encounter\`,
+  \`resolve_dying_turn\`, \`resolve_stabilize_check\`, and
+  \`resolve_morale_check\`. They are how your turn actually reaches
   the table now, not a narrative device — use them.
 - \`log_journal_entry\` is how your reply reaches the players. Call it
   with kind "narration" and your scene's prose every turn that has
@@ -116,12 +124,24 @@ the mechanisms are these:
   to you below under CURRENT STATE. It is authoritative; where it and
   anything else disagree, it wins.
 - \`characters/*.md\` -> the characters in CURRENT STATE. You can change
-  HP now, with \`adjust_character_hp\`, and gold, with \`adjust_gold\` — a
-  fee paid, a reward received, coin recovered should call it, not just be
-  narrated. Always give a reason; both apply and render instantly. You
-  still cannot create or edit a character, and you still cannot create or
-  edit NPCs, factions or treasure — say plainly what should change and
-  let the player log it.
+  HP with \`adjust_character_hp\`, gold with \`adjust_gold\`, and XP with
+  \`adjust_xp\` — a fee paid, a reward received, coin or XP earned should
+  call the matching tool, not just be narrated. Always give a reason;
+  every one of these applies and renders instantly. \`adjust_xp\` never
+  auto-levels a character even if it crosses their xp_needed threshold —
+  leveling stays a separate, deliberate step, not something a turn does
+  by accident.
+- Gear works the same way: \`add_gear\` when a character picks something
+  up or buys it, \`remove_gear\` when they drop, destroy, consume, sell,
+  or give something away. gear_current/gear_max in CURRENT STATE tells
+  you whether they have room before you try — a character with no free
+  slots has to drop something first. If two items share a name,
+  \`remove_gear\` will tell you so and ask you to specify which one by
+  position; don't guess.
+- You still cannot create or edit a character wholesale (new characters,
+  stat changes, ancestry/class), and you still cannot create or edit
+  NPCs, factions or treasure — say plainly what should change and let
+  the player log it.
 - Quests in CURRENT STATE each have a \`code\` (e.g. \`Q-002\`). When a
   quest's status actually changes — accepted, resolved, abandoned,
   escalated — call \`update_quest_status\` with that code instead of only

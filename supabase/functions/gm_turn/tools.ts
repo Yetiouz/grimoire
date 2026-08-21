@@ -1,11 +1,12 @@
 // tools.ts — Slice 17: the GM's tool registry.
 //
 // log_journal_entry, roll_dice (GM pool only), adjust_character_hp,
-// adjust_gold, update_quest_status, propose_check, note_invention, and
-// (phase 4, encounter mode's AI GM combat tools — grimoire-phase19-
-// encounter-mode-scope.md) start_encounter, add_monster, damage_monster,
-// reveal_monster, roll_initiative, advance_turn, end_encounter,
-// resolve_dying_turn, resolve_stabilize_check, resolve_morale_check.
+// adjust_gold, adjust_xp, add_gear, remove_gear, update_quest_status,
+// propose_check, note_invention, and (phase 4, encounter mode's AI GM
+// combat tools — grimoire-phase19-encounter-mode-scope.md) start_encounter,
+// add_monster, damage_monster, reveal_monster, roll_initiative,
+// advance_turn, end_encounter, resolve_dying_turn, resolve_stabilize_check,
+// resolve_morale_check.
 // Every handler runs on the CALLER'S JWT via the client index.ts already
 // built — the AI is constrained by RLS and the membership checks inside
 // these RPCs exactly as a human is. Nothing here ever touches a
@@ -27,6 +28,20 @@
 // resolve_morale_check except the two dying/stabilize ones is
 // `role = 'owner'`-gated at the RPC level, same as the human-GM UI
 // (EncounterPanel.tsx) already is — see each handler's own comment.
+//
+// 2026-08-21: added adjust_xp, add_gear, remove_gear — the same gap
+// grimoire-gold-quest-tools-pending.md already flagged for gold/quests
+// turned out to also be true of XP and gear. All three RPCs
+// (adjust_character_xp/add_character_gear/remove_character_gear) already
+// existed from 0009_character_commands.sql alongside adjust_character_hp
+// and adjust_character_gold — XP and gear were simply never wired up as
+// tools here, so the AI GM could narrate an XP award or a treasure pickup
+// with nothing ever landing on the character. remove_gear resolves an item
+// name to the RPC's required index itself (mirroring resolveCharacter/
+// resolveMonster's exact-then-unambiguous-case-insensitive pattern), since
+// remove_character_gear takes a position rather than a name by design
+// (0009's own comment: duplicate item names like two "Torch" entries are
+// plausible and unresolvable by name alone).
 //
 // Handler return convention: the string a handler returns becomes that tool
 // call's result content, fed straight back to the model. An ordinary,
@@ -196,6 +211,59 @@ export const TOOL_SCHEMAS: unknown[] = [
           },
         },
         required: ["characterName", "reason"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "adjust_xp",
+      description:
+        "Apply a change to a player character's XP — treasure quality found, clever play rewarded, a milestone reached. Applies instantly and renders as a visible system line — never state a character gained or lost XP without calling this. Does not auto-level the character even if this crosses their xp_needed threshold; leveling is a separate, deliberate step.",
+      parameters: {
+        type: "object",
+        properties: {
+          characterName: { type: "string" },
+          delta: { type: "integer", description: "Negative to remove XP, positive to award it." },
+          reason: { type: "string" },
+        },
+        required: ["characterName", "delta", "reason"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_gear",
+      description:
+        "Add an item to a player character's equipment list — treasure picked up, gear bought, something handed to them. Applies instantly and renders as a visible system line — never state a character is carrying something new without calling this. Fails if the character has no free gear slots (gear_max in CURRENT STATE); a full character has to drop something first.",
+      parameters: {
+        type: "object",
+        properties: {
+          characterName: { type: "string" },
+          item: { type: "string", description: "The item's name, exactly as it should appear on the sheet." },
+        },
+        required: ["characterName", "item"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "remove_gear",
+      description:
+        "Remove an item from a player character's equipment list — dropped, destroyed, consumed, given away, sold. Applies instantly and renders as a visible system line — never state a character lost an item without calling this. If the character carries more than one item with that exact name, this fails and lists each one's position so you can retry with itemIndex.",
+      parameters: {
+        type: "object",
+        properties: {
+          characterName: { type: "string" },
+          item: { type: "string", description: "The item's name as it appears on the sheet. Omit if using itemIndex instead." },
+          itemIndex: {
+            type: "integer",
+            description: "The item's 0-based position in the character's equipment list, only needed to disambiguate two items with the same name after an item lookup by name comes back ambiguous.",
+          },
+        },
+        required: ["characterName"],
       },
     },
   },
@@ -518,6 +586,119 @@ export const TOOL_REGISTRY: Record<string, (args: any, ctx: ToolCtx) => Promise<
     const g = updated.gold ?? {};
     const purse = `${g.gp ?? 0} gp ${g.sp ?? 0} sp${g.cp ? ` ${g.cp} cp` : ""}`;
     return `ok — ${updated.name} (${reason}): purse now ${purse}`;
+  },
+
+  async adjust_xp(args, ctx) {
+    const delta = Number(args?.delta);
+    const reason = typeof args?.reason === "string" && args.reason.trim() ? args.reason.trim() : "unspecified";
+    if (!Number.isFinite(delta) || delta === 0) return "error: delta must be a non-zero integer";
+    let character: { id: string };
+    try {
+      character = await resolveCharacter(ctx, String(args?.characterName ?? ""));
+    } catch (e) {
+      return `error: ${(e as Error).message}`;
+    }
+    const { data, error } = await ctx.supabase.rpc("adjust_character_xp", {
+      p_character_id: character.id,
+      p_delta: delta,
+      p_session_id: ctx.sessionId,
+    });
+    if (error || !data) return `error: ${error?.message ?? "adjust_character_xp failed"}`;
+    const updated = (Array.isArray(data) ? data[0] : data) as {
+      name: string; xp_current: number; xp_needed: number;
+    };
+    const line = delta < 0
+      ? `${updated.name} loses ${Math.abs(delta)} XP (${reason}) — ${updated.xp_current}/${updated.xp_needed}`
+      : `${updated.name} gains ${delta} XP (${reason}) — ${updated.xp_current}/${updated.xp_needed}`;
+    return `ok — ${line}`;
+  },
+
+  async add_gear(args, ctx) {
+    const item = typeof args?.item === "string" ? args.item.trim() : "";
+    if (!item) return "error: item is required";
+    let character: { id: string };
+    try {
+      character = await resolveCharacter(ctx, String(args?.characterName ?? ""));
+    } catch (e) {
+      return `error: ${(e as Error).message}`;
+    }
+    const { data, error } = await ctx.supabase.rpc("add_character_gear", {
+      p_character_id: character.id,
+      p_item_name: item,
+      p_session_id: ctx.sessionId,
+    });
+    // "no free gear slots" is the RPC's own rejection (0009_character_
+    // commands.sql, capacity-checked against gear_max) — surfaces here
+    // as an ordinary error string, same convention as everything else
+    // in this file, so the model can narrate "you're too encumbered"
+    // rather than the turn just failing silently.
+    if (error || !data) return `error: ${error?.message ?? "add_character_gear failed"}`;
+    const updated = (Array.isArray(data) ? data[0] : data) as {
+      name: string; gear_current: number; gear_max: number | null;
+    };
+    const slots = updated.gear_max != null ? `${updated.gear_current}/${updated.gear_max} slots` : `${updated.gear_current} slots used`;
+    return `ok — ${updated.name} picks up ${item} (${slots})`;
+  },
+
+  async remove_gear(args, ctx) {
+    let character: { id: string };
+    try {
+      character = await resolveCharacter(ctx, String(args?.characterName ?? ""));
+    } catch (e) {
+      return `error: ${(e as Error).message}`;
+    }
+    // remove_character_gear takes a position, not a name (0009's own
+    // comment: two "Torch" entries are plausible and the RPC has no way
+    // to disambiguate them) — so this resolves a name to a position
+    // itself, the same exact-then-unambiguous-case-insensitive pattern
+    // resolveCharacter/resolveMonster use, and asks the model to retry
+    // with itemIndex when that's genuinely ambiguous rather than
+    // guessing which "Torch" was meant.
+    let itemIndex: number;
+    let itemLabel: string;
+    if (args?.itemIndex != null && Number.isFinite(Number(args.itemIndex))) {
+      itemIndex = Math.trunc(Number(args.itemIndex));
+      itemLabel = typeof args?.item === "string" ? args.item.trim() : `item #${itemIndex}`;
+    } else {
+      const item = typeof args?.item === "string" ? args.item.trim() : "";
+      if (!item) return "error: item (or itemIndex) is required";
+      const { data: charRow } = await ctx.supabase
+        .from("characters")
+        .select("sheet")
+        .eq("id", character.id)
+        .maybeSingle();
+      const equipment = Array.isArray((charRow?.sheet as { equipment?: unknown[] } | null)?.equipment)
+        ? ((charRow!.sheet as { equipment: unknown[] }).equipment as unknown[]).map((e) => String(e))
+        : [];
+      if (equipment.length === 0) return "error: this character's equipment list is empty";
+      const exactIdx: number[] = [];
+      equipment.forEach((e, i) => { if (e === item) exactIdx.push(i); });
+      const matchIdx = exactIdx.length > 0
+        ? exactIdx
+        : equipment.reduce<number[]>((acc, e, i) => {
+            if (e.toLowerCase() === item.toLowerCase()) acc.push(i);
+            return acc;
+          }, []);
+      if (matchIdx.length === 0) {
+        return `error: no item named "${item}" — current equipment: ${equipment.map((e, i) => `[${i}] ${e}`).join(", ")}`;
+      }
+      if (matchIdx.length > 1) {
+        return `error: ${matchIdx.length} items named "${item}" — retry with itemIndex, one of: ${matchIdx.join(", ")}`;
+      }
+      itemIndex = matchIdx[0];
+      itemLabel = item;
+    }
+    const { data, error } = await ctx.supabase.rpc("remove_character_gear", {
+      p_character_id: character.id,
+      p_item_index: itemIndex,
+      p_session_id: ctx.sessionId,
+    });
+    if (error || !data) return `error: ${error?.message ?? "remove_character_gear failed"}`;
+    const updated = (Array.isArray(data) ? data[0] : data) as {
+      name: string; gear_current: number; gear_max: number | null;
+    };
+    const slots = updated.gear_max != null ? `${updated.gear_current}/${updated.gear_max} slots` : `${updated.gear_current} slots used`;
+    return `ok — ${updated.name} drops ${itemLabel} (${slots})`;
   },
 
   async update_quest_status(args, ctx) {
