@@ -1166,7 +1166,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                                       type="button"
                                       disabled={!selected && atLimit}
                                       onClick={() => toggleSpell(spell.name)}
-                                      className="grid grid-cols-[0.9rem_6rem_1fr] items-baseline gap-x-3 border-b border-line-soft py-2.5 text-left last:border-b-0 disabled:pointer-events-none disabled:opacity-40 sm:grid-cols-[0.9rem_7rem_1fr]"
+                                      className="grid grid-cols-[0.9rem_6.5rem_1fr] items-baseline gap-x-4 border-b border-line-soft py-4 text-left last:border-b-0 disabled:pointer-events-none disabled:opacity-40 sm:grid-cols-[0.9rem_8rem_1fr] sm:gap-x-6"
                                     >
                                       <span
                                         aria-hidden="true"
@@ -1176,7 +1176,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                                         )}
                                       />
                                       <span className={cx(text.body, 'font-semibold')}>{spell.name}</span>
-                                      <span className="font-sans text-body leading-snug text-ink-faint text-pretty">{spell.description}</span>
+                                      <span className="font-sans text-body leading-relaxed text-ink-faint text-pretty">{spell.description}</span>
                                     </button>
                                   )
                                 })}
