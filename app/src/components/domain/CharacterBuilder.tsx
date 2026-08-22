@@ -1132,29 +1132,31 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                               Known spells (choose {klass.spellcasting.knownAtLevel1}, using your {klass.spellcasting.ability.toUpperCase()})
                             </p>
                             {klass.spellcasting.spellList ? (
-                              // Rows, not pills (2026-08-22, owner: "the
-                              // spell list needs a spell and then what
-                              // that spell does") — a rounded-full chip
-                              // has no room for a sentence, so each
-                              // spell is now a full-width selectable row.
+                              // Two-column table, not boxed rows (2026-08-22,
+                              // owner: reference screenshot of a term/
+                              // definition table — bold left-column term,
+                              // regular-weight right-column description,
+                              // thin divider lines — "something like
+                              // this"). Superseded the prior per-row
+                              // bordered-button treatment: each spell is
+                              // now name | description in aligned columns
+                              // with a `border-b border-line-soft` divider
+                              // between rows (same divider convention the
+                              // class-list pane above already uses), name
+                              // always full `text.body` weight regardless
+                              // of selection (per the earlier "better
+                              // indication" fix — the row's own state
+                              // shouldn't dim the name) and description
+                              // one step dimmer at `text-ink-faint`.
                               //
-                              // Name/description contrast (same day,
-                              // follow-up: "it still need a better
-                              // indication these are spell names and the
-                              // description") — the first pass dimmed the
-                              // name to `text-ink-dim` when unselected,
-                              // landing it one step from `bodySecondary`'s
-                              // own `text-ink-dim`, so the two barely
-                              // separated. Now the name stays full
-                              // `text-ink` regardless of selection (same
-                              // as every other card name in this file —
-                              // the row's border/background carry
-                              // "selected", not the name's own color) and
-                              // the description drops a full step further
-                              // to `text-ink-faint`, the same two-tier
-                              // gap the Background step's own name/detail
-                              // pairs already use just below in this file.
-                              <div className="flex flex-col gap-2">
+                              // The reference is a static table with no
+                              // selection affordance, but this list stays
+                              // a functional tap-to-choose picker — so a
+                              // small leading dot (outline → filled purple)
+                              // carries "selected" instead of a border/
+                              // background box, keeping the table's clean
+                              // look while the picker still reads clearly.
+                              <div className="flex flex-col">
                                 {klass.spellcasting.spellList.map((spell) => {
                                   const selected = knownSpells.includes(spell.name)
                                   const atLimit = knownSpells.length >= klass.spellcasting!.knownAtLevel1
@@ -1164,13 +1166,17 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                                       type="button"
                                       disabled={!selected && atLimit}
                                       onClick={() => toggleSpell(spell.name)}
-                                      className={cx(
-                                        'rounded-[10px] border px-3 py-2 text-left disabled:pointer-events-none disabled:opacity-40',
-                                        selected ? 'border-purple bg-purple/10' : 'border-line-soft bg-panel2 hover:border-line-hover',
-                                      )}
+                                      className="grid grid-cols-[0.9rem_6rem_1fr] items-baseline gap-x-3 border-b border-line-soft py-2.5 text-left last:border-b-0 disabled:pointer-events-none disabled:opacity-40 sm:grid-cols-[0.9rem_7rem_1fr]"
                                     >
-                                      <p className={cx(text.body, 'font-semibold')}>{spell.name}</p>
-                                      <p className="mt-1 font-sans text-body leading-snug text-ink-faint text-pretty">{spell.description}</p>
+                                      <span
+                                        aria-hidden="true"
+                                        className={cx(
+                                          'h-2.5 w-2.5 shrink-0 self-center rounded-full border',
+                                          selected ? 'border-purple bg-purple' : 'border-line-soft bg-transparent',
+                                        )}
+                                      />
+                                      <span className={cx(text.body, 'font-semibold')}>{spell.name}</span>
+                                      <span className="font-sans text-body leading-snug text-ink-faint text-pretty">{spell.description}</span>
                                     </button>
                                   )
                                 })}
