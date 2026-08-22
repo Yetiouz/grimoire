@@ -1136,13 +1136,24 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                               // spell list needs a spell and then what
                               // that spell does") — a rounded-full chip
                               // has no room for a sentence, so each
-                              // spell is now a full-width selectable row:
-                              // name in body copy (per the same day's
-                              // earlier "spell names should be in the
-                              // body copy style"), its effect in
-                              // `bodySecondary` underneath. Same
-                              // selected/disabled-at-limit logic as the
-                              // old pill version, just a taller target.
+                              // spell is now a full-width selectable row.
+                              //
+                              // Name/description contrast (same day,
+                              // follow-up: "it still need a better
+                              // indication these are spell names and the
+                              // description") — the first pass dimmed the
+                              // name to `text-ink-dim` when unselected,
+                              // landing it one step from `bodySecondary`'s
+                              // own `text-ink-dim`, so the two barely
+                              // separated. Now the name stays full
+                              // `text-ink` regardless of selection (same
+                              // as every other card name in this file —
+                              // the row's border/background carry
+                              // "selected", not the name's own color) and
+                              // the description drops a full step further
+                              // to `text-ink-faint`, the same two-tier
+                              // gap the Background step's own name/detail
+                              // pairs already use just below in this file.
                               <div className="flex flex-col gap-2">
                                 {klass.spellcasting.spellList.map((spell) => {
                                   const selected = knownSpells.includes(spell.name)
@@ -1158,8 +1169,8 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                                         selected ? 'border-purple bg-purple/10' : 'border-line-soft bg-panel2 hover:border-line-hover',
                                       )}
                                     >
-                                      <p className={cx('font-sans text-body font-semibold', selected ? 'text-ink' : 'text-ink-dim')}>{spell.name}</p>
-                                      <p className={cx(text.bodySecondary, 'mt-1 leading-snug')}>{spell.description}</p>
+                                      <p className={cx(text.body, 'font-semibold')}>{spell.name}</p>
+                                      <p className="mt-1 font-sans text-body leading-snug text-ink-faint text-pretty">{spell.description}</p>
                                     </button>
                                   )
                                 })}
