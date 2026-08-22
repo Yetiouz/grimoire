@@ -1143,7 +1143,21 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                                       disabled={!selected && atLimit}
                                       onClick={() => toggleSpell(spellName)}
                                       className={cx(
-                                        text.caption,
+                                        // Body copy (Instrument Sans), not
+                                        // `text.caption`'s mono — owner,
+                                        // 2026-08-22: "Spell names should
+                                        // be in the body copy style". Just
+                                        // `text.body`'s font/size, not the
+                                        // whole token: `text.body` bakes
+                                        // in `text-ink` (see typography.ts'
+                                        // doc comment on why `caption`
+                                        // deliberately doesn't), which
+                                        // would fight the selected/
+                                        // unselected color below the same
+                                        // way it would have fought
+                                        // `caption`'s old baked-in color if
+                                        // it had one.
+                                        'font-sans text-body',
                                         'rounded-full border px-3 py-1 disabled:pointer-events-none disabled:opacity-40',
                                         selected ? 'border-purple bg-purple/15 text-ink' : 'border-line-soft text-ink-dim',
                                       )}
@@ -1160,7 +1174,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                                 </p>
                                 <div className="flex flex-wrap gap-2">
                                   {knownSpells.map((spellName) => (
-                                    <span key={spellName} className={cx(text.caption, 'rounded-full border border-line-soft bg-panel px-3 py-1')}>{spellName}</span>
+                                    <span key={spellName} className={cx('font-sans text-body text-ink-dim', 'rounded-full border border-line-soft bg-panel px-3 py-1')}>{spellName}</span>
                                   ))}
                                 </div>
                                 <div className="flex gap-2">
