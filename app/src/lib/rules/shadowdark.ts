@@ -269,12 +269,16 @@ export const SHADOWDARK: RulesModule = {
       spellcasting: {
         ability: 'cha',
         knownAtLevel1: 3,
-        // Diablerie pg. 24's full tier-1 witch spell list wasn't
-        // transcribed into this module — these three are LaLa's real
-        // known spells (an actual imported character, not invented),
-        // shown as suggestions; the builder falls back to free-text
-        // entry for anything else. See RulesSpellcasting's doc comment.
-        spellList: null,
+        // Diablerie pg. 24's full witch spell list, tier 1 only (same
+        // scope as every other class's spellList — the builder only
+        // ever offers what's choosable at character creation). This
+        // was `null` until 2026-08-22 (owner: "we need to fix this" on
+        // the free-text fallback it forced) — transcribed from the
+        // sourcebook rather than left as a guess.
+        spellList: [
+          'Cauldron', 'Charm Person', 'Eyebite', 'Fog', 'Hypnotize',
+          'Oak, Ash, Thorn', 'Puppet', 'Shadowdance', 'Willowman', 'Witchlight',
+        ],
       },
       titleAtLevel1: { lawful: 'Fortune Teller', chaotic: 'Whisperer', neutral: 'Shaman' },
     },
