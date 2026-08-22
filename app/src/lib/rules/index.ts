@@ -12,7 +12,7 @@ import { CORE_EQUIPMENT } from './equipment'
 import type { RulesEquipmentItem } from './equipment'
 import { CYBORG_EQUIPMENT } from './cyborgEquipment'
 
-export type { RulesModule, RulesClass, RulesAncestry, RulesBackgroundTable, RulesTalentTableRow, Ability } from './types'
+export type { RulesModule, RulesClass, RulesAncestry, RulesBackgroundTable, RulesTalentTableRow, RulesSpell, Ability } from './types'
 export { abilityModifier, ABILITY_ORDER } from './types'
 
 const RULES_BY_SYSTEM: Record<string, RulesModule> = {

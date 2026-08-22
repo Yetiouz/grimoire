@@ -1132,37 +1132,34 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                               Known spells (choose {klass.spellcasting.knownAtLevel1}, using your {klass.spellcasting.ability.toUpperCase()})
                             </p>
                             {klass.spellcasting.spellList ? (
-                              <div className="flex flex-wrap gap-2">
-                                {klass.spellcasting.spellList.map((spellName) => {
-                                  const selected = knownSpells.includes(spellName)
+                              // Rows, not pills (2026-08-22, owner: "the
+                              // spell list needs a spell and then what
+                              // that spell does") — a rounded-full chip
+                              // has no room for a sentence, so each
+                              // spell is now a full-width selectable row:
+                              // name in body copy (per the same day's
+                              // earlier "spell names should be in the
+                              // body copy style"), its effect in
+                              // `bodySecondary` underneath. Same
+                              // selected/disabled-at-limit logic as the
+                              // old pill version, just a taller target.
+                              <div className="flex flex-col gap-2">
+                                {klass.spellcasting.spellList.map((spell) => {
+                                  const selected = knownSpells.includes(spell.name)
                                   const atLimit = knownSpells.length >= klass.spellcasting!.knownAtLevel1
                                   return (
                                     <button
-                                      key={spellName}
+                                      key={spell.name}
                                       type="button"
                                       disabled={!selected && atLimit}
-                                      onClick={() => toggleSpell(spellName)}
+                                      onClick={() => toggleSpell(spell.name)}
                                       className={cx(
-                                        // Body copy (Instrument Sans), not
-                                        // `text.caption`'s mono — owner,
-                                        // 2026-08-22: "Spell names should
-                                        // be in the body copy style". Just
-                                        // `text.body`'s font/size, not the
-                                        // whole token: `text.body` bakes
-                                        // in `text-ink` (see typography.ts'
-                                        // doc comment on why `caption`
-                                        // deliberately doesn't), which
-                                        // would fight the selected/
-                                        // unselected color below the same
-                                        // way it would have fought
-                                        // `caption`'s old baked-in color if
-                                        // it had one.
-                                        'font-sans text-body',
-                                        'rounded-full border px-3 py-1 disabled:pointer-events-none disabled:opacity-40',
-                                        selected ? 'border-purple bg-purple/15 text-ink' : 'border-line-soft text-ink-dim',
+                                        'rounded-[10px] border px-3 py-2 text-left disabled:pointer-events-none disabled:opacity-40',
+                                        selected ? 'border-purple bg-purple/10' : 'border-line-soft bg-panel2 hover:border-line-hover',
                                       )}
                                     >
-                                      {spellName}
+                                      <p className={cx('font-sans text-body font-semibold', selected ? 'text-ink' : 'text-ink-dim')}>{spell.name}</p>
+                                      <p className={cx(text.bodySecondary, 'mt-1 leading-snug')}>{spell.description}</p>
                                     </button>
                                   )
                                 })}

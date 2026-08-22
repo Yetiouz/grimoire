@@ -134,7 +134,18 @@ export const SHADOWDARK: RulesModule = {
       spellcasting: {
         ability: 'wis',
         knownAtLevel1: 2,
-        spellList: ['Cure Wounds', 'Holy Weapon', 'Light', 'Protection from Evil', 'Shield of Faith'],
+        // Core rulebook pg. 51's Priest Spell List, tier 1 (Turn Undead
+        // omitted — it's already granted as a class feature above, not
+        // a spell choice). Descriptions condensed from pg. 56-68's
+        // Duration/Range/effect blocks into prose, 2026-08-22 (owner:
+        // "the spell list needs a spell and then what that spell does").
+        spellList: [
+          { name: 'Cure Wounds', description: 'Your touch restores life. Roll 1d6 plus half your level (rounded down); the target regains that many hit points.' },
+          { name: 'Holy Weapon', description: 'One weapon you touch is blessed with sacred power, becoming magical with +1 to attack and damage rolls for the duration.' },
+          { name: 'Light', description: 'One object you touch glows with bright, heatless light for an hour of real time, illuminating out to near.' },
+          { name: 'Protection from Evil', description: "Chaotic beings have disadvantage attacking or casting hostile spells at the target, and can't possess, compel, or beguile it." },
+          { name: 'Shield of Faith', description: 'A protective force wrought of your holy conviction surrounds you, granting +2 to your armor class for the duration.' },
+        ],
       },
       titleAtLevel1: { lawful: 'Acolyte', chaotic: 'Initiate', neutral: 'Seeker' },
       requiresDeity: true,
@@ -185,9 +196,23 @@ export const SHADOWDARK: RulesModule = {
       spellcasting: {
         ability: 'int',
         knownAtLevel1: 3,
+        // Core rulebook pg. 52's Wizard Spell List, tier 1. Descriptions
+        // condensed from pg. 54-71's Duration/Range/effect blocks into
+        // prose, 2026-08-22 (owner: "the spell list needs a spell and
+        // then what that spell does").
         spellList: [
-          'Alarm', 'Burning Hands', 'Charm Person', 'Detect Magic', 'Feather Fall', 'Floating Disk',
-          'Hold Portal', 'Light', 'Mage Armor', 'Magic Missile', 'Protection from Evil', 'Sleep',
+          { name: 'Alarm', description: "You set a magical alarm on one object you touch. If a creature you didn't designate touches or crosses it within a day, a bell sounds in your head." },
+          { name: 'Burning Hands', description: 'You unleash a circle of flame around yourself. Creatures in the area take 1d6 damage, and flammable objects catch fire.' },
+          { name: 'Charm Person', description: 'You beguile one humanoid of level 2 or less within near range, who regards you as a friend until the spell ends or your allies harm it.' },
+          { name: 'Detect Magic', description: 'You sense the presence of magic within near range for as long as you focus, and discern its general properties after two rounds. Full barriers block it.' },
+          { name: 'Feather Fall', description: 'Cast the instant you fall — your rate of descent slows so you land safely on your feet.' },
+          { name: 'Floating Disk', description: 'You conjure a floating disk of force that carries up to 20 gear slots and automatically stays within near of you.' },
+          { name: 'Hold Portal', description: 'You magically hold a portal shut; a creature must beat your spellcasting check with a STR check to force it open.' },
+          { name: 'Light', description: 'One object you touch glows with bright, heatless light for an hour of real time, illuminating out to near.' },
+          { name: 'Mage Armor', description: 'An invisible layer of magical force protects your vitals — your armor class becomes 14 (18 on a critical spellcasting check).' },
+          { name: 'Magic Missile', description: 'A glowing bolt of force streaks from your open hand, dealing 1d4 damage — you have advantage on the check to cast it.' },
+          { name: 'Protection from Evil', description: "Chaotic beings have disadvantage attacking or casting hostile spells at the target, and can't possess, compel, or beguile it." },
+          { name: 'Sleep', description: 'Living creatures of level 2 or less in a near-sized area fall into a deep sleep — vigorous shaking or being injured wakes them.' },
         ],
       },
       titleAtLevel1: { lawful: 'Apprentice', chaotic: 'Adept', neutral: 'Shaman' },
@@ -274,10 +299,21 @@ export const SHADOWDARK: RulesModule = {
         // ever offers what's choosable at character creation). This
         // was `null` until 2026-08-22 (owner: "we need to fix this" on
         // the free-text fallback it forced) — transcribed from the
-        // sourcebook rather than left as a guess.
+        // sourcebook rather than left as a guess. Descriptions condensed
+        // from pg. 26-38's Duration/Range/effect blocks the same day
+        // (owner: "the spell list needs a spell and then what that
+        // spell does").
         spellList: [
-          'Cauldron', 'Charm Person', 'Eyebite', 'Fog', 'Hypnotize',
-          'Oak, Ash, Thorn', 'Puppet', 'Shadowdance', 'Willowman', 'Witchlight',
+          { name: 'Cauldron', description: 'You conjure a bubbling cauldron that can repair one broken item, produce a toad that follows your orders for 3 rounds, or store up to 3 item slots to expel later.' },
+          { name: 'Charm Person', description: 'You beguile one humanoid of level 2 or less within near range, who regards you as a friend until the spell ends or your allies harm it.' },
+          { name: 'Eyebite', description: "One creature you target takes 1d4 damage and can't see you until the end of its next turn." },
+          { name: 'Fog', description: 'A thick fog blooms around you and moves with you — attacks against creatures inside it have disadvantage.' },
+          { name: 'Hypnotize', description: 'One creature of level 3 or less that can see you is rendered stupefied, until breaking your line of sight lets it beat a DC 15 Charisma check.' },
+          { name: 'Oak, Ash, Thorn', description: "For the duration, faeries, demons, and devils can't attack, possess, compel, or beguile you." },
+          { name: 'Puppet', description: 'One humanoid of level 2 or less you touch mimics your movements on your turn, unless a harmful mimic lets it resist with a DC 15 Charisma check.' },
+          { name: 'Shadowdance', description: "You spin shadowstuff into a convincing illusion that can move nearby. It can't affect physical objects, and touching it reveals the trick." },
+          { name: 'Willowman', description: 'You call the Willowman into one creature\'s mind, forcing an immediate morale check — even from creatures normally immune to them.' },
+          { name: 'Witchlight', description: 'You summon a floating, color-shifting marsh light that illuminates out to close range and can drift near on your turn.' },
         ],
       },
       titleAtLevel1: { lawful: 'Fortune Teller', chaotic: 'Whisperer', neutral: 'Shaman' },
@@ -403,7 +439,16 @@ export const SHADOWDARK: RulesModule = {
       spellcasting: {
         ability: 'wis',
         knownAtLevel1: 1,
-        spellList: ['Chant', 'Evoke Rage', 'Potion', 'Trance'],
+        // Midnight Sun pg. 30's Seer Spell List, tier 1. Descriptions
+        // condensed from pg. 31-34's Duration/Range/effect blocks,
+        // 2026-08-22 (owner: "the spell list needs a spell and then
+        // what that spell does").
+        spellList: [
+          { name: 'Chant', description: 'An unearthly chant lets you see all invisible and hidden things as plainly visible for as long as you focus — it does not grant sight through darkness or walls.' },
+          { name: 'Evoke Rage', description: "One willing humanoid you touch enters a berserk state — immune to morale checks, advantage on STR checks and melee attacks, +1d4 damage — until it fails to attack on its turn." },
+          { name: 'Potion', description: 'You bless a single drink, giving it healing properties for a day: whoever drinks it can end one poison, or immediately stop dying while remaining at 0 HP.' },
+          { name: 'Trance', description: "You catch glimpses of a humanoid's fate. One creature you touch (never yourself) gains a luck token, up to a maximum of one." },
+        ],
       },
       titleAtLevel1: { lawful: 'Guide', chaotic: 'Hedge Witch', neutral: 'Fortune Teller' },
     },

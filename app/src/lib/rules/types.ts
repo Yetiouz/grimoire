@@ -52,6 +52,20 @@ export interface RulesTalentTableRow {
   effect: string
 }
 
+/** One tier-1 spell a class can choose at character creation.
+ * `description` is the spell's effect, condensed from the sourcebook's
+ * own Duration/Range/effect block into a sentence or two of prose (the
+ * mechanical Duration/Range labels are dropped, not the mechanics
+ * themselves) — same "prose, not a stat block" treatment
+ * `RulesClass.features` already gives class features. 2026-08-22
+ * (owner: "so the spell list needs a spell and then what that spell
+ * does") — added alongside the name once every spellcasting class's
+ * list carried real ones rather than requiring a click-through. */
+export interface RulesSpell {
+  name: string
+  description: string
+}
+
 export interface RulesSpellcasting {
   ability: Ability
   /** How many tier-1 spells this class knows at 1st level — 0-level
@@ -59,13 +73,13 @@ export interface RulesSpellcasting {
    * matters once Class is picked in the 1st-level path. */
   knownAtLevel1: number
   /** Null when the sourcebook's full tier-1 list wasn't transcribed
-   * into this module (Witch/Warlock — Diablerie pg. 24's witch spell
-   * list wasn't pulled in whole; LaLa's three known spells are real
-   * data but not confirmed as the *complete* tier-1 option set). The
-   * builder falls back to free-text spell-name entry in that case,
-   * same shape `sheet.spells` already stores today — never a fabricated
-   * list standing in for the book's real one. */
-  spellList: string[] | null
+   * into this module. The builder falls back to free-text spell-name
+   * entry in that case, same shape `sheet.spells` already stores today
+   * — never a fabricated list standing in for the book's real one.
+   * (As of 2026-08-22 every spellcasting class in this module — Priest,
+   * Wizard, Witch, Seer — has its real tier-1 list transcribed, so this
+   * only matters for a future class added without one yet.) */
+  spellList: RulesSpell[] | null
 }
 
 export interface RulesClass {
