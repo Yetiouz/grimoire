@@ -94,6 +94,86 @@ function abilityLabel(ability: Ability): string {
   return ability.toUpperCase()
 }
 
+/** Three small icons for the Class step's weapons/armor/hit-die tiles
+ * (2026-08-22 redesign) — plain inline SVGs rather than another entry
+ * in `AncestryClassArt`'s `ITEM_ICONS`, since that map is keyed to
+ * structured Shop-catalog item keys and a class's `weapons`/`armor`
+ * fields are free text (things like "razor chain" or "blowgun" have no
+ * matching catalog icon to fuzzy-match against) — one generic icon per
+ * category avoids guessing at a per-weapon icon that doesn't exist.
+ * `WeaponsIcon` is crossed swords (owner request, replacing an earlier
+ * single-dagger glyph); `strokeWidth`/`fill` are camelCase here (JSX
+ * SVG props), unlike the kebab-case attributes the equivalent HTML
+ * mockup used. */
+function WeaponsIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="4" cy="20" r="1.1" fill="currentColor" stroke="none" />
+      <path d="M4 20L6.5 17.5" />
+      <path d="M5.2 16.2L7.8 18.8" />
+      <path d="M6.5 17.5L20 4" />
+      <circle cx="20" cy="20" r="1.1" fill="currentColor" stroke="none" />
+      <path d="M20 20L17.5 17.5" />
+      <path d="M18.8 16.2L16.2 18.8" />
+      <path d="M17.5 17.5L4 4" />
+    </svg>
+  )
+}
+function ArmorIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 3l7 3v6c0 5-3 8.5-7 9-4-.5-7-4-7-9V6z" />
+    </svg>
+  )
+}
+function HitDieIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 20s-7-4.4-9.5-9C.7 7.6 2.4 4 6 4c2 0 3.4 1.1 4 2.4C10.6 5.1 12 4 14 4c3.6 0 5.3 3.6 3.5 7-2.5 4.6-9.5 9-9.5 9z" />
+    </svg>
+  )
+}
+function BrowseSparkIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18" />
+    </svg>
+  )
+}
+
+/** Weapons / Armor / Hit die tiles — replaces the old single dense
+ * caption line ("Weapons X · Armor Y · HP Zd/lvl") the owner flagged as
+ * hard to read. Module-level (not a component-body closure) since it
+ * only needs the class it's given, same reasoning as `SOURCE_BADGE`
+ * living outside the component. */
+function ClassStatTiles({ c }: { c: RulesClass }) {
+  return (
+    <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <div className="flex items-start gap-2 rounded-[10px] border border-line-soft bg-panel/60 p-2.5">
+        <WeaponsIcon className="mt-0.5 h-[15px] w-[15px] shrink-0 text-red" />
+        <div className="min-w-0">
+          <p className={cx(text.label, 'text-ink-faint')}>Weapons</p>
+          <p className={cx(text.bodySecondary, 'leading-snug')}>{c.weapons}</p>
+        </div>
+      </div>
+      <div className="flex items-start gap-2 rounded-[10px] border border-line-soft bg-panel/60 p-2.5">
+        <ArmorIcon className="mt-0.5 h-[15px] w-[15px] shrink-0 text-stone" />
+        <div className="min-w-0">
+          <p className={cx(text.label, 'text-ink-faint')}>Armor</p>
+          <p className={cx(text.bodySecondary, 'leading-snug')}>{c.armor}</p>
+        </div>
+      </div>
+      <div className="flex items-start gap-2 rounded-[10px] border border-line-soft bg-panel/60 p-2.5">
+        <HitDieIcon className="mt-0.5 h-[15px] w-[15px] shrink-0 text-green" />
+        <div className="min-w-0">
+          <p className={cx(text.label, 'text-ink-faint')}>Hit die</p>
+          <p className={cx(text.bodySecondary, 'font-mono font-semibold text-ink')}>1d{c.hpDie} / level</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const emptyStats = (): Record<Ability, { value: string; dice: number[] | null }> =>
   Object.fromEntries(ABILITY_ORDER.map((ability) => [ability, { value: '', dice: null }])) as Record<
     Ability,
@@ -176,6 +256,19 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
   const [stats, setStats] = useState(emptyStats)
   const [ancestryKey, setAncestryKey] = useState<string | null>(null)
   const [classKey, setClassKey] = useState<string | null>(null)
+  // Class step redesign (2026-08-22, owner: "lets go with B" — the
+  // master/detail mockup): below `md:`, only one of the list-of-12 or
+  // the selected class's detail is visible at a time, and this is
+  // which. It's deliberately separate from `classKey` — tapping "← All
+  // classes" to browse and compare another class must not un-pick the
+  // one already chosen (and must not reset its talent roll / spells,
+  // which `selectClass` wipes). Reset to "show the list" whenever the
+  // Class step is freshly entered with nothing picked yet, and to "show
+  // the detail" when re-entering with a class already chosen (see the
+  // effect next to the scroll-reset one below) — the same "land on
+  // what you were doing" feel Ancestry etc. already have for free by
+  // just always rendering everything at once.
+  const [classListView, setClassListView] = useState(true)
   // An array, not a single roll: some ancestries (Human's "Ambitious")
   // grant a bonus 1st-level talent roll on top of the class's own one
   // (see `RulesAncestry.bonusTalentRolls`) — a visual review caught that
@@ -408,6 +501,16 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 })
   }, [step])
+
+  // See `classListView`'s own comment above — only relevant on mobile,
+  // where the Class step shows the list OR the detail pane, never both.
+  // Keyed on `classKey` too (not just `step`) so picking a class also
+  // flips this to "show detail" — belt-and-suspenders with the list
+  // row's own click handler doing the same, and harmless since
+  // `classKey` only ever goes from unset to set while on this step.
+  useEffect(() => {
+    if (step === 'class') setClassListView(!classKey)
+  }, [step, classKey])
 
   // Both gates below exist because of a live report: a first-time
   // player reached Create having never engaged either "Roll HP"
@@ -827,181 +930,254 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
 
       {step === 'class' && (
         <div className="flex flex-col gap-4">
-          {/* Owner request, 2026-08-15 ("let's add suggestions") — a
-            * one-line legend rather than a silent color change: the
-            * purple/green pills below now carry two DIFFERENT meanings
-            * (which stat a class is built around vs. which stat YOU
-            * rolled well), and a prior question this same session
-            * ("are the highlighted ones there to know those are good for
-            * me?") showed that distinction doesn't read as obvious on
-            * its own. */}
-          <p className={cx(text.caption, 'text-ink-faint')}>
-            <span className="text-purple">Purple</span> = that class's spellcasting stat ·{' '}
-            <span className="text-green">Green</span> = a stat you rolled 14+ on
-          </p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {module.classes.map((c) => (
-              <button key={c.key} type="button" onClick={() => selectClass(c)} className={cx(cardBase, 'relative flex items-start gap-5', classKey === c.key && cardSelected)}>
-                {/* The big faint ghost-sigil overlay that used to bleed
-                  * off the card's right edge behind the text was
-                  * removed 2026-08-17 alongside the icon-color pass
-                  * (see claude/grimoire-ancestry-class-icon-colors.md
-                  * §6 in the Shadowdark project) — the owner didn't
-                  * want that "second overlay part" carried into the
-                  * new icon direction. Only the small glowing mark up
-                  * front remains, same as Ancestry. `overflow-hidden`
-                  * on the card came off with it — it existed only to
-                  * clip the ghost mark bleeding past the edge. */}
-                <ClassBustIcon k={c.key} className="mt-0.5 h-9 w-9 shrink-0" />
-                <span className="relative min-w-0 flex-1">
-                <p className="font-semibold">
-                  {c.name}
-                  <span className={cx(text.label, 'ml-2 rounded-full border px-2 py-0.5', SOURCE_BADGE[c.source])}>{c.source}</span>
-                </p>
-                {/* 2026-08-20 (owner: "the ancestry page ... has info a
-                  * name and a description of what it is or does. the
-                  * classes all in info text") — every class already
-                  * carries a `blurb` in shadowdark.ts (same field shape
-                  * as Ancestry's `talent`), it just never made it into
-                  * this card. Same slot/style Ancestry uses for
-                  * `a.talent` above, so both steps now lead with a
-                  * description before the mechanical details.
-                  * leading-normal tightens off text-body's default 1.7
-                  * line-height (owner, follow-up: "tighten leading a
-                  * bit on descriptions"). */}
-                <p className={cx(text.bodySecondary, 'mt-2.5 leading-normal')}>{c.blurb}</p>
-                <p className={cx(text.caption, 'mt-2 text-ink-faint')}>
-                  Weapons {c.weapons} · Armor {c.armor} · HP 1d{c.hpDie}/lvl
-                </p>
-                {/* Owner request, 2026-08-15 ("I may want a strength or
-                  * dex class") — every ability this class's own talent
-                  * table names as a stat-boost option (see
-                  * `RulesClass.primaryAbilities`'s doc comment), so
-                  * browsing for e.g. a STR/DEX class doesn't require
-                  * clicking into each card first.
-                  *
-                  * Two independent signals, layered rather than
-                  * conflated (follow-up same day, "let's add
-                  * suggestions"): purple marks the class's spellcasting
-                  * stat (a fact about the CLASS, same for every player);
-                  * a green fill marks a stat THIS character rolled 14+
-                  * on (a fact about the PLAYER, via `strongAbilities`).
-                  * A pill can be neither, either, or both — a caster
-                  * class's casting stat that the player also rolled well
-                  * on gets a filled purple pill (`bg-purple/15`) rather
-                  * than picking one color over the other, so "this class
-                  * fits you AND happens to be its casting stat" doesn't
-                  * silently collapse into just one of those two true
-                  * facts. */}
-                {c.primaryAbilities.length > 0 && (
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
-                    {c.primaryAbilities.map((ability) => {
-                      const isCasting = c.spellcasting?.ability === ability
-                      const isStrong = strongAbilities.has(ability)
-                      return (
-                        <span
-                          key={ability}
-                          className={cx(
-                            text.label,
-                            'rounded-full border px-1.5 py-0.5',
-                            isCasting && isStrong
-                              ? 'border-purple bg-purple/15 text-purple'
-                              : isCasting
-                                ? 'border-purple/40 text-purple'
-                                : isStrong
-                                  ? 'border-green/40 bg-green/10 text-green'
-                                  : 'border-line-soft text-ink-dim',
-                          )}
-                        >
-                          {ability.toUpperCase()}
-                        </span>
-                      )
-                    })}
-                  </div>
-                )}
+          {/* Class step redesign, 2026-08-22 (owner: "we still need to
+            * work on the class page ... when I select thief the
+            * features are at the bottom ... the weapons line are also
+            * not easy to read" → mocked up two directions → "lets go
+            * with B"). Two things this replaces:
+            *
+            * 1. The old grid-of-12-cards had the selected class's
+            *    features panel render as a sibling AFTER the entire
+            *    grid closed — so opening Thief's features meant
+            *    scrolling past all 12 cards to find them, regardless of
+            *    which one was clicked. This is a browse/compare layout
+            *    instead: a scannable list on one side, a detail pane on
+            *    the other that's always in the same place — nothing to
+            *    scroll past, ever, on desktop or mobile.
+            * 2. The old "Weapons X · Armor Y · HP Zd/lvl" caption
+            *    crammed three different facts into one dense line —
+            *    replaced by `ClassStatTiles` below.
+            *
+            * The old "Purple = casting stat · Green = 14+" sentence
+            * (2026-08-15, "let's add suggestions") is gone too, in favor
+            * of a real rolled-stats strip that demonstrates the same
+            * two colors directly: the tile for whichever ability is the
+            * OPEN class's spellcasting stat highlights purple right
+            * here, and any stat this character actually rolled 14+ on
+            * (`strongAbilities`, same threshold the reroll banner and
+            * the ability pills below already use) highlights green —
+            * the meaning shows itself instead of needing a caption. */}
+          <div className="rounded-[12px] border border-line-soft bg-panel2/60 p-3">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
+              <span className={cx(text.label, 'text-ink-faint')}>Your rolled stats</span>
+              <span className="flex gap-3">
+                <span className={cx(text.caption, 'flex items-center gap-1.5 text-ink-faint')}>
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-purple" aria-hidden="true" /> Casting stat
                 </span>
-              </button>
-            ))}
+                <span className={cx(text.caption, 'flex items-center gap-1.5 text-ink-faint')}>
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-green" aria-hidden="true" /> Rolled 14+
+                </span>
+              </span>
+            </div>
+            <div className="grid grid-cols-6 gap-1.5">
+              {ABILITY_ORDER.map((ability) => {
+                const isStrong = strongAbilities.has(ability)
+                const isCasting = klass?.spellcasting?.ability === ability
+                return (
+                  <div
+                    key={ability}
+                    className={cx(
+                      'flex flex-col items-center gap-0.5 rounded-[8px] border p-1.5 sm:p-2',
+                      isCasting ? 'border-purple bg-purple/10' : isStrong ? 'border-green/40 bg-green/10' : 'border-line-soft bg-panel2',
+                    )}
+                  >
+                    <span className={cx(text.label, 'text-[9px] sm:text-[10px]', isCasting ? 'text-purple' : 'text-ink-faint')}>{abilityLabel(ability)}</span>
+                    <span className={cx('font-mono text-[12px] font-semibold tabular-nums sm:text-[13px]', isCasting ? 'text-purple' : isStrong ? 'text-green' : 'text-ink')}>
+                      {stats[ability].value || '—'}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
 
-          {klass && (
-            <div className="rounded-[12px] border border-line-soft bg-panel2 p-3">
-              <p className={cx(text.label, 'mb-2 text-purple')}>{klass.name} features</p>
-              <div className="flex flex-col gap-1">
-                {klass.features.map((f, i) => (
-                  <p key={i} className={text.bodySecondary}>{f}</p>
-                ))}
-              </div>
+          {/* Only relevant below `md:`, where exactly one of the list or
+            * detail pane below is visible — see `classListView`'s own
+            * comment near its `useState`. */}
+          {(() => {
+            const showDetail = Boolean(klass) && !classListView
+            return (
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
+                <div className={cx('overflow-hidden rounded-[12px] border border-line-soft bg-panel2/40 md:w-[300px] md:shrink-0', showDetail ? 'hidden md:block' : 'block')}>
+                  <div className="md:max-h-[600px] md:overflow-y-auto">
+                    {module.classes.map((c) => (
+                      <button
+                        key={c.key}
+                        type="button"
+                        onClick={() => {
+                          // Guard against re-wiping talent rolls / known
+                          // spells when the row for the ALREADY-selected
+                          // class is tapped again just to view it (e.g.
+                          // coming back from "← All classes") — the old
+                          // grid's onClick called `selectClass` unconditionally
+                          // on every click, class-unchanged included, which
+                          // this deliberately no longer does here.
+                          if (c.key !== classKey) selectClass(c)
+                          setClassListView(false)
+                        }}
+                        className={cx(
+                          'flex w-full items-center gap-3 border-b border-line-soft p-3 text-left last:border-b-0 hover:bg-panel2',
+                          classKey === c.key && 'bg-purple/10',
+                        )}
+                      >
+                        <ClassBustIcon k={c.key} className="h-7 w-7 shrink-0" />
+                        <span className="min-w-0 flex-1">
+                          <span className="flex flex-wrap items-center gap-1.5">
+                            <span className="truncate text-[13.5px] font-semibold">{c.name}</span>
+                            <span className={cx(text.label, 'shrink-0 rounded-full border px-1.5 py-0.5', SOURCE_BADGE[c.source])}>{c.source}</span>
+                          </span>
+                          <span className={cx(text.caption, 'mt-0.5 block truncate text-ink-faint')}>{c.blurb}</span>
+                        </span>
+                        <span className={cx(text.caption, 'shrink-0 rounded-[6px] border border-line-soft px-1.5 py-0.5 text-ink-dim')}>d{c.hpDie}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-              <div className="mt-3 flex flex-col gap-2">
-                {effectiveTalentRolls.map((roll, i) => (
-                  <span key={i} className={cx(text.bodySecondary)}>
-                    Rolled {roll.total}: {roll.row.effect}
-                  </span>
-                ))}
-                {effectiveTalentRolls.length < maxTalentRolls && (
-                  <div className="flex items-center gap-3">
-                    <Button type="button" onClick={rollTalent}>Roll talent (2d6)</Button>
-                    {/* Only shown once there's a second roll to explain
-                      * (Human's Ambitious bonus) — a single-roll class
-                      * needs no extra label. */}
-                    {maxTalentRolls > 1 && (
-                      <span className={cx(text.caption, 'text-ink-faint')}>
-                        {effectiveTalentRolls.length}/{maxTalentRolls} rolled
-                        {ancestry && effectiveTalentRolls.length === 0 ? ` — ${ancestry.name}'s bonus roll included` : ''}
-                      </span>
+                <div className={cx('min-w-0 flex-1 overflow-hidden rounded-[12px] border border-line-soft bg-panel2/40', showDetail ? 'block' : 'hidden md:block')}>
+                  <div className="p-4 sm:p-6 md:max-h-[600px] md:overflow-y-auto">
+                    {!klass ? (
+                      <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 py-6 text-center">
+                        <BrowseSparkIcon className="h-8 w-8 text-ink-faint" />
+                        <p className={cx(text.bodySecondary, 'max-w-[30ch] text-ink-faint')}>
+                          Select a class to see its full details — features, weapons and armor, talent roll, and spells, all in one place.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <button type="button" onClick={() => setClassListView(true)} className={cx(text.caption, 'mb-4 flex items-center gap-1.5 text-ink-dim md:hidden')}>
+                          ← All classes
+                        </button>
+
+                        <div className="flex items-start gap-4">
+                          <ClassBustIcon k={klass.key} className="h-12 w-12 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="flex flex-wrap items-center gap-2 text-[22px] font-semibold leading-tight">
+                              {klass.name}
+                              <span className={cx(text.label, 'rounded-full border px-2 py-0.5', SOURCE_BADGE[klass.source])}>{klass.source}</span>
+                            </p>
+                            <p className={cx(text.bodySecondary, 'mt-2 leading-normal')}>{klass.blurb}</p>
+                          </div>
+                        </div>
+
+                        <ClassStatTiles c={klass} />
+
+                        {/* Same two-signal pill logic as before (owner,
+                          * 2026-08-15, "let's add suggestions" /
+                          * "I may want a strength or dex class") — purple
+                          * marks the class's own spellcasting stat, green
+                          * marks a stat THIS character rolled 14+ on, and
+                          * a pill can be neither/either/both. */}
+                        {klass.primaryAbilities.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-1.5">
+                            {klass.primaryAbilities.map((ability) => {
+                              const isCasting = klass.spellcasting?.ability === ability
+                              const isStrong = strongAbilities.has(ability)
+                              return (
+                                <span
+                                  key={ability}
+                                  className={cx(
+                                    text.label,
+                                    'rounded-full border px-1.5 py-0.5',
+                                    isCasting && isStrong
+                                      ? 'border-purple bg-purple/15 text-purple'
+                                      : isCasting
+                                        ? 'border-purple/40 text-purple'
+                                        : isStrong
+                                          ? 'border-green/40 bg-green/10 text-green'
+                                          : 'border-line-soft text-ink-dim',
+                                  )}
+                                >
+                                  {ability.toUpperCase()}
+                                </span>
+                              )
+                            })}
+                          </div>
+                        )}
+
+                        <div className="mt-5 border-t border-line-soft pt-4">
+                          <p className={cx(text.label, 'mb-2 text-purple')}>Class features</p>
+                          <div className="flex flex-col gap-1">
+                            {klass.features.map((f, i) => (
+                              <p key={i} className={text.bodySecondary}>{f}</p>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex flex-col gap-2 border-t border-line-soft pt-4">
+                          {effectiveTalentRolls.map((roll, i) => (
+                            <span key={i} className={cx(text.bodySecondary)}>
+                              Rolled {roll.total}: {roll.row.effect}
+                            </span>
+                          ))}
+                          {effectiveTalentRolls.length < maxTalentRolls && (
+                            <div className="flex items-center gap-3">
+                              <Button type="button" onClick={rollTalent}>Roll talent (2d6)</Button>
+                              {/* Only shown once there's a second roll to
+                                * explain (Human's Ambitious bonus) — a
+                                * single-roll class needs no extra label. */}
+                              {maxTalentRolls > 1 && (
+                                <span className={cx(text.caption, 'text-ink-faint')}>
+                                  {effectiveTalentRolls.length}/{maxTalentRolls} rolled
+                                  {ancestry && effectiveTalentRolls.length === 0 ? ` — ${ancestry.name}'s bonus roll included` : ''}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {klass.spellcasting && (
+                          <div className="mt-4 border-t border-line-soft pt-4">
+                            <p className={cx(text.label, 'mb-2 text-ink-faint')}>
+                              Known spells (choose {klass.spellcasting.knownAtLevel1}, using your {klass.spellcasting.ability.toUpperCase()})
+                            </p>
+                            {klass.spellcasting.spellList ? (
+                              <div className="flex flex-wrap gap-2">
+                                {klass.spellcasting.spellList.map((spellName) => {
+                                  const selected = knownSpells.includes(spellName)
+                                  const atLimit = knownSpells.length >= klass.spellcasting!.knownAtLevel1
+                                  return (
+                                    <button
+                                      key={spellName}
+                                      type="button"
+                                      disabled={!selected && atLimit}
+                                      onClick={() => toggleSpell(spellName)}
+                                      className={cx(
+                                        text.caption,
+                                        'rounded-full border px-3 py-1 disabled:pointer-events-none disabled:opacity-40',
+                                        selected ? 'border-purple bg-purple/15 text-ink' : 'border-line-soft text-ink-dim',
+                                      )}
+                                    >
+                                      {spellName}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            ) : (
+                              <div className="flex flex-col gap-2">
+                                <p className={cx(text.caption, 'text-ink-faint')}>
+                                  This book's full spell list wasn't transcribed into the builder — type in the spells you're choosing.
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {knownSpells.map((spellName) => (
+                                    <span key={spellName} className={cx(text.caption, 'rounded-full border border-line-soft bg-panel px-3 py-1')}>{spellName}</span>
+                                  ))}
+                                </div>
+                                <div className="flex gap-2">
+                                  <TextInput value={spellDraft} onChange={(e) => setSpellDraft(e.target.value)} placeholder="Spell name" className="flex-1" />
+                                  <Button type="button" variant="ghost" onClick={addDraftSpell}>Add</Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
-                )}
-              </div>
-
-              {klass.spellcasting && (
-                <div className="mt-3">
-                  <p className={cx(text.label, 'mb-2 text-ink-faint')}>
-                    Known spells (choose {klass.spellcasting.knownAtLevel1}, using your {klass.spellcasting.ability.toUpperCase()})
-                  </p>
-                  {klass.spellcasting.spellList ? (
-                    <div className="flex flex-wrap gap-2">
-                      {klass.spellcasting.spellList.map((spellName) => {
-                        const selected = knownSpells.includes(spellName)
-                        const atLimit = knownSpells.length >= klass.spellcasting!.knownAtLevel1
-                        return (
-                          <button
-                            key={spellName}
-                            type="button"
-                            disabled={!selected && atLimit}
-                            onClick={() => toggleSpell(spellName)}
-                            className={cx(
-                              text.caption,
-                              'rounded-full border px-3 py-1 disabled:pointer-events-none disabled:opacity-40',
-                              selected ? 'border-purple bg-purple/15 text-ink' : 'border-line-soft text-ink-dim',
-                            )}
-                          >
-                            {spellName}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      <p className={cx(text.caption, 'text-ink-faint')}>
-                        This book's full spell list wasn't transcribed into the builder — type in the spells you're choosing.
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {knownSpells.map((spellName) => (
-                          <span key={spellName} className={cx(text.caption, 'rounded-full border border-line-soft bg-panel px-3 py-1')}>{spellName}</span>
-                        ))}
-                      </div>
-                      <div className="flex gap-2">
-                        <TextInput value={spellDraft} onChange={(e) => setSpellDraft(e.target.value)} placeholder="Spell name" className="flex-1" />
-                        <Button type="button" variant="ghost" onClick={addDraftSpell}>Add</Button>
-                      </div>
-                    </div>
-                  )}
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )
+          })()}
         </div>
       )}
 
