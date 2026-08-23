@@ -1046,7 +1046,14 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                           <span className="flex flex-wrap items-center gap-1.5">
                             <span className="truncate text-[13.5px] font-semibold" style={{ color: classColor(c.key) }}>{c.name}</span>
                             <span className={cx(text.label, 'shrink-0 rounded-full border px-1.5 py-0.5', SOURCE_BADGE[c.source])}>{c.source}</span>
-                            <span className={cx(text.caption, 'shrink-0 rounded-[6px] border border-line-soft px-1.5 py-0.5 text-ink-dim')}>d{c.hpDie}</span>
+                            {/* Pushed to the row's right edge (owner,
+                             * 2026-08-23: "right align the D8 dies keep
+                             * it is the same row and the title can stay
+                             * left aligned") — `ml-auto` inside this
+                             * flex row eats the leftover space between
+                             * the name/badge and the chip, without
+                             * moving the name off its own left edge. */}
+                            <span className={cx(text.caption, 'ml-auto shrink-0 rounded-[6px] border border-line-soft px-1.5 py-0.5 text-ink-dim')}>d{c.hpDie}</span>
                           </span>
                           {/* Full blurb, not truncated (owner, 2026-08-23,
                            * reversing an earlier same-day melee/ranged-
