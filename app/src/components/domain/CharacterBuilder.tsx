@@ -11,7 +11,7 @@ import { GearSlotGrid } from './GearSlotGrid'
 import { Shop } from './Shop'
 import { createCharacter } from '../../lib/characters'
 import type { Character, CharacterAbilities, CharacterSheetData, AbilityScore } from '../../lib/characters'
-import { AncestryBustIcon, AncestrySpriteArt, ClassBustIcon, classColor } from './AncestryClassArt'
+import { AncestrySpriteArt, ClassBustIcon, classColor } from './AncestryClassArt'
 import { getRulesModule, hasRulesModule, abilityModifier, ABILITY_ORDER } from '../../lib/rules'
 import type { Ability, RulesClass, RulesTalentTableRow } from '../../lib/rules'
 import { goldDeltaForSpend, goldToCp } from '../../lib/rules/equipment'
@@ -878,47 +878,46 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
       )}
 
       {/* Pictograms (2026-08-16, "races need visuals on what they are"
-        * — style approved via ancestry-art-mockup.html): each card
-        * leads with its mark in its own accent color, text to the
-        * right. Ancestry's mark swapped 2026-08-17 from the sigil to a
-        * real bust icon (`AncestryBustIcon`); Class got its own matching
-        * bust-icon set the same day (`ClassBustIcon` — see
-        * AncestryClassArt.tsx's doc comments on both swaps). Neither
-        * step uses its sigil mark for this front icon anymore — the
-        * sigil maps (`ANCESTRY_SIGILS` / `CLASS_SIGILS`) still exist
-        * because both bust icons reuse them for tint color and as the
-        * "no art yet for this key" fallback.
+        * — style approved via ancestry-art-mockup.html): each card leads
+        * with text, full-color character art in its own column to the
+        * right — a real flex sibling, not an absolutely positioned
+        * overlay bleeding off the edge, specifically because an earlier
+        * overlay version clipped (goblin's head) on any card whose text
+        * rendered shorter than the art's fixed height, and needed a fade
+        * to keep the two from visually fighting where they overlapped.
+        * Side-by-side columns make both problems structural non-issues:
+        * a flex row's height is always at least its tallest child, so
+        * nothing can clip, and art/text never occupy the same pixels, so
+        * there's nothing to fade. Every ancestry renders at the same
+        * height — a per-ancestry relative scale was tried and reverted
+        * same-day, see `AncestrySpriteArt`'s own doc comment.
         *
-        * Same day's follow-up ("art for the right side is here"), SECOND
-        * pass after the owner's first live look: full-color character
-        * art now sits in its own column to the right of the text — a
-        * real flex sibling, not an absolutely positioned overlay bleeding
-        * off the edge — specifically because the overlay version clipped
-        * (goblin's head) on any card whose text rendered shorter than
-        * the art's fixed height, and needed a fade to keep the two from
-        * visually fighting where they overlapped. Side-by-side columns
-        * make both problems structural non-issues: a flex row's height
-        * is always at least its tallest child, so nothing can clip, and
-        * art/text never occupy the same pixels, so there's nothing to
-        * fade. Every ancestry renders at the same height — a per-
-        * ancestry relative scale was tried and reverted same-day, see
-        * `AncestrySpriteArt`'s own doc comment. */}
+        * The card's own small front-of-card bust icon (`AncestryBustIcon`,
+        * added 2026-08-17 alongside this sprite art) was dropped
+        * 2026-08-23 (owner: "ANCESTRY Page lets keep art remove icons")
+        * — the sprite art alone is this card's identity mark now. Class
+        * still uses its matching `ClassBustIcon` in its own detail pane
+        * (see the Class step below) — this removal is Ancestry-only.
+        * `AncestryBustIcon` itself stays defined in AncestryClassArt.tsx
+        * (not deleted, just unused here) in case it's wanted again. */}
       {step === 'ancestry' && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {module.ancestries.map((a) => (
             <button key={a.key} type="button" onClick={() => setAncestryKey(a.key)} className={cx(cardBase, 'flex items-stretch justify-between gap-5', ancestryKey === a.key && cardSelected)}>
-              <span className="flex min-w-0 flex-1 items-start gap-5">
-                <AncestryBustIcon k={a.key} className="mt-0.5 h-9 w-9 shrink-0" />
-                <span className="min-w-0 flex-1">
-                  <span className="block font-semibold">{a.name}</span>
-                  <span className={cx(text.caption, 'mt-2 block text-ink-faint')}>{a.languages.join(', ')}</span>
-                  {/* leading-normal tightens off text-body's default 1.7
-                    * line-height (owner, 2026-08-20: "tighten leading a
-                    * bit on descriptions") — explicit leading-* wins
-                    * over the paired line-height text-body carries, so
-                    * this overrides cleanly rather than fighting it. */}
-                  <span className={cx(text.bodySecondary, 'mt-2.5 block leading-normal')}>{a.talent}</span>
-                </span>
+              {/* Bust icon dropped, sprite art kept (owner, 2026-08-23:
+                * "ANCESTRY Page lets keep art remove icons") — the small
+                * front-of-card bust and the full-color sprite on the
+                * right were both identity marks for the same ancestry;
+                * the sprite alone carries that now. */}
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold">{a.name}</span>
+                <span className={cx(text.caption, 'mt-2 block text-ink-faint')}>{a.languages.join(', ')}</span>
+                {/* leading-normal tightens off text-body's default 1.7
+                  * line-height (owner, 2026-08-20: "tighten leading a
+                  * bit on descriptions") — explicit leading-* wins
+                  * over the paired line-height text-body carries, so
+                  * this overrides cleanly rather than fighting it. */}
+                <span className={cx(text.bodySecondary, 'mt-2.5 block leading-normal')}>{a.talent}</span>
               </span>
               <span className="flex shrink-0 items-end">
                 <AncestrySpriteArt k={a.key} baseHeightPx={116} />
@@ -1044,7 +1043,14 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                            * it's a third item in the name/badge line, so
                            * the blurb below gets the full row. */}
                           <span className="flex flex-wrap items-center gap-1.5">
-                            <span className="truncate text-[13.5px] font-semibold" style={{ color: classColor(c.key) }}>{c.name}</span>
+                            {/* No explicit size — matches the Ancestry
+                             * step's own card name (also unsized,
+                             * `font-semibold` on the ambient default),
+                             * per the owner, 2026-08-23: "Class Page -
+                             * Font sizes on the small panel need to
+                             * match the ancestry page." Was
+                             * `text-[13.5px]` before this. */}
+                            <span className="truncate font-semibold" style={{ color: classColor(c.key) }}>{c.name}</span>
                             <span className={cx(text.label, 'shrink-0 rounded-full border px-1.5 py-0.5', SOURCE_BADGE[c.source])}>{c.source}</span>
                             {/* Pushed to the row's right edge (owner,
                              * 2026-08-23: "right align the D8 dies keep
@@ -1072,22 +1078,21 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                            * chip stay on `text.caption`/`text.label`
                            * as-is; only this line's family changed.
                            *
-                           * Sized down off the full `text.bodySecondary`
-                           * token, though (owner, same day: "the font
-                           * size is bigger than the title of the class
-                           * size so bring down the body copy") —
-                           * `text.bodySecondary` bakes in `text-body`
-                           * (16px), which outsized the row's own
-                           * `text-[13.5px]` name. Reusing `text-caption`'s
-                           * own 0.75rem/12px value here keeps the same
-                           * family swap (sans, not mono) the owner asked
-                           * for while landing clearly under the name —
-                           * this list row already isn't strict
-                           * closed-set typography (the name's own
-                           * `text-[13.5px]` predates this), so a second
-                           * explicit size follows that same precedent
-                           * rather than introducing a new one. */}
-                          <span className={cx('font-sans text-[0.75rem] leading-snug text-ink-dim text-pretty', 'mt-0.5 block')}>{c.blurb}</span>
+                           * Full `text.bodySecondary` again, not a
+                           * smaller custom size (owner, same day, two
+                           * rounds later: "Font sizes on the small panel
+                           * need to match the ancestry page") — the
+                           * previous fix shrank this to 12px because it
+                           * outsized the name's old `text-[13.5px]`, but
+                           * the name is now unsized too (matching
+                           * Ancestry's own name treatment, see above),
+                           * so both are back to the same 16px scale
+                           * Ancestry's card uses for its name/talent
+                           * pair — weight is what separates them, same
+                           * as Ancestry. `leading-normal` matches
+                           * Ancestry's own override of `text-body`'s
+                           * default 1.7 line-height. */}
+                          <span className={cx(text.bodySecondary, 'mt-0.5 block leading-normal')}>{c.blurb}</span>
                         </span>
                       </button>
                     ))}
