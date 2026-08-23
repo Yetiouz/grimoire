@@ -11,7 +11,7 @@ import { GearSlotGrid } from './GearSlotGrid'
 import { Shop } from './Shop'
 import { createCharacter } from '../../lib/characters'
 import type { Character, CharacterAbilities, CharacterSheetData, AbilityScore } from '../../lib/characters'
-import { AncestryBustIcon, AncestrySpriteArt, ClassBustIcon } from './AncestryClassArt'
+import { AncestryBustIcon, AncestrySpriteArt, ClassBustIcon, classColor } from './AncestryClassArt'
 import { getRulesModule, hasRulesModule, abilityModifier, ABILITY_ORDER } from '../../lib/rules'
 import type { Ability, RulesClass, RulesTalentTableRow } from '../../lib/rules'
 import { goldDeltaForSpend, goldToCp } from '../../lib/rules/equipment'
@@ -1020,23 +1020,29 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                           classKey === c.key && 'bg-purple/10',
                         )}
                       >
-                        <ClassBustIcon k={c.key} className="h-7 w-7 shrink-0" />
+                        {/* Bust icon dropped from this row (owner,
+                         * 2026-08-23: "the icons are so small you cant
+                         * see what they are so maybe just remove them
+                         * from there") — at 28px the bust shape mostly
+                         * read as noise, not a distinguishing mark. The
+                         * class's WoW-analog identity color (§3,
+                         * grimoire-ancestry-class-icon-colors.md) moves
+                         * to the name text instead via `classColor` —
+                         * same request, "then color code the names" —
+                         * so the row keeps a color cue without needing
+                         * icon real estate to carry it. The bust icon
+                         * itself is still the detail pane's job (now at
+                         * 80px, where the shape actually reads). */}
                         <span className="min-w-0 flex-1">
                           <span className="flex flex-wrap items-center gap-1.5">
-                            <span className="truncate text-[13.5px] font-semibold">{c.name}</span>
+                            <span className="truncate text-[13.5px] font-semibold" style={{ color: classColor(c.key) }}>{c.name}</span>
                             <span className={cx(text.label, 'shrink-0 rounded-full border px-1.5 py-0.5', SOURCE_BADGE[c.source])}>{c.source}</span>
                           </span>
-                          {/* Full blurb again, not truncated (owner,
-                           * 2026-08-23, reversing the melee/ranged-badge
-                           * swap from earlier the same day: "the ranged
-                           * melee thing is not gonna work... lets make
-                           * the initial box at least contain the whole
-                           * description") — the melee/ranged tag moved
-                           * to the detail pane's icon column instead
-                           * (see the bust-icon row below), so this row
-                           * goes back to what it told you best: the
-                           * class's actual flavor text, in full rather
-                           * than cut off with `truncate`. */}
+                          {/* Full blurb, not truncated (owner, 2026-08-23,
+                           * reversing an earlier same-day melee/ranged-
+                           * badge swap: "the ranged melee thing is not
+                           * gonna work... lets make the initial box at
+                           * least contain the whole description"). */}
                           <span className={cx(text.caption, 'mt-0.5 block text-ink-faint')}>{c.blurb}</span>
                         </span>
                         <span className={cx(text.caption, 'shrink-0 rounded-[6px] border border-line-soft px-1.5 py-0.5 text-ink-dim')}>d{c.hpDie}</span>
@@ -1061,14 +1067,6 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                         </button>
 
                         <div className="flex items-start gap-4">
-                          {/* Melee/ranged icon dropped (owner, 2026-08-23:
-                           * "remove the melee and range") — it filled the
-                           * dead space below the bust icon for exactly
-                           * one commit before getting cut. Same gap, same
-                           * fix in spirit ("then make that icon bigger"):
-                           * size the bust icon itself up to close it,
-                           * rather than stacking a second icon under it. */}
-                          <ClassBustIcon k={klass.key} className="h-20 w-20 shrink-0" />
                           <div className="min-w-0 flex-1">
                             <p className="flex flex-wrap items-center gap-2 text-[22px] font-semibold leading-tight">
                               {klass.name}
@@ -1076,6 +1074,11 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                             </p>
                             <p className={cx(text.bodySecondary, 'mt-2 leading-normal')}>{klass.blurb}</p>
                           </div>
+                          {/* Bust icon on the right (owner, 2026-08-23:
+                           * "on the big panel should we move the icon to
+                           * the right") — same 80px icon, just reordered
+                           * after the text column instead of before it. */}
+                          <ClassBustIcon k={klass.key} className="h-20 w-20 shrink-0" />
                         </div>
 
                         <ClassStatTiles c={klass} />

@@ -460,6 +460,22 @@ export function ClassBustIcon({ k, ghost, className }: ArtProps) {
   )
 }
 
+/** This class's WoW-analog accent color (§3 of the project's
+ * grimoire-ancestry-class-icon-colors.md) as a bare CSS color value, for
+ * a caller that wants the identity color WITHOUT rendering a sigil or
+ * bust — e.g. tinting the class name text in a compact list row where
+ * the bust icon reads too small to tell classes apart by shape (owner,
+ * 2026-08-23: "the icons are so small you cant see what they are so
+ * maybe just remove them from there. and then color code the names").
+ * Reuses `CLASS_SIGILS` rather than a second color table, same
+ * one-source-of-truth reasoning `ClassBustIcon` already documents above
+ * — a color change to the sigil map is a color change everywhere for
+ * free. Falls back to the same neutral `FALLBACK.color` every other
+ * `CLASS_SIGILS` consumer uses for an unmapped key. */
+export function classColor(k: string): string {
+  return (CLASS_SIGILS[k] ?? FALLBACK).color
+}
+
 // Owner follow-up, 2026-08-17 ("art for the right side is here" —
 // `Art/ancestry-characters-grim`) — the full-color full-body sprite
 // shown beside an Ancestry card's text, replacing the low-opacity ghost
