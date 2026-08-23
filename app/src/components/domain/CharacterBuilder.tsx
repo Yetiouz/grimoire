@@ -1042,8 +1042,21 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                            * reversing an earlier same-day melee/ranged-
                            * badge swap: "the ranged melee thing is not
                            * gonna work... lets make the initial box at
-                           * least contain the whole description"). */}
-                          <span className={cx(text.caption, 'mt-0.5 block text-ink-faint')}>{c.blurb}</span>
+                           * least contain the whole description").
+                           *
+                           * Body copy, not `text.caption` (owner,
+                           * same day, after seeing it live: "change the
+                           * description copy to the body copy style not
+                           * the indicator or button style") — caption's
+                           * mono face reads as UI chrome, the same
+                           * treatment the CORE badge and `d{c.hpDie}`
+                           * chip beside it deliberately use, but this is
+                           * prose, not a control label. `text.bodySecondary`
+                           * matches the detail pane's own blurb below,
+                           * which already used body copy — the badge and
+                           * hp-die chip stay on `text.caption`/`text.label`
+                           * as-is; only this line changes. */}
+                          <span className={cx(text.bodySecondary, 'mt-0.5 block')}>{c.blurb}</span>
                         </span>
                         <span className={cx(text.caption, 'shrink-0 rounded-[6px] border border-line-soft px-1.5 py-0.5 text-ink-dim')}>d{c.hpDie}</span>
                       </button>
