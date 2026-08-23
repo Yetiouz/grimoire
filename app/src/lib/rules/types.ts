@@ -89,6 +89,20 @@ export interface RulesClass {
   source: 'Core' | 'Diablerie' | 'Red Sands' | 'Midnight Sun'
   blurb: string
   weapons: string
+  /** Derived from the Weapon table's own Type column (M/R/M-R) for every
+   * item `weapons` lists — not a separate editorial call. A dedicated
+   * ranged weapon (bow, crossbow, blowgun, bolas, shuriken, sling — Type
+   * 'R' alone) marks Ranged access; any weapon usable in melee (Type
+   * 'M', or the thrown 'M/R' items like Dagger/Javelin/Spear, which are
+   * melee weapons with a bonus thrown option rather than dedicated
+   * ranged kit) marks Melee access. Both present → 'Both'. Owner
+   * request, 2026-08-23 ("can we indicate melee or ranged or both on
+   * initial list"). No class in this module lands on Ranged-only under
+   * this rule — Shadowdark's classes all keep at least one melee option
+   * even when they lean ranged (Thief: crossbow/shortbow + shortsword;
+   * Ras-Godai: blowgun/bolas/shuriken + scimitar) — a real property of
+   * the system, not a gap in this field. */
+  weaponRange: 'Melee' | 'Ranged' | 'Both'
   armor: string
   hpDie: number
   /** Every ability this class's own talent table names as a "+2 to X

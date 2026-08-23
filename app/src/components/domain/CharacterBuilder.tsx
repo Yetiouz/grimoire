@@ -119,6 +119,21 @@ function WeaponsIcon({ className }: { className?: string }) {
     </svg>
   )
 }
+/** Bow + arrow, paired with `WeaponsIcon` (crossed swords) to mark
+ * melee/ranged/both on the Class list row (owner request, 2026-08-23:
+ * "can we indicate melee or ranged or both on initial list, maybe
+ * replace the description with that"). Same style as the other icons
+ * in this file — 24x24 viewBox, stroke-only, currentColor. */
+function RangedIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M6 3c7.5 3 7.5 15 0 18" />
+      <path d="M6 3v18" />
+      <path d="M6 12h14" />
+      <path d="M16 8l4 4-4 4" />
+    </svg>
+  )
+}
 function ArmorIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -1026,7 +1041,23 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                             <span className="truncate text-[13.5px] font-semibold">{c.name}</span>
                             <span className={cx(text.label, 'shrink-0 rounded-full border px-1.5 py-0.5', SOURCE_BADGE[c.source])}>{c.source}</span>
                           </span>
-                          <span className={cx(text.caption, 'mt-0.5 block truncate text-ink-faint')}>{c.blurb}</span>
+                          {/* Melee/Ranged/Both, not the blurb (owner,
+                           * 2026-08-23: "can we indicate melee or
+                           * ranged or both on initial list like maybe
+                           * replace the description with that") — the
+                           * blurb read well but told you nothing about
+                           * how the class actually plays at the table;
+                           * this reuses the sword/bow icon pairing from
+                           * `RulesClass.weaponRange`'s own derivation
+                           * (see its doc comment in types.ts) rather
+                           * than inventing a separate playstyle label.
+                           * The full blurb still shows in the detail
+                           * pane once a class is selected. */}
+                          <span className={cx(text.caption, 'mt-0.5 flex items-center gap-1 text-ink-faint')}>
+                            {c.weaponRange !== 'Ranged' && <WeaponsIcon className="h-3 w-3 shrink-0" />}
+                            {c.weaponRange !== 'Melee' && <RangedIcon className="h-3 w-3 shrink-0" />}
+                            <span className="truncate">{c.weaponRange}</span>
+                          </span>
                         </span>
                         <span className={cx(text.caption, 'shrink-0 rounded-[6px] border border-line-soft px-1.5 py-0.5 text-ink-dim')}>d{c.hpDie}</span>
                       </button>
