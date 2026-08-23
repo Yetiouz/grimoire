@@ -1034,9 +1034,19 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                          * itself is still the detail pane's job (now at
                          * 80px, where the shape actually reads). */}
                         <span className="min-w-0 flex-1">
+                          {/* Hit-die chip moved up into the title row
+                           * (owner, 2026-08-23: "move the DMG dice roll
+                           * ie like the D8 to the title row to give
+                           * description more space") — it used to be a
+                           * separate `shrink-0` column sibling to this
+                           * whole text block, which ate a fixed slice of
+                           * row width the blurb couldn't reclaim. Now
+                           * it's a third item in the name/badge line, so
+                           * the blurb below gets the full row. */}
                           <span className="flex flex-wrap items-center gap-1.5">
                             <span className="truncate text-[13.5px] font-semibold" style={{ color: classColor(c.key) }}>{c.name}</span>
                             <span className={cx(text.label, 'shrink-0 rounded-full border px-1.5 py-0.5', SOURCE_BADGE[c.source])}>{c.source}</span>
+                            <span className={cx(text.caption, 'shrink-0 rounded-[6px] border border-line-soft px-1.5 py-0.5 text-ink-dim')}>d{c.hpDie}</span>
                           </span>
                           {/* Full blurb, not truncated (owner, 2026-08-23,
                            * reversing an earlier same-day melee/ranged-
@@ -1049,16 +1059,15 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                            * description copy to the body copy style not
                            * the indicator or button style") — caption's
                            * mono face reads as UI chrome, the same
-                           * treatment the CORE badge and `d{c.hpDie}`
-                           * chip beside it deliberately use, but this is
-                           * prose, not a control label. `text.bodySecondary`
+                           * treatment the CORE badge and hp-die chip
+                           * above deliberately use, but this is prose,
+                           * not a control label. `text.bodySecondary`
                            * matches the detail pane's own blurb below,
                            * which already used body copy — the badge and
                            * hp-die chip stay on `text.caption`/`text.label`
                            * as-is; only this line changes. */}
                           <span className={cx(text.bodySecondary, 'mt-0.5 block')}>{c.blurb}</span>
                         </span>
-                        <span className={cx(text.caption, 'shrink-0 rounded-[6px] border border-line-soft px-1.5 py-0.5 text-ink-dim')}>d{c.hpDie}</span>
                       </button>
                     ))}
                   </div>
