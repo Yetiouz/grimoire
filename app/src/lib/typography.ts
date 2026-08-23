@@ -45,55 +45,55 @@
  * guarantee via `text-transform: uppercase` in index.html, for the same
  * reason).
  *
- * Widow/orphan prevention (2026-08-17) is baked into the two levels that
- * actually wrap into multiple lines of reading content: `text-balance`
- * on h1/h2/h3 (Tailwind's utility for CSS `text-wrap: balance`) evens
- * out line lengths on short headline blocks instead of leaving a
- * lopsided last line; `text-pretty` on body/bodySecondary (`text-wrap:
- * pretty`) does the equivalent job for longer running copy — talent
- * text, item descriptions, journal entries — specifically avoiding a
- * single word stranded alone on the final line. Both are no-cost
- * progressive enhancement: Chrome/Edge and Safari (26+) apply them,
- * Firefox falls back to ordinary wrapping with no breakage. display/
- * caption/label/numeric/dataDisplay are deliberately left out — display
- * is a single all-caps word that never wraps, and the other three are
- * short metadata values, not multi-line reading content.
+ * Widow/orphan/rag smoothing — three passes to get here, worth recording
+ * so the next attempt doesn't retread them. (1) 2026-08-17: `text-
+ * balance` on h1/h2/h3 only, `text-pretty` on body/bodySecondary —
+ * balance evens out short headline blocks, pretty avoids a lone
+ * stranded last word on longer copy. (2) 2026-08-23, owner: "different
+ * spacing on right side... rags and flags" — added `hyphens-auto` to
+ * body/bodySecondary on the theory that letting long words break would
+ * even out the ragged right edge. It didn't visibly help (owner: "the
+ * rags are still there"): CSS `hyphens: auto` only fires for the one
+ * word sitting at a line break that would otherwise leave the line
+ * short, not as a general line-balancing pass, so on copy full of
+ * ordinary-length words it rarely fires at all. (3) same day — tried
+ * `text-justify` alongside the hyphenation, on the print-typesetting
+ * logic that hyphenation is what keeps justify from producing rivers.
+ * It technically worked (both edges flush) but the owner called it
+ * ugly and it was reverted — CSS's justify still stretches word-spacing
+ * unevenly line to line even with hyphenation helping, and on a column
+ * this narrow that reads worse than a rag, not better.
  *
- * Rag smoothing (2026-08-23, owner: "different spacing on right side...
- * rags and flags"; revisited same day, owner: "the rags are still
- * there") — first pass added `hyphens-auto` alone, on the theory that
- * letting long words break would even out line lengths. It didn't: CSS
- * `hyphens: auto` only fires for the single word sitting at a line
- * break that would otherwise leave the line short, not as a general
- * line-balancing pass, so on copy full of ordinary-length words it
- * rarely fires at all and the rag looked untouched. The actual fix is
- * `text-justify` (CSS `text-align: justify`) paired with the
- * `hyphens-auto` already in place — this is the standard print-
- * typesetting combo, not justify alone. Justify without hyphenation was
- * tried and rejected earlier in this same investigation: it just
- * stretches word-spacing with no real line-breaking optimization,
- * producing visible gaps ("rivers") on a column this narrow. Adding
- * hyphenation is specifically what fixes that — it gives the justify
- * algorithm more break points to work with per line, so it can even out
- * both edges with real line breaks instead of leaning entirely on
- * word-spacing. Both edges are flush now, so "rag" stops being a
- * per-line concern; `text-pretty` still guards the last line so a
- * paragraph never ends on a lone stranded word (the widow half of the
- * original ask). Needs `<html lang="en">` for the browser to pick the
- * right hyphenation dictionary — already set in index.html. Same
- * no-cost-enhancement posture as the rest of this file: every browser
- * in use supports `text-align: justify` and `hyphens: auto`, and this
- * is reading copy (blurbs, talent text, item descriptions) rather than
- * UI chrome, so the classic print combo is a fit for the content it's
- * applied to.
+ * What's actually in place now: `text-balance` on body/bodySecondary
+ * too, not just h1/h2/h3. Unlike `text-pretty` (which only touches the
+ * last line) or `hyphens-auto`/`text-justify` (which chase individual
+ * line edges), `text-wrap: balance` re-flows the whole block to
+ * minimize variance across every line at once — it's the one CSS
+ * technique that actually targets what "ragged" means here, without
+ * introducing justify's word-spacing artifacts, because the text stays
+ * left-aligned throughout. Left in place: `hyphens-auto`, since it
+ * still helps balance find better break points on the rare word that
+ * needs it, and it's zero-cost when it doesn't fire. Traded away:
+ * `text-pretty`'s specific last-line guarantee — balance's whole-block
+ * optimization makes a stranded final word rare in practice for the
+ * short blocks (a class blurb, a talent line) this level is used on,
+ * and Chromium/Safari both cap `balance` around 4-6 lines before
+ * falling back to normal wrapping, which is exactly the length range
+ * this app's body copy lives in. A future block of running text that
+ * regularly exceeds that (a long journal entry) would want `pretty`
+ * back instead — not a blanket call for every future use of `body`.
+ * Needs `<html lang="en">` for hyphenation's dictionary — already set
+ * in index.html. display/caption/label/numeric/dataDisplay stay out of
+ * all of this — display never wraps, the other three are short
+ * metadata values, not multi-line reading content.
  */
 export const text = {
   display: 'font-brand uppercase text-display sm:text-display-lg text-ink',
   h1: 'font-heading uppercase font-normal tracking-h1 text-h1 text-ink text-balance',
   h2: 'font-heading uppercase font-normal tracking-h2 text-h2 text-ink text-balance',
   h3: 'font-heading uppercase font-normal tracking-h3 text-h3 text-ink text-balance',
-  body: 'font-sans text-body text-ink text-pretty text-justify hyphens-auto',
-  bodySecondary: 'font-sans text-body text-ink-dim text-pretty text-justify hyphens-auto',
+  body: 'font-sans text-body text-ink text-balance hyphens-auto',
+  bodySecondary: 'font-sans text-body text-ink-dim text-balance hyphens-auto',
   caption: 'font-mono text-caption',
   label: 'font-mono text-label uppercase tracking-eyebrow text-ink-faint',
   numeric: 'font-mono tabular-nums text-numeric font-semibold text-ink',
