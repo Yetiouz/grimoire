@@ -60,34 +60,40 @@
  * short metadata values, not multi-line reading content.
  *
  * Rag smoothing (2026-08-23, owner: "different spacing on right side...
- * rags and flags") — `text-pretty` only fixes the LAST line of a
- * paragraph (the widow); it doesn't touch how ragged every other line's
- * right edge looks, which is its own, separate problem in the app's
- * narrow reading-content columns (a class-list blurb, an ancestry
- * talent line) — a long word can't break mid-word, so it either wraps
- * whole (leaving a much shorter line above it) or overflows. `hyphens-
- * auto` on body/bodySecondary (CSS `hyphens: auto`) fixes that: the
- * browser can now break a long word across the line boundary with a
- * hyphen when it helps the line lengths even out, which is exactly what
- * print typesetting has always paired with a ragged (non-justified)
- * right edge — full justification (`text-align: justify`) was
- * considered and rejected here, since CSS's justify algorithm just
- * stretches word-spacing with no real line-breaking optimization, and
- * on a column this narrow that reliably reads worse than a rag,
- * producing visible gaps ("rivers") rather than fixing them. Needs
- * `<html lang="en">` for the browser to pick the right hyphenation
- * dictionary — already set in index.html. Same no-cost-enhancement
- * posture as `text-pretty`/`text-balance`: Chrome, Firefox, and Safari
- * all support `hyphens: auto`, and a browser that doesn't just wraps
- * words whole exactly as it did before this line existed.
+ * rags and flags"; revisited same day, owner: "the rags are still
+ * there") — first pass added `hyphens-auto` alone, on the theory that
+ * letting long words break would even out line lengths. It didn't: CSS
+ * `hyphens: auto` only fires for the single word sitting at a line
+ * break that would otherwise leave the line short, not as a general
+ * line-balancing pass, so on copy full of ordinary-length words it
+ * rarely fires at all and the rag looked untouched. The actual fix is
+ * `text-justify` (CSS `text-align: justify`) paired with the
+ * `hyphens-auto` already in place — this is the standard print-
+ * typesetting combo, not justify alone. Justify without hyphenation was
+ * tried and rejected earlier in this same investigation: it just
+ * stretches word-spacing with no real line-breaking optimization,
+ * producing visible gaps ("rivers") on a column this narrow. Adding
+ * hyphenation is specifically what fixes that — it gives the justify
+ * algorithm more break points to work with per line, so it can even out
+ * both edges with real line breaks instead of leaning entirely on
+ * word-spacing. Both edges are flush now, so "rag" stops being a
+ * per-line concern; `text-pretty` still guards the last line so a
+ * paragraph never ends on a lone stranded word (the widow half of the
+ * original ask). Needs `<html lang="en">` for the browser to pick the
+ * right hyphenation dictionary — already set in index.html. Same
+ * no-cost-enhancement posture as the rest of this file: every browser
+ * in use supports `text-align: justify` and `hyphens: auto`, and this
+ * is reading copy (blurbs, talent text, item descriptions) rather than
+ * UI chrome, so the classic print combo is a fit for the content it's
+ * applied to.
  */
 export const text = {
   display: 'font-brand uppercase text-display sm:text-display-lg text-ink',
   h1: 'font-heading uppercase font-normal tracking-h1 text-h1 text-ink text-balance',
   h2: 'font-heading uppercase font-normal tracking-h2 text-h2 text-ink text-balance',
   h3: 'font-heading uppercase font-normal tracking-h3 text-h3 text-ink text-balance',
-  body: 'font-sans text-body text-ink text-pretty hyphens-auto',
-  bodySecondary: 'font-sans text-body text-ink-dim text-pretty hyphens-auto',
+  body: 'font-sans text-body text-ink text-pretty text-justify hyphens-auto',
+  bodySecondary: 'font-sans text-body text-ink-dim text-pretty text-justify hyphens-auto',
   caption: 'font-mono text-caption',
   label: 'font-mono text-label uppercase tracking-eyebrow text-ink-faint',
   numeric: 'font-mono tabular-nums text-numeric font-semibold text-ink',
