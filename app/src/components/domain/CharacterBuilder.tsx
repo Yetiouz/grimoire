@@ -119,21 +119,6 @@ function WeaponsIcon({ className }: { className?: string }) {
     </svg>
   )
 }
-/** Bow + arrow, paired with `WeaponsIcon` (crossed swords) to mark
- * melee/ranged/both on the Class list row (owner request, 2026-08-23:
- * "can we indicate melee or ranged or both on initial list, maybe
- * replace the description with that"). Same style as the other icons
- * in this file — 24x24 viewBox, stroke-only, currentColor. */
-function RangedIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M6 3c7.5 3 7.5 15 0 18" />
-      <path d="M6 3v18" />
-      <path d="M6 12h14" />
-      <path d="M16 8l4 4-4 4" />
-    </svg>
-  )
-}
 function ArmorIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -1076,29 +1061,14 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                         </button>
 
                         <div className="flex items-start gap-4">
-                          {/* Bust icon + weapon-range icon, stacked in
-                           * one column (owner, 2026-08-23, pointing at a
-                           * screenshot: "the space is bugging me... its
-                           * the only section that is moved in like
-                           * that") — the 48px bust icon sits shorter
-                           * than the two-line blurb beside it, so this
-                           * column always had dead space below the icon
-                           * before the stat tiles started. That gap is
-                           * also where the melee/ranged/both indicator
-                           * landed after backing it out of the list row
-                           * ("the ranged melee thing is not gonna
-                           * work... put a bigger icon in the initial
-                           * description box") — same sword/bow icon
-                           * pairing as before, just bigger and now
-                           * filling real empty space instead of
-                           * crowding the row it used to replace. */}
-                          <div className="flex shrink-0 flex-col items-center gap-2">
-                            <ClassBustIcon k={klass.key} className="h-12 w-12" />
-                            <span className="flex items-center gap-1 text-ink-faint" title={`Weapons: ${klass.weaponRange}`}>
-                              {klass.weaponRange !== 'Ranged' && <WeaponsIcon className="h-5 w-5" />}
-                              {klass.weaponRange !== 'Melee' && <RangedIcon className="h-5 w-5" />}
-                            </span>
-                          </div>
+                          {/* Melee/ranged icon dropped (owner, 2026-08-23:
+                           * "remove the melee and range") — it filled the
+                           * dead space below the bust icon for exactly
+                           * one commit before getting cut. Same gap, same
+                           * fix in spirit ("then make that icon bigger"):
+                           * size the bust icon itself up to close it,
+                           * rather than stacking a second icon under it. */}
+                          <ClassBustIcon k={klass.key} className="h-20 w-20 shrink-0" />
                           <div className="min-w-0 flex-1">
                             <p className="flex flex-wrap items-center gap-2 text-[22px] font-semibold leading-tight">
                               {klass.name}
