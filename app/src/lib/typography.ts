@@ -58,14 +58,36 @@
  * caption/label/numeric/dataDisplay are deliberately left out — display
  * is a single all-caps word that never wraps, and the other three are
  * short metadata values, not multi-line reading content.
+ *
+ * Rag smoothing (2026-08-23, owner: "different spacing on right side...
+ * rags and flags") — `text-pretty` only fixes the LAST line of a
+ * paragraph (the widow); it doesn't touch how ragged every other line's
+ * right edge looks, which is its own, separate problem in the app's
+ * narrow reading-content columns (a class-list blurb, an ancestry
+ * talent line) — a long word can't break mid-word, so it either wraps
+ * whole (leaving a much shorter line above it) or overflows. `hyphens-
+ * auto` on body/bodySecondary (CSS `hyphens: auto`) fixes that: the
+ * browser can now break a long word across the line boundary with a
+ * hyphen when it helps the line lengths even out, which is exactly what
+ * print typesetting has always paired with a ragged (non-justified)
+ * right edge — full justification (`text-align: justify`) was
+ * considered and rejected here, since CSS's justify algorithm just
+ * stretches word-spacing with no real line-breaking optimization, and
+ * on a column this narrow that reliably reads worse than a rag,
+ * producing visible gaps ("rivers") rather than fixing them. Needs
+ * `<html lang="en">` for the browser to pick the right hyphenation
+ * dictionary — already set in index.html. Same no-cost-enhancement
+ * posture as `text-pretty`/`text-balance`: Chrome, Firefox, and Safari
+ * all support `hyphens: auto`, and a browser that doesn't just wraps
+ * words whole exactly as it did before this line existed.
  */
 export const text = {
   display: 'font-brand uppercase text-display sm:text-display-lg text-ink',
   h1: 'font-heading uppercase font-normal tracking-h1 text-h1 text-ink text-balance',
   h2: 'font-heading uppercase font-normal tracking-h2 text-h2 text-ink text-balance',
   h3: 'font-heading uppercase font-normal tracking-h3 text-h3 text-ink text-balance',
-  body: 'font-sans text-body text-ink text-pretty',
-  bodySecondary: 'font-sans text-body text-ink-dim text-pretty',
+  body: 'font-sans text-body text-ink text-pretty hyphens-auto',
+  bodySecondary: 'font-sans text-body text-ink-dim text-pretty hyphens-auto',
   caption: 'font-mono text-caption',
   label: 'font-mono text-label uppercase tracking-eyebrow text-ink-faint',
   numeric: 'font-mono tabular-nums text-numeric font-semibold text-ink',
