@@ -1061,12 +1061,26 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                            * mono face reads as UI chrome, the same
                            * treatment the CORE badge and hp-die chip
                            * above deliberately use, but this is prose,
-                           * not a control label. `text.bodySecondary`
-                           * matches the detail pane's own blurb below,
-                           * which already used body copy — the badge and
-                           * hp-die chip stay on `text.caption`/`text.label`
-                           * as-is; only this line changes. */}
-                          <span className={cx(text.bodySecondary, 'mt-0.5 block')}>{c.blurb}</span>
+                           * not a control label. The badge and hp-die
+                           * chip stay on `text.caption`/`text.label`
+                           * as-is; only this line's family changed.
+                           *
+                           * Sized down off the full `text.bodySecondary`
+                           * token, though (owner, same day: "the font
+                           * size is bigger than the title of the class
+                           * size so bring down the body copy") —
+                           * `text.bodySecondary` bakes in `text-body`
+                           * (16px), which outsized the row's own
+                           * `text-[13.5px]` name. Reusing `text-caption`'s
+                           * own 0.75rem/12px value here keeps the same
+                           * family swap (sans, not mono) the owner asked
+                           * for while landing clearly under the name —
+                           * this list row already isn't strict
+                           * closed-set typography (the name's own
+                           * `text-[13.5px]` predates this), so a second
+                           * explicit size follows that same precedent
+                           * rather than introducing a new one. */}
+                          <span className={cx('font-sans text-[0.75rem] leading-snug text-ink-dim text-pretty', 'mt-0.5 block')}>{c.blurb}</span>
                         </span>
                       </button>
                     ))}
