@@ -1213,13 +1213,35 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                               // shouldn't dim the name) and description
                               // one step dimmer at `text-ink-faint`.
                               //
-                              // The reference is a static table with no
-                              // selection affordance, but this list stays
-                              // a functional tap-to-choose picker — so a
-                              // small leading dot (outline → filled purple)
-                              // carries "selected" instead of a border/
-                              // background box, keeping the table's clean
-                              // look while the picker still reads clearly.
+                              // Selected state (2026-08-23, owner: "when
+                              // you select a spell it needs more of a
+                              // highlight... the whole spell panel should
+                              // be that selected color. in a previous
+                              // version I thought it was purple") — the
+                              // whole row now tints `bg-purple/10` on
+                              // selection (same purple the class-list
+                              // pane's own `bg-purple/10` selected-row
+                              // treatment already uses, and the same
+                              // color the dot itself was already filling
+                              // — matching the owner's memory), not just
+                              // the small dot. `px-2` was added so the
+                              // tint doesn't paint flush against the text
+                              // on every row.
+                              //
+                              // The indicator dot moved from its own
+                              // narrow grid column into a small flex row
+                              // WITH the name (same cell), rather than a
+                              // separate column sized against the row's
+                              // full height (owner, same message: "the
+                              // indicator light should align with spell
+                              // title") — as its own column, `self-center`
+                              // centered the dot against the tallest thing
+                              // in the row, which drifted low whenever a
+                              // longer description wrapped to 2-3 lines.
+                              // Nested with the name in one flex item, the
+                              // dot centers against the name's own line
+                              // only, so it stays level with the title no
+                              // matter how long the description gets.
                               <div className="flex flex-col">
                                 {klass.spellcasting.spellList.map((spell) => {
                                   const selected = knownSpells.includes(spell.name)
@@ -1230,16 +1252,21 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                                       type="button"
                                       disabled={!selected && atLimit}
                                       onClick={() => toggleSpell(spell.name)}
-                                      className="grid grid-cols-[0.9rem_6.5rem_1fr] items-baseline gap-x-4 border-b border-line-soft py-4 text-left last:border-b-0 disabled:pointer-events-none disabled:opacity-40 sm:grid-cols-[0.9rem_8rem_1fr] sm:gap-x-6"
+                                      className={cx(
+                                        'grid grid-cols-[7.5rem_1fr] items-baseline gap-x-4 border-b border-line-soft px-2 py-4 text-left last:border-b-0 disabled:pointer-events-none disabled:opacity-40 sm:grid-cols-[9rem_1fr] sm:gap-x-6',
+                                        selected && 'bg-purple/10',
+                                      )}
                                     >
-                                      <span
-                                        aria-hidden="true"
-                                        className={cx(
-                                          'h-2.5 w-2.5 shrink-0 self-center rounded-full border',
-                                          selected ? 'border-purple bg-purple' : 'border-line-soft bg-transparent',
-                                        )}
-                                      />
-                                      <span className={cx(text.body, 'font-semibold')}>{spell.name}</span>
+                                      <span className="flex items-center gap-2">
+                                        <span
+                                          aria-hidden="true"
+                                          className={cx(
+                                            'h-2.5 w-2.5 shrink-0 rounded-full border',
+                                            selected ? 'border-purple bg-purple' : 'border-line-soft bg-transparent',
+                                          )}
+                                        />
+                                        <span className={cx(text.body, 'font-semibold')}>{spell.name}</span>
+                                      </span>
                                       <span className="font-sans text-body leading-relaxed text-ink-faint text-pretty">{spell.description}</span>
                                     </button>
                                   )
