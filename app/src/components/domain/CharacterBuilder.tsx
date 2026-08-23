@@ -1041,23 +1041,18 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                             <span className="truncate text-[13.5px] font-semibold">{c.name}</span>
                             <span className={cx(text.label, 'shrink-0 rounded-full border px-1.5 py-0.5', SOURCE_BADGE[c.source])}>{c.source}</span>
                           </span>
-                          {/* Melee/Ranged/Both, not the blurb (owner,
-                           * 2026-08-23: "can we indicate melee or
-                           * ranged or both on initial list like maybe
-                           * replace the description with that") — the
-                           * blurb read well but told you nothing about
-                           * how the class actually plays at the table;
-                           * this reuses the sword/bow icon pairing from
-                           * `RulesClass.weaponRange`'s own derivation
-                           * (see its doc comment in types.ts) rather
-                           * than inventing a separate playstyle label.
-                           * The full blurb still shows in the detail
-                           * pane once a class is selected. */}
-                          <span className={cx(text.caption, 'mt-0.5 flex items-center gap-1 text-ink-faint')}>
-                            {c.weaponRange !== 'Ranged' && <WeaponsIcon className="h-3 w-3 shrink-0" />}
-                            {c.weaponRange !== 'Melee' && <RangedIcon className="h-3 w-3 shrink-0" />}
-                            <span className="truncate">{c.weaponRange}</span>
-                          </span>
+                          {/* Full blurb again, not truncated (owner,
+                           * 2026-08-23, reversing the melee/ranged-badge
+                           * swap from earlier the same day: "the ranged
+                           * melee thing is not gonna work... lets make
+                           * the initial box at least contain the whole
+                           * description") — the melee/ranged tag moved
+                           * to the detail pane's icon column instead
+                           * (see the bust-icon row below), so this row
+                           * goes back to what it told you best: the
+                           * class's actual flavor text, in full rather
+                           * than cut off with `truncate`. */}
+                          <span className={cx(text.caption, 'mt-0.5 block text-ink-faint')}>{c.blurb}</span>
                         </span>
                         <span className={cx(text.caption, 'shrink-0 rounded-[6px] border border-line-soft px-1.5 py-0.5 text-ink-dim')}>d{c.hpDie}</span>
                       </button>
@@ -1081,7 +1076,29 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                         </button>
 
                         <div className="flex items-start gap-4">
-                          <ClassBustIcon k={klass.key} className="h-12 w-12 shrink-0" />
+                          {/* Bust icon + weapon-range icon, stacked in
+                           * one column (owner, 2026-08-23, pointing at a
+                           * screenshot: "the space is bugging me... its
+                           * the only section that is moved in like
+                           * that") — the 48px bust icon sits shorter
+                           * than the two-line blurb beside it, so this
+                           * column always had dead space below the icon
+                           * before the stat tiles started. That gap is
+                           * also where the melee/ranged/both indicator
+                           * landed after backing it out of the list row
+                           * ("the ranged melee thing is not gonna
+                           * work... put a bigger icon in the initial
+                           * description box") — same sword/bow icon
+                           * pairing as before, just bigger and now
+                           * filling real empty space instead of
+                           * crowding the row it used to replace. */}
+                          <div className="flex shrink-0 flex-col items-center gap-2">
+                            <ClassBustIcon k={klass.key} className="h-12 w-12" />
+                            <span className="flex items-center gap-1 text-ink-faint" title={`Weapons: ${klass.weaponRange}`}>
+                              {klass.weaponRange !== 'Ranged' && <WeaponsIcon className="h-5 w-5" />}
+                              {klass.weaponRange !== 'Melee' && <RangedIcon className="h-5 w-5" />}
+                            </span>
+                          </div>
                           <div className="min-w-0 flex-1">
                             <p className="flex flex-wrap items-center gap-2 text-[22px] font-semibold leading-tight">
                               {klass.name}
