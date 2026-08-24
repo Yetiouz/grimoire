@@ -470,6 +470,7 @@ export const SHADOWDARK: RulesModule = {
     {
       key: 'core',
       label: 'Background (core)',
+      source: 'Core',
       entries: [
         { roll: 1, name: 'Urchin', detail: 'You grew up in the merciless streets of a large city' },
         { roll: 2, name: 'Wanted', detail: "There's a price on your head, but you have allies" },
@@ -496,6 +497,7 @@ export const SHADOWDARK: RulesModule = {
     {
       key: 'diabolical',
       label: 'Diabolical Background (Diablerie)',
+      source: 'Diablerie',
       entries: [
         { roll: 1, name: 'Hermit', detail: 'The wilds (and its creatures) are your family' },
         { roll: 2, name: 'Outcast', detail: 'You were thrown out for real or supposed crimes' },
@@ -522,6 +524,7 @@ export const SHADOWDARK: RulesModule = {
     {
       key: 'nord',
       label: 'Nord Background (Midnight Sun)',
+      source: 'Midnight Sun',
       entries: [
         { roll: 1, name: 'Freed', detail: 'You were a thrall, but escaped or won your freedom' },
         { roll: 2, name: 'Displaced', detail: 'You fled after a rival jarl attacked your village' },

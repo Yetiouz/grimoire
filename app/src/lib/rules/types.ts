@@ -150,6 +150,15 @@ export interface RulesBackgroundEntry {
 export interface RulesBackgroundTable {
   key: string
   label: string
+  /** Same closed set `RulesClass['source']` uses — lets the background
+   * table picker reuse the app's one short-source-label convention
+   * (CORE / DIABLERIE / MIDNIGHT SUN, see `SOURCE_BADGE` in
+   * CharacterBuilder) instead of the full `label` string, which repeats
+   * "Background" on every tab and is redundant once you're already on
+   * the Background step (owner, 2026-08-24: "I also don't like the
+   * tabs here"). `label` stays as the fuller description for anything
+   * that wants it (e.g. an aria-label). */
+  source: RulesClass['source']
   /** Which classes/campaigns this table is themed for — shown as the
    * default table for those, but every table is selectable regardless
    * (a Diabolical background reads fine on a core Fighter). */

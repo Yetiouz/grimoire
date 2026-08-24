@@ -1347,6 +1347,26 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         //    background-entry name too, so it reads like every other
         //    card title in the app (plain `font-semibold`, no
         //    `text.caption`) rather than a small-caps mono label.
+        //
+        // 4. (2026-08-24, owner: "I also don't like the tabs here") —
+        //    the source-table pills were rendering the full raw
+        //    `label` string ("Background (core)", "Diabolical
+        //    Background (Diablerie)", "Nord Background (Midnight
+        //    Sun)") on every tab, which repeats the word "Background"
+        //    three times on a step already titled Background, and
+        //    inherited an inconsistent raw-data casing (lowercase
+        //    "core" next to properly-cased "Diablerie"). Added a
+        //    `source` field to `RulesBackgroundTable` (same closed set
+        //    `RulesClass['source']` already uses) so these tabs can
+        //    show the same short CORE / DIABLERIE / MIDNIGHT SUN label
+        //    `SOURCE_BADGE` already uses for class source elsewhere —
+        //    one convention instead of two. Full `label` isn't lost,
+        //    just moved to `aria-label`/`title` on the button. Owner
+        //    separately confirmed the roll-one-table-at-a-time
+        //    behavior is intentional, not a bug, and should stay: each
+        //    table is a full d20 entry list, so rolling across all of
+        //    them at once would break the d20 mechanic the roll button
+        //    represents — nothing to fix there.
         <div className="flex flex-col gap-5">
           <div>
             <div className="mb-2 flex flex-wrap gap-2">
@@ -1355,13 +1375,15 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                   key={t.key}
                   type="button"
                   onClick={() => setBackgroundTableKey(t.key)}
+                  aria-label={t.label}
+                  title={t.label}
                   className={cx(
                     text.label,
                     'rounded-full border px-3 py-1',
                     backgroundTableKey === t.key ? 'border-purple bg-purple/15 text-ink' : 'border-line-soft text-ink-faint',
                   )}
                 >
-                  {t.label}
+                  {t.source}
                 </button>
               ))}
             </div>
