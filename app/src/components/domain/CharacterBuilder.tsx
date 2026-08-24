@@ -1334,6 +1334,19 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         //    now in its own `max-h-64 overflow-y-auto` panel so a
         //    20-entry table can't push Alignment/Deity off-screen the
         //    way it could when it rendered at full natural height.
+        //
+        // 3. (2026-08-24, owner: "This all needs the correct formatting")
+        //    Every description on this step — background entries,
+        //    Alignment, Deity — was still on `text.caption` (mono,
+        //    indicator/button style), the same styling the Class and
+        //    Ancestry steps moved off of earlier ("change the
+        //    description copy to the body copy style not the indicator
+        //    or button style"). This step just never got the same pass.
+        //    Switched every description to `text.bodySecondary` (sans
+        //    body copy) and dropped the leftover mono styling from the
+        //    background-entry name too, so it reads like every other
+        //    card title in the app (plain `font-semibold`, no
+        //    `text.caption`) rather than a small-caps mono label.
         <div className="flex flex-col gap-5">
           <div>
             <div className="mb-2 flex flex-wrap gap-2">
@@ -1371,8 +1384,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                       isSelected ? 'border-purple bg-purple/10' : 'border-line-soft bg-panel2 hover:border-line-hover',
                     )}
                   >
-                    <span className={cx(text.caption, 'font-semibold')}>{entry.name}.</span>{' '}
-                    <span className={cx(text.caption, 'text-ink-faint')}>{entry.detail}</span>
+                    <span className="font-semibold">{entry.name}.</span> <span className={text.bodySecondary}>{entry.detail}</span>
                   </button>
                 )
               })}
@@ -1385,7 +1397,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
               {module.alignments.map((a) => (
                 <button key={a.key} type="button" onClick={() => setAlignmentKey(a.key)} className={cx(cardBase, alignmentKey === a.key && cardSelected)}>
                   <p className="font-semibold">{a.key}</p>
-                  <p className={cx(text.caption, 'mt-1 text-ink-faint')}>{a.blurb}</p>
+                  <p className={cx(text.bodySecondary, 'mt-1')}>{a.blurb}</p>
                 </button>
               ))}
             </div>
@@ -1403,7 +1415,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                     .map((d) => (
                       <button key={d.name} type="button" onClick={() => setDeityName(d.name)} className={cx(cardBase, deityName === d.name && cardSelected)}>
                         <p className="font-semibold">{d.name}</p>
-                        <p className={cx(text.caption, 'mt-1 text-ink-faint')}>{d.blurb}</p>
+                        <p className={cx(text.bodySecondary, 'mt-1')}>{d.blurb}</p>
                       </button>
                     ))}
                 </div>
