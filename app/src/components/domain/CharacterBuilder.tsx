@@ -1367,10 +1367,26 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         //    table is a full d20 entry list, so rolling across all of
         //    them at once would break the d20 mechanic the roll button
         //    represents — nothing to fix there.
+        //
+        // 5. (2026-08-24, owner: "I don't like how 3 things are
+        //    stacked as tabs") — even shortened to CORE/DIABLERIE/
+        //    MIDNIGHT SUN, three independent `rounded-full border`
+        //    pills in a `flex-wrap` row are still three separate
+        //    floating buttons — on a narrow phone width each one can
+        //    still end up alone on its own line, reading as a stack of
+        //    buttons rather than one control. Replaced the pill row
+        //    with a single segmented control: one bordered, rounded
+        //    container (`flex`, no wrap) divided into three equal
+        //    (`flex-1`) segments by an inner `border-l`, with the
+        //    active segment's background/text highlighted instead of
+        //    a separate floating pill gaining its own border. `flex-1`
+        //    means the three segments always share one row and shrink
+        //    together rather than wrapping — there's no width this can
+        //    revert to looking stacked at.
         <div className="flex flex-col gap-5">
           <div>
-            <div className="mb-2 flex flex-wrap gap-2">
-              {module.backgroundTables.map((t) => (
+            <div className="mb-2 flex overflow-hidden rounded-[10px] border border-line-soft">
+              {module.backgroundTables.map((t, i) => (
                 <button
                   key={t.key}
                   type="button"
@@ -1379,8 +1395,9 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                   title={t.label}
                   className={cx(
                     text.label,
-                    'rounded-full border px-3 py-1',
-                    backgroundTableKey === t.key ? 'border-purple bg-purple/15 text-ink' : 'border-line-soft text-ink-faint',
+                    'flex-1 px-2 py-2 text-center',
+                    i !== 0 && 'border-l border-line-soft',
+                    backgroundTableKey === t.key ? 'bg-purple/15 text-ink' : 'text-ink-faint hover:bg-panel2',
                   )}
                 >
                   {t.source}
