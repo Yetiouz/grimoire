@@ -502,6 +502,15 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
     scrollRef.current?.scrollTo({ top: 0 })
   }, [step])
 
+  // Target for the "Choose your spells" jump link below (owner,
+  // 2026-08-25: "if the spell class is chosen we need to make sure
+  // there is a next so then you can see your spells") — a spellcasting
+  // class's spell picker sits at the bottom of a long detail pane, and
+  // the ring/counter added last time only helps once you've already
+  // scrolled that far. This gives selecting a caster an explicit way
+  // down instead of relying on the player to find it by scrolling.
+  const spellSectionRef = useRef<HTMLDivElement>(null)
+
   // See `classListView`'s own comment above — only relevant on mobile,
   // where the Class step shows the list OR the detail pane, never both.
   // Keyed on `classKey` too (not just `step`) so picking a class also
@@ -1209,6 +1218,32 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                           </div>
                         )}
 
+                        {/* Jump link to the spell picker, shown as soon as
+                          * a spellcasting class is selected — not just
+                          * while it's incomplete — so there's always a
+                          * direct way down instead of scrolling past
+                          * Features and Talents to find it (owner,
+                          * 2026-08-25: "we need to make sure there is a
+                          * next so then you can see your spells"). Smooth-
+                          * scrolls `spellSectionRef` into view; works the
+                          * same whether the page itself is scrolling
+                          * (mobile) or the detail pane's own `overflow-y-
+                          * auto` is (desktop, md:+) — `scrollIntoView`
+                          * finds whichever ancestor actually scrolls. */}
+                        {klass.spellcasting && (
+                          <button
+                            type="button"
+                            onClick={() => spellSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                            className={cx(
+                              text.label,
+                              'mt-3 flex items-center gap-1.5',
+                              spellsReady ? 'text-ink-dim hover:text-ink' : 'text-orange',
+                            )}
+                          >
+                            {spellsReady ? 'Review your spells' : 'Choose your spells'} ↓
+                          </button>
+                        )}
+
                         <div className="mt-5 border-t border-line-soft pt-4">
                           <p className={cx(text.label, 'mb-2 text-purple')}>Class features</p>
                           <div className="flex flex-col gap-1">
@@ -1250,7 +1285,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                           // Gear's roll buttons, and Review's HP roll,
                           // now also marking this whole section until
                           // `spellsReady`. Validated in a mockup first.
-                          <div className={cx('mt-4 border-t border-line-soft pt-4', !spellsReady && cx('rounded-[12px] p-3', ROLL_NEEDED_RING))}>
+                          <div ref={spellSectionRef} className={cx('mt-4 border-t border-line-soft pt-4', !spellsReady && cx('rounded-[12px] p-3', ROLL_NEEDED_RING))}>
                             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                               <p className={cx(text.label, 'text-ink-faint')}>
                                 Known spells (choose {klass.spellcasting.knownAtLevel1}, using your {klass.spellcasting.ability.toUpperCase()})
