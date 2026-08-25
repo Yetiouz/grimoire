@@ -525,11 +525,19 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
     : goldRolled || gold.gp.trim() !== '' || equipment.length > 0
   const hpReady = isZeroLevel || hpRoll !== null
 
+  // A class with spellcasting isn't actually finished until its known
+  // spells are picked too (owner, 2026-08-25, describing the whole
+  // wizard's flow problems: "sometimes the roll is hidden and when you
+  // select roll you can just move on without picking spells, but the
+  // spell are at the bottom and get lost") — validated against a mockup
+  // before landing here. A non-caster class has no such requirement.
+  const spellsReady = !klass?.spellcasting || knownSpells.length >= klass.spellcasting.knownAtLevel1
+
   const canContinue: Record<StepKey, boolean> = {
     level: name.trim() !== '',
     stats: statsFilled,
     ancestry: ancestryKey !== null,
-    class: klass !== null,
+    class: klass !== null && spellsReady,
     background: backgroundText.trim() !== '' && alignmentKey !== null && (!klass?.requiresDeity || deityName !== null),
     gear: goldOrGearEngaged,
     review: true,
@@ -1061,6 +1069,43 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                              * moving the name off its own left edge. */}
                             <span className={cx(text.caption, 'ml-auto shrink-0 rounded-[6px] border border-line-soft px-1.5 py-0.5 text-ink-dim')}>d{c.hpDie}</span>
                           </span>
+                          {/* Ability pills brought up into the compact row
+                           * itself, not just the detail pane (owner,
+                           * 2026-08-25, on this exact list: "we need to
+                           * add the main stat for each class. The title
+                           * bar. Cause I don't know until I go in then I
+                           * have to back out") — same purple=casting /
+                           * green=rolled-14+ pill logic as the detail
+                           * pane's `primaryAbilities` block below
+                           * (`strongAbilities`, same 14+ threshold),
+                           * just rendered a second time here so the
+                           * answer doesn't require opening the class. */}
+                          {c.primaryAbilities.length > 0 && (
+                            <span className="mt-1 flex flex-wrap gap-1">
+                              {c.primaryAbilities.map((ability) => {
+                                const isCasting = c.spellcasting?.ability === ability
+                                const isStrong = strongAbilities.has(ability)
+                                return (
+                                  <span
+                                    key={ability}
+                                    className={cx(
+                                      text.label,
+                                      'rounded-full border px-1.5 py-0.5',
+                                      isCasting && isStrong
+                                        ? 'border-purple bg-purple/15 text-purple'
+                                        : isCasting
+                                          ? 'border-purple/40 text-purple'
+                                          : isStrong
+                                            ? 'border-green/40 bg-green/10 text-green'
+                                            : 'border-line-soft text-ink-dim',
+                                    )}
+                                  >
+                                    {ability.toUpperCase()}
+                                  </span>
+                                )
+                              })}
+                            </span>
+                          )}
                           {/* Full blurb, not truncated (owner, 2026-08-23,
                            * reversing an earlier same-day melee/ranged-
                            * badge swap: "the ranged melee thing is not
@@ -1196,10 +1241,30 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                         </div>
 
                         {klass.spellcasting && (
-                          <div className="mt-4 border-t border-line-soft pt-4">
-                            <p className={cx(text.label, 'mb-2 text-ink-faint')}>
-                              Known spells (choose {klass.spellcasting.knownAtLevel1}, using your {klass.spellcasting.ability.toUpperCase()})
-                            </p>
+                          // Ring + counter added (owner, 2026-08-25: "the
+                          // roll is hidden and when you select roll you
+                          // can just move on without picking spells, but
+                          // the spells are at the bottom and get lost") —
+                          // same `ROLL_NEEDED_RING` "needs attention"
+                          // convention already used on Stats' Roll All,
+                          // Gear's roll buttons, and Review's HP roll,
+                          // now also marking this whole section until
+                          // `spellsReady`. Validated in a mockup first.
+                          <div className={cx('mt-4 border-t border-line-soft pt-4', !spellsReady && cx('rounded-[12px] p-3', ROLL_NEEDED_RING))}>
+                            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                              <p className={cx(text.label, 'text-ink-faint')}>
+                                Known spells (choose {klass.spellcasting.knownAtLevel1}, using your {klass.spellcasting.ability.toUpperCase()})
+                              </p>
+                              <span
+                                className={cx(
+                                  text.label,
+                                  'shrink-0 rounded-full border px-2 py-0.5',
+                                  spellsReady ? 'border-green/40 bg-green/10 text-green' : 'border-orange/40 bg-orange/10 text-orange',
+                                )}
+                              >
+                                {knownSpells.length}/{klass.spellcasting.knownAtLevel1} selected
+                              </span>
+                            </div>
                             {klass.spellcasting.spellList ? (
                               // Two-column table, not boxed rows (2026-08-22,
                               // owner: reference screenshot of a term/
