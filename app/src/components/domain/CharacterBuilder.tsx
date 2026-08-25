@@ -1383,9 +1383,30 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         //    means the three segments always share one row and shrink
         //    together rather than wrapping — there's no width this can
         //    revert to looking stacked at.
+        //
+        // 6. (2026-08-25, owner: "the tabs get lost Completely. I
+        //    didn't see them at all at first. I think it needs a
+        //    description of what you are rolling for. the roll button
+        //    is just kind of front and center.") — two compounding
+        //    problems, not one:
+        //    a. No label. Alignment and Deity right below both have a
+        //       `text.label` heading identifying what the cards under
+        //       them are ("Alignment", "Deity (must match your
+        //       alignment)") — the source-table control never got one,
+        //       so there was nothing telling you it existed or what it
+        //       did before you noticed it.
+        //    b. No fill. The segmented control was `border` only, no
+        //       background — against the page's own background it had
+        //       almost no visual weight next to the Roll button (a
+        //       solid-fill `Button`), so it read as empty space, not a
+        //       control. Added `bg-panel2`, the same surface fill
+        //       `cardBase` uses for every other standalone control in
+        //       this wizard, so it reads as a distinct element instead
+        //       of disappearing into the page.
         <div className="flex flex-col gap-5">
           <div>
-            <div className="mb-2 flex overflow-hidden rounded-[10px] border border-line-soft">
+            <p className={cx(text.label, 'mb-2 text-ink-faint')}>Background table (what you're rolling on)</p>
+            <div className="mb-2 flex overflow-hidden rounded-[10px] border border-line-soft bg-panel2">
               {module.backgroundTables.map((t, i) => (
                 <button
                   key={t.key}
@@ -1397,7 +1418,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                     text.label,
                     'flex-1 px-2 py-2 text-center',
                     i !== 0 && 'border-l border-line-soft',
-                    backgroundTableKey === t.key ? 'bg-purple/15 text-ink' : 'text-ink-faint hover:bg-panel2',
+                    backgroundTableKey === t.key ? 'bg-purple/15 text-ink' : 'text-ink-faint hover:bg-bg/40',
                   )}
                 >
                   {t.source}
