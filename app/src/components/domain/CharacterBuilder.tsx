@@ -45,7 +45,7 @@ interface CharacterBuilderProps {
   onCreated: (character: Character) => void
 }
 
-type StepKey = 'level' | 'stats' | 'ancestry' | 'class' | 'background' | 'gear' | 'review'
+type StepKey = 'level' | 'stats' | 'ancestry' | 'class' | 'background' | 'alignment' | 'gear' | 'review'
 
 const PALETTE = ['#9b5cff', '#39ff8f', '#ff3b52', '#ffd23f', '#ff8a3d', '#ff3fd6', '#35f0ff']
 
@@ -218,6 +218,7 @@ const STEP_LABEL: Record<StepKey, string> = {
   ancestry: 'Ancestry',
   class: 'Class',
   background: 'Background',
+  alignment: 'Alignment',
   gear: 'Gear',
   review: 'Review',
 }
@@ -301,9 +302,18 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
   const [confirmingClose, setConfirmingClose] = useState(false)
 
   const isZeroLevel = level === 0
+  // Alignment (and Deity, when the class requires one) got its own step
+  // here (owner, 2026-08-26 mockup review) — previously both lived
+  // crammed at the bottom of Background, below a full d20 background
+  // table, where the owner's own bug reports about that step ("the
+  // second part is always hidden") kept resurfacing just one section
+  // higher. Splitting it out gives Alignment/Deity the same one-decision-
+  // per-step treatment Ancestry and Class already get, and matches the
+  // rulebook's own creation order (background, THEN alignment, pg. 6)
+  // rather than treating them as one combined step.
   const steps: StepKey[] = isZeroLevel
-    ? ['level', 'stats', 'ancestry', 'background', 'gear', 'review']
-    : ['level', 'stats', 'ancestry', 'class', 'background', 'gear', 'review']
+    ? ['level', 'stats', 'ancestry', 'background', 'alignment', 'gear', 'review']
+    : ['level', 'stats', 'ancestry', 'class', 'background', 'alignment', 'gear', 'review']
   const stepIndex = steps.indexOf(step)
 
   const ancestry = module.ancestries.find((a) => a.key === ancestryKey) ?? null
@@ -547,7 +557,8 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
     stats: statsFilled,
     ancestry: ancestryKey !== null,
     class: klass !== null && spellsReady,
-    background: backgroundText.trim() !== '' && alignmentKey !== null && (!klass?.requiresDeity || deityName !== null),
+    background: backgroundText.trim() !== '',
+    alignment: alignmentKey !== null && (!klass?.requiresDeity || deityName !== null),
     gear: goldOrGearEngaged,
     review: true,
   }
@@ -1503,6 +1514,12 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
         //       `cardBase` uses for every other standalone control in
         //       this wizard, so it reads as a distinct element instead
         //       of disappearing into the page.
+        //
+        // 7. (2026-08-26) Alignment and Deity — referenced as "right
+        //    below" in a few of the entries above — moved out into
+        //    their own `step === 'alignment'` block just after this
+        //    one. Left the history above as-written rather than editing
+        //    it to match; it was accurate at the time each fix landed.
         <div className="flex flex-col gap-5">
           <div>
             <p className={cx(text.label, 'mb-2 text-ink-faint')}>Background table (what you're rolling on)</p>
@@ -1550,7 +1567,14 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
               })}
             </div>
           </div>
+        </div>
+      )}
 
+      {step === 'alignment' && (
+        // Split out of Background (owner, 2026-08-26 mockup review) —
+        // same cards, same behavior, just its own step now. See the
+        // `steps` doc comment above for the full rationale.
+        <div className="flex flex-col gap-5">
           <div>
             <p className={cx(text.label, 'mb-2 text-ink-faint')}>Alignment</p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
