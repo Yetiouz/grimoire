@@ -25,6 +25,27 @@ export const GM_MODE_OPTIONS: { value: GmMode; label: string; description: strin
   { value: 'ai', label: 'AI GM', description: "Grimoire's AI narrates and adjudicates." },
 ]
 
+/** `campaigns.system` — the multi-system seam `lib/rules/index.ts`'s own
+ * doc comment describes, keyed the same way. Narrowed here from the raw
+ * `string` column type for the same reason `GmMode` is: one real union
+ * the "New Campaign" picker and anything else that reads `system` can
+ * share, instead of each hand-rolling its own. Not literally every value
+ * `lib/rules` could theoretically key on — just the ones this app
+ * actually knows about, i.e. has a `SYSTEM_OPTIONS` entry for. */
+export type System = 'shadowdark' | 'cyborg'
+
+/** Single source of truth for the system picker's copy — same shape as
+ * `GM_MODE_OPTIONS` right above. `hasWizard: false` on `cyborg` isn't a
+ * restriction on picking it (an owner can start a CY_BORG campaign
+ * today; `CharacterBuilder`'s own `hasRulesModule` gate is what actually
+ * decides whether guided creation exists yet) — it's just what powers
+ * the picker's own "wizard coming soon" caption so the choice is honest
+ * up front instead of only discovered after opening New Character. */
+export const SYSTEM_OPTIONS: { value: System; label: string; description: string; hasWizard: boolean }[] = [
+  { value: 'shadowdark', label: 'Shadowdark', description: 'Guided character creation, full wizard.', hasWizard: true },
+  { value: 'cyborg', label: 'CY_BORG', description: 'Character creation wizard coming soon — roll with the GM in chat for now.', hasWizard: false },
+]
+
 /** A campaign plus its most recent journal entry's timestamp, for the
  * campaign list's "name + last-entry time" card (SPEC's Journal v1
  * screen 1). `lastEntryAt` is null for a campaign with no entries yet. */
@@ -94,14 +115,16 @@ export async function listJournalEntries(campaignId: string): Promise<JournalEnt
   return data
 }
 
-/** Wraps the `create_campaign` command. `system` stays hidden/defaulted
- * to 'shadowdark' server-side per SPEC — no UI passes it in v1.
- * `gmMode` defaults to `'solo'` — migration 0033 made it an optional
- * second RPC parameter (owner request, 2026-08-15) precisely so this
- * call keeps working with just a name for any caller that doesn't care;
- * `CampaignList`'s "New Campaign" modal is the one that does. */
-export async function createCampaign(name: string, gmMode: GmMode = 'solo'): Promise<Campaign> {
-  const { data, error } = await supabase.rpc('create_campaign', { p_name: name, p_gm_mode: gmMode })
+/** Wraps the `create_campaign` command. `gmMode` defaults to `'solo'` —
+ * migration 0033 made it an optional second RPC parameter (owner
+ * request, 2026-08-15) precisely so this call keeps working with just a
+ * name for any caller that doesn't care. `system` defaults to
+ * `'shadowdark'` the same way, added in migration 0036 once the "New
+ * Campaign" modal grew a `SystemSelector` to go with its existing
+ * `GmModeSelector` — before that it stayed hidden/defaulted server-side
+ * with no UI passing it at all. */
+export async function createCampaign(name: string, gmMode: GmMode = 'solo', system: System = 'shadowdark'): Promise<Campaign> {
+  const { data, error } = await supabase.rpc('create_campaign', { p_name: name, p_gm_mode: gmMode, p_system: system })
   if (error) throw error
   return data
 }

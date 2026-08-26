@@ -10,8 +10,9 @@ import { Skeleton, SkeletonGroup } from '../../components/ui/Skeleton'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { createCampaign, joinCampaignByCode, listCampaignsWithLastEntry } from '../../lib/campaigns'
-import type { Campaign, CampaignWithLastEntry, GmMode } from '../../lib/campaigns'
+import type { Campaign, CampaignWithLastEntry, GmMode, System } from '../../lib/campaigns'
 import { GmModeSelector } from '../../components/domain/GmModeSelector'
+import { SystemSelector } from '../../components/domain/SystemSelector'
 
 interface CampaignListProps {
   onOpenCampaign: (campaign: Campaign) => void
@@ -29,12 +30,15 @@ function formatLastEntry(iso: string | null): string {
 }
 
 /** Screen 1 of Journal v1 (SPEC): Panel cards, each showing name +
- * last-entry time; "New Campaign" opens a Modal with a name field —
- * `system` stays hidden, defaulted to 'shadowdark' server-side — plus a
+ * last-entry time; "New Campaign" opens a Modal with a name field, a
  * `GmModeSelector` (owner request, 2026-08-15: "i want one when
  * starting a campaign. and a toggle.") so gm_mode no longer silently
  * defaults to 'solo' for every new campaign with no way to choose
- * otherwise.
+ * otherwise, and — as of migration 0036 — a `SystemSelector` so `system`
+ * no longer silently defaults to 'shadowdark' either (owner, 2026-08-26:
+ * "we need to build in a wizard for that game also" — the picker ships
+ * ahead of the CY_BORG wizard itself; see `SystemSelector`'s own doc
+ * comment for why that's fine).
  *
  * "Have an invite code?" (2026-08-11, migration 0023, "I may want to
  * play a different character with my friends") is the redeeming half
@@ -52,6 +56,7 @@ export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
   const [modalOpen, setModalOpen] = useState(false)
   const [name, setName] = useState('')
   const [gmMode, setGmMode] = useState<GmMode>('solo')
+  const [system, setSystem] = useState<System>('shadowdark')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [joinModalOpen, setJoinModalOpen] = useState(false)
@@ -88,10 +93,11 @@ export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
     setCreating(true)
     setCreateError(null)
     try {
-      const created = await createCampaign(trimmed, gmMode)
+      const created = await createCampaign(trimmed, gmMode, system)
       setModalOpen(false)
       setName('')
       setGmMode('solo')
+      setSystem('shadowdark')
       onOpenCampaign(created)
     } catch (err) {
       // Local to the modal (matching handleJoin's joinError), not the
@@ -196,6 +202,7 @@ export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
               setModalOpen(false)
               setName('')
               setGmMode('solo')
+              setSystem('shadowdark')
               setCreateError(null)
             }}
             onConfirm={() => void handleCreate()}
@@ -209,6 +216,10 @@ export function CampaignList({ onOpenCampaign, onSignOut }: CampaignListProps) {
               disabled={creating}
               error={createError ?? undefined}
             />
+            <div className="mt-4">
+              <p className={cx(text.label, 'text-ink-faint')}>Game System</p>
+              <SystemSelector value={system} onChange={setSystem} className="mt-1.5" />
+            </div>
             <div className="mt-4">
               <p className={cx(text.label, 'text-ink-faint')}>GM Mode</p>
               <GmModeSelector value={gmMode} onChange={setGmMode} className="mt-1.5" />
