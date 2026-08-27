@@ -15,13 +15,10 @@ interface SystemSelectorProps {
  * modal read as one family rather than two different controls (owner,
  * 2026-08-26: "we need to build in a wizard for that game also").
  *
- * CY_BORG is a real, selectable option here even though its guided
- * creation wizard isn't built yet — `SYSTEM_OPTIONS`' own `hasWizard`
- * flag is what puts "wizard coming soon" in its caption, not a disabled
- * state. Nothing about starting a CY_BORG campaign depends on the wizard
- * existing (Shop, CharacterSheet, and chat-based play already work for
- * it); `CharacterBuilder`'s `hasRulesModule` gate is the thing that
- * actually decides guided creation, separately, later. */
+ * CY_BORG got its own guided creation wizard 2026-08-26
+ * (`CyborgCharacterBuilder.tsx`) — both options now show the same
+ * "Guided character creation, full wizard" caption via `SYSTEM_OPTIONS`'
+ * `hasWizard` flag, same as Shadowdark always has. */
 export function SystemSelector({ value, onChange, className }: SystemSelectorProps) {
   const selected = SYSTEM_OPTIONS.find((option) => option.value === value) ?? SYSTEM_OPTIONS[0]
 

@@ -35,15 +35,18 @@ export const GM_MODE_OPTIONS: { value: GmMode; label: string; description: strin
 export type System = 'shadowdark' | 'cyborg'
 
 /** Single source of truth for the system picker's copy — same shape as
- * `GM_MODE_OPTIONS` right above. `hasWizard: false` on `cyborg` isn't a
- * restriction on picking it (an owner can start a CY_BORG campaign
- * today; `CharacterBuilder`'s own `hasRulesModule` gate is what actually
- * decides whether guided creation exists yet) — it's just what powers
- * the picker's own "wizard coming soon" caption so the choice is honest
- * up front instead of only discovered after opening New Character. */
+ * `GM_MODE_OPTIONS` right above. `hasWizard` isn't a restriction on
+ * picking a system (an owner could always start a CY_BORG campaign, even
+ * before its wizard existed; `CharacterBuilder`'s own system branch —
+ * `CyborgCharacterBuilder` for cyborg, the Shadowdark wizard otherwise —
+ * is what actually decides whether guided creation exists) — it's just
+ * what powers the picker's own caption so the choice is honest up front
+ * instead of only discovered after opening New Character. CY_BORG's own
+ * wizard shipped 2026-08-26 (`lib/rules/cyborg.ts` +
+ * `CyborgCharacterBuilder.tsx`), flipping this from false to true. */
 export const SYSTEM_OPTIONS: { value: System; label: string; description: string; hasWizard: boolean }[] = [
   { value: 'shadowdark', label: 'Shadowdark', description: 'Guided character creation, full wizard.', hasWizard: true },
-  { value: 'cyborg', label: 'CY_BORG', description: 'Character creation wizard coming soon — roll with the GM in chat for now.', hasWizard: false },
+  { value: 'cyborg', label: 'CY_BORG', description: 'Guided character creation, full wizard.', hasWizard: true },
 ]
 
 /** A campaign plus its most recent journal entry's timestamp, for the

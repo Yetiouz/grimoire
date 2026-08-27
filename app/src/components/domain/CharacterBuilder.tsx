@@ -12,6 +12,7 @@ import { Shop } from './Shop'
 import { createCharacter } from '../../lib/characters'
 import type { Character, CharacterAbilities, CharacterSheetData, AbilityScore } from '../../lib/characters'
 import { AncestrySpriteArt, ClassBustIcon, classColor } from './AncestryClassArt'
+import { CyborgCharacterBuilder } from './CyborgCharacterBuilder'
 import { getRulesModule, hasRulesModule, abilityModifier, ABILITY_ORDER } from '../../lib/rules'
 import type { Ability, RulesClass, RulesTalentTableRow } from '../../lib/rules'
 import { goldDeltaForSpend, goldToCp } from '../../lib/rules/equipment'
@@ -667,13 +668,23 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
     }
   }
 
+  // CY_BORG gets its own wizard, not a branch through this Shadowdark-
+  // shaped one (owner, 2026-08-26 AskUserQuestion: "Give CY_BORG its own
+  // separate types + wizard branch" — `lib/rules/cyborg.ts` and
+  // `CyborgCharacterBuilder.tsx` are the result). This has to come
+  // before `module`/`hasRulesModule` even matter for the render below:
+  // `getRulesModule`'s defensive Shadowdark fallback is right for read
+  // paths, but would happily build an elf into Cy here if this check
+  // didn't short-circuit first.
+  if (system === 'cyborg') {
+    return <CyborgCharacterBuilder open={open} onClose={onClose} campaignId={campaignId} sessionId={sessionId} memberId={memberId} onCreated={onCreated} />
+  }
+
   // Unsupported-system gate (2026-08-17, owner: "all the Shadowdark
-  // stuff is not in the CY_BORG campaign"): `getRulesModule`'s
-  // defensive Shadowdark fallback is right for read paths, but HERE it
-  // would present the full Shadowdark wizard inside a CY_BORG campaign
-  // and happily build an elf into Cy. Until that system's builder slice
-  // lands (CYBORG_PACKAGE_PLAN.md, cyborg-3), an honest empty state
-  // beats the wrong wizard.
+  // stuff is not in the CY_BORG campaign") — CY_BORG itself no longer
+  // falls through to here (see above), but this stays as the honest
+  // fallback for any future `campaigns.system` value that isn't
+  // Shadowdark and doesn't have its own wizard branch yet either.
   if (!hasRulesModule(system)) {
     return (
       <Overlay

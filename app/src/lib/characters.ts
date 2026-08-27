@@ -38,6 +38,16 @@ export interface CharacterAbilities {
   cha?: AbilityScore
 }
 
+/** CY_BORG's five abilities live under different keys than the
+ * Shadowdark-shaped `CharacterAbilities` above (agility/knowledge/
+ * presence/strength/toughness, not str/dex/con/int/wis/cha) — `score`
+ * and `mod` are always equal here, since a CY_BORG ability score IS its
+ * own −3..+3 modifier with no separate raw score to derive it from
+ * (`CharacterSheet.tsx`'s `rawAbilities` reads `.mod` off whichever
+ * shape actually landed in the jsonb column, so this only needs to match
+ * `AbilityScore`'s field names, not `CharacterAbilities`'s key set). */
+export type CyborgCharacterAbilities = Partial<Record<'agility' | 'knowledge' | 'presence' | 'strength' | 'toughness', AbilityScore>>
+
 /** The known-but-optional keys seen across the three imported sheets
  * (Kimbo, Constantine, LaLa) — each carries a different subset (Kimbo
  * has `covenant_duties`, LaLa has `familiar`, only Kimbo and LaLa have
@@ -54,6 +64,18 @@ export interface CharacterSheetData {
   appearance?: string
   personal_revelation?: string
   familiar?: string
+  /** CY_BORG-only fields (`CyborgCharacterBuilder.tsx`) — Debt and
+   * Glitches have no Shadowdark equivalent to reuse (this system's
+   * "luck" analog IS Glitches, stored in `luck_tokens` via
+   * `CYBORG_DISPLAY.luckLabel`, so only the creditor/amount text lives
+   * here). `cybertech`/`apps`/`nano_powers` are separate from
+   * `equipment` since the Shop/CharacterSheet treat them as distinct
+   * categories the way the book itself does (Cybertech table, App
+   * table, Nano-power table are three separate sections). */
+  debt?: string
+  cybertech?: string[]
+  apps?: string[]
+  nano_powers?: string[]
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -317,7 +339,10 @@ export interface CreateCharacterInput {
   xpNeeded?: number | null
   gearMax?: number | null
   gold?: CharacterGold
-  abilities?: CharacterAbilities
+  /** `CyborgCharacterAbilities` too — `create_character` isn't
+   * rules-aware (see this section's own header comment), it just writes
+   * whatever JSON-shaped object lands here. */
+  abilities?: CharacterAbilities | CyborgCharacterAbilities
   sheet?: CharacterSheetData
   status?: string
   color?: string | null
