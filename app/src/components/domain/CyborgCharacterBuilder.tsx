@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { cx } from '../../lib/cx'
 import { text } from '../../lib/typography'
 import { Overlay } from '../ui/Overlay'
@@ -75,21 +76,107 @@ function pick<T>(list: T[]): T {
   return list[Math.floor(Math.random() * list.length)]
 }
 
-/** Parses a class's own printed armor-roll formula ('d2', 'd4+1') and
- * rolls it, capped to the highest real tier in `CYBORG_ARMOR_TIERS` (a
- * literal 'd4+1' can roll a 5, which isn't a printed tier — Discharged
+/** Shared parse for a class's own printed armor-roll formula ('d2',
+ * 'd4+1') — split out of `rollDiceFormula` so `resolveDiceFormula`
+ * (the manual-entry counterpart, below) applies the exact same
+ * die-size/bonus reading to a typed roll instead of a random one. */
+function parseDiceFormula(formula: string): { die: number; bonus: number } | null {
+  const match = /^d(\d+)([+-]\d+)?$/.exec(formula.trim())
+  if (!match) return null
+  return { die: Number(match[1]), bonus: match[2] ? Number(match[2]) : 0 }
+}
+
+/** Rolls a class's own printed armor-roll formula ('d2', 'd4+1') fresh,
+ * capped to the highest real tier in `CYBORG_ARMOR_TIERS` (a literal
+ * 'd4+1' can roll a 5, which isn't a printed tier — Discharged
  * CorpKiller's own text doesn't address this edge case, so this caps
  * rather than silently producing an out-of-range tier). */
 function rollDiceFormula(formula: string, maxTier: number): number {
-  const match = /^d(\d+)([+-]\d+)?$/.exec(formula.trim())
-  if (!match) return 0
-  const die = Number(match[1])
-  const bonus = match[2] ? Number(match[2]) : 0
-  return Math.min(maxTier, Math.max(0, rollDie(die) + bonus))
+  const parsed = parseDiceFormula(formula)
+  if (!parsed) return 0
+  return Math.min(maxTier, Math.max(0, rollDie(parsed.die) + parsed.bonus))
+}
+
+/** Resolves the same formula against a roll value the player typed in
+ * by hand (from physical dice) instead of one this app rolled — same
+ * clamp/cap as `rollDiceFormula`, so typing the number you rolled on
+ * paper produces an identical result to landing on that number here. */
+function resolveDiceFormula(formula: string, rollValue: number, maxTier: number): number {
+  const parsed = parseDiceFormula(formula)
+  if (!parsed) return 0
+  return Math.min(maxTier, Math.max(0, rollValue + parsed.bonus))
 }
 
 function formatSigned(n: number): string {
   return n > 0 ? `+${n}` : `${n}`
+}
+
+/** One "roll dN, or type the number you rolled on physical dice" card —
+ * the interaction pattern threaded through every random table on this
+ * wizard (owner, 2026-08-29: "in both I want the ability or the button
+ * to put in your own roll from physical dice" — and specifically
+ * praised this wizard's own Roll-button pattern as the model to
+ * extend, not replace). `onRoll` and `onManualRoll` both resolve to
+ * the same outcome for a given roll value — `onRoll` just also picks
+ * that value randomly first — so typing the number you rolled on paper
+ * produces an identical result to landing on that same number by
+ * clicking Roll. `min`/`max` bound the manual input to the table's
+ * real resolvable range, which isn't always the die printed on the
+ * card: the flavor tables are d100 paired into 50 entries, but the
+ * card still reads d100 (that's the physical die you roll) while
+ * `min`/`max` stay 1-100, not 1-50 — `onManualRoll` does the pairing.
+ */
+function RollCard({
+  label,
+  dieLabel,
+  min,
+  max,
+  onRoll,
+  onManualRoll,
+  children,
+}: {
+  label: string
+  dieLabel: string
+  min: number
+  max: number
+  onRoll: () => void
+  onManualRoll: (value: number) => void
+  children: ReactNode
+}) {
+  const [manual, setManual] = useState('')
+
+  function commitManual() {
+    const n = Number(manual)
+    if (Number.isInteger(n) && n >= min && n <= max) {
+      onManualRoll(n)
+      setManual('')
+    }
+  }
+
+  return (
+    <div className={cardBase}>
+      <div className="flex items-center justify-between">
+        <p className={cx(text.label, 'text-ink-faint')}>{label} ({dieLabel})</p>
+        <button type="button" onClick={onRoll} className="rounded-[8px] border border-line-soft bg-panel px-2 py-1 text-ink-dim hover:border-line-hover">
+          <span className={text.caption}>Roll</span>
+        </button>
+      </div>
+      {children}
+      <div className="mt-2 flex items-center gap-1.5">
+        <input
+          value={manual}
+          onChange={(e) => setManual(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commitManual()
+          }}
+          onBlur={commitManual}
+          inputMode="numeric"
+          placeholder={`or type ${min}–${max}`}
+          className="h-7 w-28 rounded-[6px] border border-line-hover bg-bg px-1.5 text-center font-mono text-[12px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50"
+        />
+      </div>
+    </div>
+  )
 }
 
 /**
@@ -163,6 +250,25 @@ export function CyborgCharacterBuilder({ open, onClose, campaignId, sessionId, m
     setAbilityRolls((prev) => ({ ...prev, [ability]: roll3d6Sum() }))
   }
 
+  /** Manual-entry counterpart to `rollAbility` — stores the raw 3d6
+   * total typed from physical dice (3–18), same value `roll3d6Sum`
+   * would have produced, so `scoreFor`'s own reroll-modifier + score-
+   * table lookup applies identically either way. Clearing the field
+   * removes the ability's roll entirely rather than pinning it to a
+   * stale number. */
+  function setAbilityRollManual(ability: CyborgAbility, raw: string) {
+    if (raw.trim() === '') {
+      setAbilityRolls((prev) => {
+        const next = { ...prev }
+        delete next[ability]
+        return next
+      })
+      return
+    }
+    const n = Number(raw)
+    if (Number.isInteger(n)) setAbilityRolls((prev) => ({ ...prev, [ability]: Math.max(3, Math.min(18, n)) }))
+  }
+
   function rollAllAbilities() {
     const next: Partial<Record<CyborgAbility, number>> = {}
     for (const ability of CYBORG_ABILITY_ORDER) next[ability] = roll3d6Sum()
@@ -208,15 +314,49 @@ export function CyborgCharacterBuilder({ open, onClose, campaignId, sessionId, m
     setWeaponRoll(pick(table))
   }
 
+  /** Manual-entry counterpart to `rollWeapon` — every table this
+   * resolves against (`CYBORG_STARTING_WEAPONS` and its two class-
+   * specific replacements) prints contiguous `roll` numbers 1..N
+   * matching its own array order, so `.find` and a plain index both
+   * land on the same entry; `.find` is used to stay honest about
+   * matching the table's own printed roll number rather than assuming
+   * the array order. */
+  function resolveWeaponRoll(k: CyborgClass, rollValue: number) {
+    const table = weaponTableFor(k)
+    const entry = table.find((e) => e.roll === rollValue) ?? table[rollValue - 1]
+    if (entry) setWeaponRoll(entry)
+  }
+
   function rollArmor() {
     if (!klass?.armorRollFormula) return
     const tier = rollDiceFormula(klass.armorRollFormula, CYBORG_ARMOR_TIERS.length - 1)
     setArmorTier(tier)
   }
 
-  function rollDebt() {
-    setDebtCreditor(pick(CYBORG_DEBT.creditors))
+  /** Manual-entry counterpart to `rollArmor` — `resolveDiceFormula`
+   * applies the class's own formula (die size + flat bonus) to a typed
+   * roll instead of a random one. */
+  function resolveArmorRoll(formula: string, rollValue: number) {
+    setArmorTier(resolveDiceFormula(formula, rollValue, CYBORG_ARMOR_TIERS.length - 1))
+  }
+
+  // Debt (p.61) is really two independent rolls printed side by side —
+  // a 3d6×1,000¤ amount and a d12 creditor pick — so it's split into
+  // two `RollCard`s below rather than the one combined button this used
+  // to be, matching the book's own two-part structure and giving each
+  // half its own manual-entry field.
+  function rollDebtAmount() {
     setDebtAmount((rollDie(6) + rollDie(6) + rollDie(6)) * 1000)
+  }
+  function resolveDebtAmountRoll(total3d6: number) {
+    setDebtAmount(total3d6 * 1000)
+  }
+  function rollDebtCreditor() {
+    setDebtCreditor(pick(CYBORG_DEBT.creditors))
+  }
+  function resolveDebtCreditorRoll(rollValue: number) {
+    const creditor = CYBORG_DEBT.creditors[rollValue - 1]
+    if (creditor) setDebtCreditor(creditor)
   }
 
   function rollGlitches() {
@@ -456,11 +596,21 @@ export function CyborgCharacterBuilder({ open, onClose, campaignId, sessionId, m
                   const score = scoreFor(ability)
                   return (
                     <div key={ability} className={cardBase}>
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <p className="font-semibold text-ink">{info.label}</p>
-                        <button type="button" onClick={() => rollAbility(ability)} className="rounded-[8px] border border-line-soft bg-panel px-2.5 py-1 text-ink-dim hover:border-line-hover">
-                          <span className={text.caption}>Roll 3d6{mod !== 0 ? formatSigned(mod) : ''}</span>
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            value={abilityRolls[ability] ?? ''}
+                            onChange={(e) => setAbilityRollManual(ability, e.target.value)}
+                            inputMode="numeric"
+                            placeholder="3d6"
+                            aria-label={`${info.label} 3d6 total`}
+                            className="h-7 w-12 rounded-[6px] border border-line-hover bg-bg text-center font-mono text-[12px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50"
+                          />
+                          <button type="button" onClick={() => rollAbility(ability)} className="rounded-[8px] border border-line-soft bg-panel px-2.5 py-1 text-ink-dim hover:border-line-hover">
+                            <span className={text.caption}>Roll 3d6{mod !== 0 ? formatSigned(mod) : ''}</span>
+                          </button>
+                        </div>
                       </div>
                       <p className={cx(text.caption, 'mt-1 text-ink-faint')}>{info.tests}</p>
                       {reroll?.tag && <p className={cx(text.caption, 'mt-1 text-purple')}>{reroll.tag}</p>}
@@ -499,13 +649,14 @@ export function CyborgCharacterBuilder({ open, onClose, campaignId, sessionId, m
                   <p className={cx(text.label, 'mb-2 text-ink-faint')}>Class weapon &amp; armor</p>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {(klass.weaponRollDie !== undefined || klass.weaponTable !== undefined) && (
-                      <div className={cardBase}>
-                        <div className="flex items-center justify-between">
-                          <p className={cx(text.label, 'text-ink-faint')}>Weapon (d{klass.weaponTable ? 6 : klass.weaponRollDie})</p>
-                          <button type="button" onClick={rollWeapon} className="rounded-[8px] border border-line-soft bg-panel px-2 py-1 text-ink-dim hover:border-line-hover">
-                            <span className={text.caption}>Roll</span>
-                          </button>
-                        </div>
+                      <RollCard
+                        label="Weapon"
+                        dieLabel={`d${klass.weaponTable ? 6 : klass.weaponRollDie}`}
+                        min={1}
+                        max={weaponTableFor(klass).length}
+                        onRoll={rollWeapon}
+                        onManualRoll={(n) => resolveWeaponRoll(klass, n)}
+                      >
                         {weaponRoll ? (
                           <>
                             <p className={cx(text.bodySecondary, 'mt-2 font-semibold text-ink')}>{weaponRoll.name} <span className="font-mono text-ink-dim">{weaponRoll.damage}</span></p>
@@ -514,16 +665,17 @@ export function CyborgCharacterBuilder({ open, onClose, campaignId, sessionId, m
                         ) : (
                           <p className={cx(text.bodySecondary, 'mt-2 text-ink-faint')}>—</p>
                         )}
-                      </div>
+                      </RollCard>
                     )}
                     {klass.armorRollFormula !== undefined && (
-                      <div className={cardBase}>
-                        <div className="flex items-center justify-between">
-                          <p className={cx(text.label, 'text-ink-faint')}>Armor ({klass.armorRollFormula})</p>
-                          <button type="button" onClick={rollArmor} className="rounded-[8px] border border-line-soft bg-panel px-2 py-1 text-ink-dim hover:border-line-hover">
-                            <span className={text.caption}>Roll</span>
-                          </button>
-                        </div>
+                      <RollCard
+                        label="Armor"
+                        dieLabel={klass.armorRollFormula}
+                        min={1}
+                        max={parseDiceFormula(klass.armorRollFormula)?.die ?? 1}
+                        onRoll={rollArmor}
+                        onManualRoll={(n) => resolveArmorRoll(klass.armorRollFormula!, n)}
+                      >
                         {armorTier !== null ? (
                           <>
                             <p className={cx(text.bodySecondary, 'mt-2 font-semibold text-ink')}>
@@ -534,7 +686,7 @@ export function CyborgCharacterBuilder({ open, onClose, campaignId, sessionId, m
                         ) : (
                           <p className={cx(text.bodySecondary, 'mt-2 text-ink-faint')}>—</p>
                         )}
-                      </div>
+                      </RollCard>
                     )}
                   </div>
                 </div>
@@ -545,20 +697,22 @@ export function CyborgCharacterBuilder({ open, onClose, campaignId, sessionId, m
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   {(
                     [
-                      { label: 'Personal item (d8)', value: personalItem, set: setPersonalItem, table: CYBORG_RANDOM_GEAR.personalItem },
-                      { label: 'Gear (d12)', value: randomGear, set: setRandomGear, table: CYBORG_RANDOM_GEAR.gear },
-                      { label: 'Tech/drug (d12)', value: techOrDrug, set: setTechOrDrug, table: CYBORG_RANDOM_GEAR.techOrDrug },
+                      { label: 'Personal item', dieLabel: 'd8', value: personalItem, set: setPersonalItem, table: CYBORG_RANDOM_GEAR.personalItem },
+                      { label: 'Gear', dieLabel: 'd12', value: randomGear, set: setRandomGear, table: CYBORG_RANDOM_GEAR.gear },
+                      { label: 'Tech/drug', dieLabel: 'd12', value: techOrDrug, set: setTechOrDrug, table: CYBORG_RANDOM_GEAR.techOrDrug },
                     ] as const
                   ).map((col) => (
-                    <div key={col.label} className={cardBase}>
-                      <div className="flex items-center justify-between">
-                        <p className={cx(text.label, 'text-ink-faint')}>{col.label}</p>
-                        <button type="button" onClick={() => col.set(pick(col.table))} className="rounded-[8px] border border-line-soft bg-panel px-2 py-1 text-ink-dim hover:border-line-hover">
-                          <span className={text.caption}>Roll</span>
-                        </button>
-                      </div>
+                    <RollCard
+                      key={col.label}
+                      label={col.label}
+                      dieLabel={col.dieLabel}
+                      min={1}
+                      max={col.table.length}
+                      onRoll={() => col.set(pick(col.table))}
+                      onManualRoll={(n) => col.set(col.table[n - 1] ?? null)}
+                    >
                       <p className={cx(text.bodySecondary, 'mt-2')}>{col.value ?? '—'}</p>
-                    </div>
+                    </RollCard>
                   ))}
                 </div>
               </div>
@@ -575,22 +729,16 @@ export function CyborgCharacterBuilder({ open, onClose, campaignId, sessionId, m
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {(
                   [
-                    { label: 'Style (d100)', value: styleRoll, roll: () => setStyleRoll(CYBORG_STYLE[pairedIndexForD100(rollDie(100))]) },
-                    { label: 'Feature (d100)', value: featureRoll, roll: () => setFeatureRoll(CYBORG_FEATURE[pairedIndexForD100(rollDie(100))]) },
-                    { label: 'Current Obsession (d100)', value: obsessionRoll, roll: () => setObsessionRoll(CYBORG_OBSESSION[pairedIndexForD100(rollDie(100))]) },
-                    { label: 'Wants (d20)', value: wantsRoll, roll: () => setWantsRoll(pick(CYBORG_WANTS)) },
-                    { label: 'Quirk (d20)', value: quirkRoll, roll: () => setQuirkRoll(pick(CYBORG_QUIRK)) },
+                    { label: 'Style', dieLabel: 'd100', min: 1, max: 100, value: styleRoll, roll: () => setStyleRoll(CYBORG_STYLE[pairedIndexForD100(rollDie(100))]), manual: (n: number) => setStyleRoll(CYBORG_STYLE[pairedIndexForD100(n)] ?? null) },
+                    { label: 'Feature', dieLabel: 'd100', min: 1, max: 100, value: featureRoll, roll: () => setFeatureRoll(CYBORG_FEATURE[pairedIndexForD100(rollDie(100))]), manual: (n: number) => setFeatureRoll(CYBORG_FEATURE[pairedIndexForD100(n)] ?? null) },
+                    { label: 'Current Obsession', dieLabel: 'd100', min: 1, max: 100, value: obsessionRoll, roll: () => setObsessionRoll(CYBORG_OBSESSION[pairedIndexForD100(rollDie(100))]), manual: (n: number) => setObsessionRoll(CYBORG_OBSESSION[pairedIndexForD100(n)] ?? null) },
+                    { label: 'Wants', dieLabel: 'd20', min: 1, max: 20, value: wantsRoll, roll: () => setWantsRoll(pick(CYBORG_WANTS)), manual: (n: number) => setWantsRoll(CYBORG_WANTS[n - 1] ?? null) },
+                    { label: 'Quirk', dieLabel: 'd20', min: 1, max: 20, value: quirkRoll, roll: () => setQuirkRoll(pick(CYBORG_QUIRK)), manual: (n: number) => setQuirkRoll(CYBORG_QUIRK[n - 1] ?? null) },
                   ] as const
                 ).map((row) => (
-                  <div key={row.label} className={cardBase}>
-                    <div className="flex items-center justify-between">
-                      <p className={cx(text.label, 'text-ink-faint')}>{row.label}</p>
-                      <button type="button" onClick={row.roll} className="rounded-[8px] border border-line-soft bg-panel px-2 py-1 text-ink-dim hover:border-line-hover">
-                        <span className={text.caption}>Roll</span>
-                      </button>
-                    </div>
+                  <RollCard key={row.label} label={row.label} dieLabel={row.dieLabel} min={row.min} max={row.max} onRoll={row.roll} onManualRoll={row.manual}>
                     <p className={cx(text.bodySecondary, 'mt-2')}>{row.value ?? '—'}</p>
-                  </div>
+                  </RollCard>
                 ))}
               </div>
               {klass.flavorPrompts.map((prompt, i) => (
@@ -606,21 +754,46 @@ export function CyborgCharacterBuilder({ open, onClose, campaignId, sessionId, m
           )}
 
           {step === 'debt' && (
+            // Split into two RollCards (p.61 prints amount and creditor
+            // as two independent rolls, not one combined table) — each
+            // gets its own Roll button and manual-entry field, rather
+            // than the single "Roll debt" button this used to be.
             <div className="flex flex-col gap-4">
-              <Button type="button" onClick={rollDebt} className={cx(!canContinue.debt && ROLL_NEEDED_RING)}>Roll debt ({CYBORG_DEBT.formula})</Button>
+              <div className={cx('grid grid-cols-1 gap-3 sm:grid-cols-2', !canContinue.debt && 'rounded-[12px] p-1', !canContinue.debt && ROLL_NEEDED_RING)}>
+                <RollCard label="Debt amount" dieLabel="3d6×1,000¤" min={3} max={18} onRoll={rollDebtAmount} onManualRoll={resolveDebtAmountRoll}>
+                  <p className={cx(text.bodySecondary, 'mt-2 font-semibold text-ink')}>{debtAmount !== null ? `${debtAmount.toLocaleString()}¤` : '—'}</p>
+                </RollCard>
+                <RollCard label="Creditor" dieLabel="d12" min={1} max={CYBORG_DEBT.creditors.length} onRoll={rollDebtCreditor} onManualRoll={resolveDebtCreditorRoll}>
+                  <p className={cx(text.bodySecondary, 'mt-2')}>{debtCreditor ?? '—'}</p>
+                </RollCard>
+              </div>
               {debtCreditor && debtAmount && (
-                <div className={cardBase}>
-                  <p className="font-semibold text-ink">{debtAmount.toLocaleString()}¤</p>
-                  <p className={cx(text.bodySecondary, 'mt-1')}>{debtCreditor}</p>
-                  <p className={cx(text.caption, 'mt-2 text-ink-faint')}>How badly do they want it back? {CYBORG_DEBT.wantItBack}</p>
-                </div>
+                <p className={cx(text.caption, 'text-ink-faint')}>How badly do they want it back? {CYBORG_DEBT.wantItBack}</p>
               )}
             </div>
           )}
 
           {step === 'glitches' && klass && (
             <div className="flex flex-col gap-4">
-              <Button type="button" onClick={rollGlitches} className={cx(!canContinue.glitches && ROLL_NEEDED_RING)}>Roll Glitches (d{klass.glitchesDie})</Button>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button type="button" onClick={rollGlitches} className={cx(!canContinue.glitches && ROLL_NEEDED_RING)}>Roll Glitches (d{klass.glitchesDie})</Button>
+                <span className={cx(text.caption, 'text-ink-faint')}>or type your roll</span>
+                <input
+                  value={glitchesMax ?? ''}
+                  onChange={(e) => {
+                    const raw = e.target.value
+                    if (raw.trim() === '') {
+                      setGlitchesMax(null)
+                      return
+                    }
+                    const n = Number(raw)
+                    if (Number.isInteger(n)) setGlitchesMax(Math.max(1, Math.min(klass.glitchesDie, n)))
+                  }}
+                  inputMode="numeric"
+                  placeholder={`1–${klass.glitchesDie}`}
+                  className="h-9 w-14 rounded-[8px] border border-line-hover bg-bg text-center font-mono text-[15px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50"
+                />
+              </div>
               {glitchesMax !== null && (
                 <div className={cardBase}>
                   <p className="font-semibold text-ink">{glitchesMax} Glitches</p>
@@ -671,6 +844,21 @@ export function CyborgCharacterBuilder({ open, onClose, campaignId, sessionId, m
                 <p className={cx(text.label, 'mb-2 text-ink-faint')}>Hit Points</p>
                 <div className="flex items-center gap-3">
                   <Button type="button" onClick={rollHp} className={cx(hpRoll === null && ROLL_NEEDED_RING)}>Roll HP (d{klass.hpDie})</Button>
+                  <input
+                    value={hpRoll ?? ''}
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      if (raw.trim() === '') {
+                        setHpRoll(null)
+                        return
+                      }
+                      const n = Number(raw)
+                      if (Number.isInteger(n)) setHpRoll(Math.max(1, Math.min(klass.hpDie, n)))
+                    }}
+                    inputMode="numeric"
+                    placeholder={`1–${klass.hpDie}`}
+                    className="h-9 w-14 rounded-[8px] border border-line-hover bg-bg text-center font-mono text-[15px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50"
+                  />
                   <span className={text.bodySecondary}>{hpRoll === null ? 'Not rolled yet' : `${hpRoll} + ${formatSigned(toughnessScore)} Toughness = ${computedHpMax} HP`}</span>
                 </div>
               </div>

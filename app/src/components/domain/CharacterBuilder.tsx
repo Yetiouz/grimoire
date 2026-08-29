@@ -276,6 +276,11 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
   // (see `RulesAncestry.bonusTalentRolls`) — a visual review caught that
   // the UI only ever offered one roll regardless, 2026-08-11.
   const [talentRolls, setTalentRolls] = useState<Array<{ total: number; row: RulesTalentTableRow }>>([])
+  // Manual-entry field for the 2d6 talent roll (owner, 2026-08-29 — see
+  // the HP-input comment on the Review step for the full ask). Holds
+  // raw text while typing so an empty/partial field doesn't error;
+  // `addManualTalentRoll` below parses and validates it on submit.
+  const [talentManual, setTalentManual] = useState('')
   const [knownSpells, setKnownSpells] = useState<string[]>([])
   const [spellDraft, setSpellDraft] = useState('')
   const [deityName, setDeityName] = useState<string | null>(null)
@@ -379,6 +384,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
   function selectClass(nextKlass: RulesClass) {
     setClassKey(nextKlass.key)
     setTalentRolls([])
+    setTalentManual('')
     setKnownSpells([])
     setDeityName(null)
     setHpRoll(null)
@@ -391,6 +397,22 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
     const total = sum(dice)
     const row = matchTableRoll(klass.talentTable, total)
     if (row) setTalentRolls((prev) => [...prev, { total, row }])
+  }
+
+  /** Manual-entry counterpart to `rollTalent` — resolves a typed 2d6
+   * total against the same `matchTableRoll` lookup instead of rolling
+   * one, so a physical-dice result produces an identical outcome to
+   * pressing the Roll button on that same total. */
+  function addManualTalentRoll() {
+    if (!klass) return
+    if (talentRolls.length >= maxTalentRolls) return
+    const total = Number(talentManual)
+    if (!Number.isInteger(total)) return
+    const row = matchTableRoll(klass.talentTable, total)
+    if (row) {
+      setTalentRolls((prev) => [...prev, { total, row }])
+      setTalentManual('')
+    }
   }
 
   function rollHp() {
@@ -577,6 +599,7 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
     setAncestryKey(null)
     setClassKey(null)
     setTalentRolls([])
+    setTalentManual('')
     setKnownSpells([])
     setSpellDraft('')
     setDeityName(null)
@@ -1282,8 +1305,28 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
                             </span>
                           ))}
                           {effectiveTalentRolls.length < maxTalentRolls && (
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-2">
                               <Button type="button" onClick={rollTalent}>Roll talent (2d6)</Button>
+                              {/* Manual-entry pair (owner, 2026-08-29):
+                                * this roll had no typed-entry equivalent
+                                * before — type the 2d6 total from
+                                * physical dice and Add resolves it
+                                * against the same talent table
+                                * `rollTalent` itself looks up. */}
+                              <span className={cx(text.caption, 'text-ink-faint')}>or type your 2d6 total</span>
+                              <input
+                                value={talentManual}
+                                onChange={(e) => setTalentManual(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') addManualTalentRoll()
+                                }}
+                                inputMode="numeric"
+                                placeholder="2–12"
+                                className="h-9 w-14 rounded-[8px] border border-line-hover bg-bg text-center font-mono text-[15px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50"
+                              />
+                              <Button type="button" variant="ghost" onClick={addManualTalentRoll} disabled={talentManual.trim() === ''}>
+                                Add
+                              </Button>
                               {/* Only shown once there's a second roll to
                                 * explain (Human's Ambitious bonus) — a
                                 * single-roll class needs no extra label. */}
@@ -1719,9 +1762,32 @@ export function CharacterBuilder({ open, onClose, campaignId, system, sessionId,
           </div>
 
           {!isZeroLevel && klass && (
+            // Manual-entry input added (owner, 2026-08-29: "in both I
+            // want the ability or the button to put in your own roll
+            // from physical dice") — this was the one roll on this step
+            // that didn't actually have one yet, despite `ROLL_NEEDED_RING`'s
+            // own doc comment above claiming every roll here does. The
+            // input holds the raw 1d{hpDie} value (not the CON-adjusted
+            // total), same split Stats' per-ability inputs already use.
             <div className="flex items-center gap-3">
               <span className={cx(text.label, 'text-ink-faint')}>HP roll</span>
-              <span className={text.bodySecondary}>1d{klass.hpDie} ({hpRoll ?? '—'}) + CON {conMod >= 0 ? `+${conMod}` : conMod}</span>
+              <span className={text.bodySecondary}>1d{klass.hpDie}</span>
+              <input
+                value={hpRoll ?? ''}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  if (raw.trim() === '') {
+                    setHpRoll(null)
+                    return
+                  }
+                  const n = Number(raw)
+                  if (!Number.isNaN(n)) setHpRoll(Math.max(1, Math.min(klass.hpDie, Math.round(n))))
+                }}
+                inputMode="numeric"
+                placeholder="—"
+                className="h-9 w-12 shrink-0 rounded-[8px] border border-line-hover bg-bg text-center font-mono text-[15px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50"
+              />
+              <span className={text.bodySecondary}>+ CON {conMod >= 0 ? `+${conMod}` : conMod}</span>
               <Button type="button" onClick={rollHp} className={cx(!hpReady && ROLL_NEEDED_RING)}>
                 {hpRoll === null ? 'Roll HP' : 'Reroll HP'}
               </Button>
