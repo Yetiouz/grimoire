@@ -155,26 +155,34 @@ function RollCard({
 
   return (
     <div className={cardBase}>
-      <div className="flex items-center justify-between">
+      {/* Manual input moved up next to Roll (owner, 2026-08-29: "the
+        * roll button and input box are separated. I think they need to
+        * be up where the roll is") — was its own row below `children`,
+        * which on the gear-tab cards put a whole result block between
+        * the two controls that do the same job. Both now live in the
+        * header row, input first so Roll stays the rightmost/primary
+        * action. */}
+      <div className="flex items-center justify-between gap-2">
         <p className={cx(text.label, 'text-ink-faint')}>{label} ({dieLabel})</p>
-        <button type="button" onClick={onRoll} className="rounded-[8px] border border-line-soft bg-panel px-2 py-1 text-ink-dim hover:border-line-hover">
-          <span className={text.caption}>Roll</span>
-        </button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <input
+            value={manual}
+            onChange={(e) => setManual(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitManual()
+            }}
+            onBlur={commitManual}
+            inputMode="numeric"
+            placeholder={`${min}–${max}`}
+            aria-label={`${label} manual roll, ${min} to ${max}`}
+            className="h-7 w-14 rounded-[6px] border border-line-hover bg-bg px-1.5 text-center font-mono text-[12px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50"
+          />
+          <button type="button" onClick={onRoll} className="rounded-[8px] border border-line-soft bg-panel px-2 py-1 text-ink-dim hover:border-line-hover">
+            <span className={text.caption}>Roll</span>
+          </button>
+        </div>
       </div>
       {children}
-      <div className="mt-2 flex items-center gap-1.5">
-        <input
-          value={manual}
-          onChange={(e) => setManual(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') commitManual()
-          }}
-          onBlur={commitManual}
-          inputMode="numeric"
-          placeholder={`or type ${min}–${max}`}
-          className="h-7 w-28 rounded-[6px] border border-line-hover bg-bg px-1.5 text-center font-mono text-[12px] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple/50"
-        />
-      </div>
     </div>
   )
 }
