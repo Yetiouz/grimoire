@@ -22,6 +22,18 @@ import {
   getCyborgClass,
 } from '../../lib/rules/cyborg'
 import type { CyborgAbility, CyborgClass } from '../../lib/rules/cyborg'
+import {
+  CYBORG_STYLE,
+  CYBORG_FEATURE,
+  CYBORG_OBSESSION,
+  CYBORG_QUIRK,
+  CYBORG_WANTS,
+  CYBORG_STARTING_WEAPONS,
+  CYBORG_CORPKILLER_WEAPONS,
+  CYBORG_CYBERSLASHER_WEAPONS,
+  CYBORG_ARMOR_TIERS,
+  pairedIndexForD100,
+} from '../../lib/rules/cyborgTraits'
 import { goldDeltaForSpend, goldToCp } from '../../lib/rules/equipment'
 import { CYBORG_EQUIPMENT } from '../../lib/rules/cyborgEquipment'
 
@@ -61,6 +73,19 @@ function roll3d6Sum(): number {
 
 function pick<T>(list: T[]): T {
   return list[Math.floor(Math.random() * list.length)]
+}
+
+/** Parses a class's own printed armor-roll formula ('d2', 'd4+1') and
+ * rolls it, capped to the highest real tier in `CYBORG_ARMOR_TIERS` (a
+ * literal 'd4+1' can roll a 5, which isn't a printed tier — Discharged
+ * CorpKiller's own text doesn't address this edge case, so this caps
+ * rather than silently producing an out-of-range tier). */
+function rollDiceFormula(formula: string, maxTier: number): number {
+  const match = /^d(\d+)([+-]\d+)?$/.exec(formula.trim())
+  if (!match) return 0
+  const die = Number(match[1])
+  const bonus = match[2] ? Number(match[2]) : 0
+  return Math.min(maxTier, Math.max(0, rollDie(die) + bonus))
 }
 
 function formatSigned(n: number): string {
@@ -103,6 +128,13 @@ export function CyborgCharacterBuilder({ open, onClose, campaignId, sessionId, m
   const [randomGear, setRandomGear] = useState<string | null>(null)
   const [techOrDrug, setTechOrDrug] = useState<string | null>(null)
   const [equipment, setEquipment] = useState<string[]>([])
+  const [styleRoll, setStyleRoll] = useState<string | null>(null)
+  const [featureRoll, setFeatureRoll] = useState<string | null>(null)
+  const [obsessionRoll, setObsessionRoll] = useState<string | null>(null)
+  const [wantsRoll, setWantsRoll] = useState<string | null>(null)
+  const [quirkRoll, setQuirkRoll] = useState<string | null>(null)
+  const [weaponRoll, setWeaponRoll] = useState<{ name: string; damage: string; note?: string } | null>(null)
+  const [armorTier, setArmorTier] = useState<number | null>(null)
   const [flavorText, setFlavorText] = useState('')
   const [debtCreditor, setDebtCreditor] = useState<string | null>(null)
   const [debtAmount, setDebtAmount] = useState<number | null>(null)
@@ -163,6 +195,25 @@ export function CyborgCharacterBuilder({ open, onClose, campaignId, sessionId, m
     setEquipment((prev) => prev.filter((_, i) => i !== idx))
   }
 
+  function weaponTableFor(k: CyborgClass): { roll: number; name: string; damage: string; note?: string }[] {
+    if (k.weaponTable === 'corpkiller') return CYBORG_CORPKILLER_WEAPONS
+    if (k.weaponTable === 'cyberslasher') return CYBORG_CYBERSLASHER_WEAPONS
+    const die = k.weaponRollDie ?? CYBORG_STARTING_WEAPONS.length
+    return CYBORG_STARTING_WEAPONS.slice(0, die)
+  }
+
+  function rollWeapon() {
+    if (!klass) return
+    const table = weaponTableFor(klass)
+    setWeaponRoll(pick(table))
+  }
+
+  function rollArmor() {
+    if (!klass?.armorRollFormula) return
+    const tier = rollDiceFormula(klass.armorRollFormula, CYBORG_ARMOR_TIERS.length - 1)
+    setArmorTier(tier)
+  }
+
   function rollDebt() {
     setDebtCreditor(pick(CYBORG_DEBT.creditors))
     setDebtAmount((rollDie(6) + rollDie(6) + rollDie(6)) * 1000)
@@ -202,6 +253,13 @@ export function CyborgCharacterBuilder({ open, onClose, campaignId, sessionId, m
     setRandomGear(null)
     setTechOrDrug(null)
     setEquipment([])
+    setStyleRoll(null)
+    setFeatureRoll(null)
+    setObsessionRoll(null)
+    setWantsRoll(null)
+    setQuirkRoll(null)
+    setWeaponRoll(null)
+    setArmorTier(null)
     setFlavorText('')
     setDebtCreditor(null)
     setDebtAmount(null)
@@ -243,18 +301,33 @@ export function CyborgCharacterBuilder({ open, onClose, campaignId, sessionId, m
         abilities[ability] = entry
       }
 
+      const weaponItem = weaponRoll ? `${weaponRoll.name} (${weaponRoll.damage})${weaponRoll.note ? ` — ${weaponRoll.note}` : ''}` : null
+      const armorItem = armorTier !== null && armorTier > 0 ? `${CYBORG_ARMOR_TIERS[armorTier].name} (${CYBORG_ARMOR_TIERS[armorTier].reduction})` : null
+
       const startingItems = [
         ...CYBORG_UNIVERSAL_START.items,
+        ...(weaponItem ? [weaponItem] : []),
+        ...(armorItem ? [armorItem] : []),
         ...(personalItem ? [personalItem] : []),
         ...(randomGear ? [randomGear] : []),
         ...(techOrDrug ? [techOrDrug] : []),
         ...equipment,
       ]
 
+      const traits = [
+        styleRoll ? `Style: ${styleRoll}` : null,
+        featureRoll ? `Feature: ${featureRoll}` : null,
+        obsessionRoll ? `Current Obsession: ${obsessionRoll}` : null,
+        wantsRoll ? `Wants: ${wantsRoll}` : null,
+        quirkRoll ? `Quirk: ${quirkRoll}` : null,
+      ].filter((t): t is string => t !== null)
+
+      const appearance = [traits.join(' · '), flavorText.trim()].filter(Boolean).join('\n\n')
+
       const sheet: CharacterSheetData = {
         attacks_talents: [klass.gearGrant, ...(klass.gearRollNote ? [klass.gearRollNote] : [])].filter(Boolean),
         equipment: startingItems,
-        appearance: flavorText.trim() || undefined,
+        appearance: appearance || undefined,
         debt: debtCreditor && debtAmount ? `${debtAmount.toLocaleString()}¤ owed to: ${debtCreditor}` : undefined,
       }
 
@@ -421,6 +494,52 @@ export function CyborgCharacterBuilder({ open, onClose, campaignId, sessionId, m
                 <p className={cx(text.caption, 'mt-2 text-ink-faint')}>Everyone also starts with: {CYBORG_UNIVERSAL_START.items.join(' ')}</p>
               </div>
 
+              {(klass.weaponRollDie !== undefined || klass.weaponTable !== undefined || klass.armorRollFormula !== undefined) && (
+                <div>
+                  <p className={cx(text.label, 'mb-2 text-ink-faint')}>Class weapon &amp; armor</p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {(klass.weaponRollDie !== undefined || klass.weaponTable !== undefined) && (
+                      <div className={cardBase}>
+                        <div className="flex items-center justify-between">
+                          <p className={cx(text.label, 'text-ink-faint')}>Weapon (d{klass.weaponTable ? 6 : klass.weaponRollDie})</p>
+                          <button type="button" onClick={rollWeapon} className="rounded-[8px] border border-line-soft bg-panel px-2 py-1 text-ink-dim hover:border-line-hover">
+                            <span className={text.caption}>Roll</span>
+                          </button>
+                        </div>
+                        {weaponRoll ? (
+                          <>
+                            <p className={cx(text.bodySecondary, 'mt-2 font-semibold text-ink')}>{weaponRoll.name} <span className="font-mono text-ink-dim">{weaponRoll.damage}</span></p>
+                            {weaponRoll.note && <p className={cx(text.caption, 'mt-1 text-ink-faint')}>{weaponRoll.note}</p>}
+                          </>
+                        ) : (
+                          <p className={cx(text.bodySecondary, 'mt-2 text-ink-faint')}>—</p>
+                        )}
+                      </div>
+                    )}
+                    {klass.armorRollFormula !== undefined && (
+                      <div className={cardBase}>
+                        <div className="flex items-center justify-between">
+                          <p className={cx(text.label, 'text-ink-faint')}>Armor ({klass.armorRollFormula})</p>
+                          <button type="button" onClick={rollArmor} className="rounded-[8px] border border-line-soft bg-panel px-2 py-1 text-ink-dim hover:border-line-hover">
+                            <span className={text.caption}>Roll</span>
+                          </button>
+                        </div>
+                        {armorTier !== null ? (
+                          <>
+                            <p className={cx(text.bodySecondary, 'mt-2 font-semibold text-ink')}>
+                              {CYBORG_ARMOR_TIERS[armorTier].name} <span className="font-mono text-ink-dim">{CYBORG_ARMOR_TIERS[armorTier].reduction}</span>
+                            </p>
+                            {CYBORG_ARMOR_TIERS[armorTier].note && <p className={cx(text.caption, 'mt-1 text-ink-faint')}>{CYBORG_ARMOR_TIERS[armorTier].note}</p>}
+                          </>
+                        ) : (
+                          <p className={cx(text.bodySecondary, 'mt-2 text-ink-faint')}>—</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <p className={cx(text.label, 'mb-2 text-ink-faint')}>Randomize your stuff — roll once on each table</p>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -452,18 +571,36 @@ export function CyborgCharacterBuilder({ open, onClose, campaignId, sessionId, m
           )}
 
           {step === 'flavor' && klass && (
-            <div className="flex flex-col gap-4">
-              <p className={cx(text.bodySecondary, 'text-ink-faint')}>
-                Style, Feature, and Current Obsession (rulebook p.54-57) are large roll tables not yet transcribed into this app — write your own here, or roll on the book and type the result.
-              </p>
+            <div className="flex flex-col gap-5">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {(
+                  [
+                    { label: 'Style (d100)', value: styleRoll, roll: () => setStyleRoll(CYBORG_STYLE[pairedIndexForD100(rollDie(100))]) },
+                    { label: 'Feature (d100)', value: featureRoll, roll: () => setFeatureRoll(CYBORG_FEATURE[pairedIndexForD100(rollDie(100))]) },
+                    { label: 'Current Obsession (d100)', value: obsessionRoll, roll: () => setObsessionRoll(CYBORG_OBSESSION[pairedIndexForD100(rollDie(100))]) },
+                    { label: 'Wants (d20)', value: wantsRoll, roll: () => setWantsRoll(pick(CYBORG_WANTS)) },
+                    { label: 'Quirk (d20)', value: quirkRoll, roll: () => setQuirkRoll(pick(CYBORG_QUIRK)) },
+                  ] as const
+                ).map((row) => (
+                  <div key={row.label} className={cardBase}>
+                    <div className="flex items-center justify-between">
+                      <p className={cx(text.label, 'text-ink-faint')}>{row.label}</p>
+                      <button type="button" onClick={row.roll} className="rounded-[8px] border border-line-soft bg-panel px-2 py-1 text-ink-dim hover:border-line-hover">
+                        <span className={text.caption}>Roll</span>
+                      </button>
+                    </div>
+                    <p className={cx(text.bodySecondary, 'mt-2')}>{row.value ?? '—'}</p>
+                  </div>
+                ))}
+              </div>
               {klass.flavorPrompts.map((prompt, i) => (
                 <p key={i} className={cx(text.caption, 'text-ink-faint')}>{prompt}</p>
               ))}
               <TextInput
-                label="Style, feature, obsession, backstory — whatever fits"
+                label="Backstory, appearance, whatever else fits"
                 value={flavorText}
                 onChange={(e) => setFlavorText(e.target.value)}
-                placeholder="Neon-streaked mohawk, a chrome jaw, and an obsession with pre-Incident vinyl."
+                placeholder="Grew up in Bigmosse running debt for the Virid Vipers."
               />
             </div>
           )}
@@ -514,6 +651,21 @@ export function CyborgCharacterBuilder({ open, onClose, campaignId, sessionId, m
                   })}
                 </div>
               </div>
+
+              {(styleRoll || featureRoll || obsessionRoll || wantsRoll || quirkRoll || weaponRoll || (armorTier !== null && armorTier > 0)) && (
+                <div className={cardBase}>
+                  <p className={cx(text.label, 'text-ink-faint')}>Traits &amp; class gear</p>
+                  <div className="mt-2 flex flex-col gap-1">
+                    {styleRoll && <p className={text.bodySecondary}><span className="text-ink-faint">Style:</span> {styleRoll}</p>}
+                    {featureRoll && <p className={text.bodySecondary}><span className="text-ink-faint">Feature:</span> {featureRoll}</p>}
+                    {obsessionRoll && <p className={text.bodySecondary}><span className="text-ink-faint">Obsession:</span> {obsessionRoll}</p>}
+                    {wantsRoll && <p className={text.bodySecondary}><span className="text-ink-faint">Wants:</span> {wantsRoll}</p>}
+                    {quirkRoll && <p className={text.bodySecondary}><span className="text-ink-faint">Quirk:</span> {quirkRoll}</p>}
+                    {weaponRoll && <p className={text.bodySecondary}><span className="text-ink-faint">Weapon:</span> {weaponRoll.name} ({weaponRoll.damage})</p>}
+                    {armorTier !== null && armorTier > 0 && <p className={text.bodySecondary}><span className="text-ink-faint">Armor:</span> {CYBORG_ARMOR_TIERS[armorTier].name} ({CYBORG_ARMOR_TIERS[armorTier].reduction})</p>}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <p className={cx(text.label, 'mb-2 text-ink-faint')}>Hit Points</p>

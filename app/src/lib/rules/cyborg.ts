@@ -20,10 +20,14 @@
 // in the Shadowdark project for the extraction method and page
 // citations). Printed page numbers are cited in each block's own comment
 // so a future correction has somewhere to check against. Nothing here is
-// invented to fill a gap — where the book references a roll table this
-// pass couldn't reliably extract (a few classes' own "roll dN for
-// starting weapon" tables), that's called out in the class's own
-// `gearRollNote` rather than papered over with a guess.
+// invented to fill a gap.
+//
+// 2026-08-29 update: the starting weapon/armor rolls a class's own text
+// references ("roll d6 for weapon and d2 for armor") are now real,
+// rollable data in `./cyborgTraits.ts` — `weaponRollDie`/`weaponTable`/
+// `armorRollFormula` below — instead of the earlier honest-but-inert
+// "roll on the book" pointer. See that file's header comment for the
+// "D12/D3 OR BY CLASS" interpretation grounding this.
 
 export type CyborgAbility = 'agility' | 'knowledge' | 'presence' | 'strength' | 'toughness'
 
@@ -195,11 +199,24 @@ export interface CyborgClass {
    * specific roll table this pass couldn't reliably transcribe is called
    * out in `gearRollNote` instead of invented here. */
   gearGrant: string
-  /** Set only when the class's own text references a roll table (e.g.
-   * "roll d6 for weapon") that this extraction pass didn't reliably
-   * capture — shown to the player as an honest "roll on your class's own
-   * table in the book" pointer rather than a fabricated list. */
+  /** Flavor/mechanical prose that doesn't fit `gearGrant` cleanly — shown
+   * alongside the real weapon/armor rolls below, not a substitute for
+   * them. */
   gearRollNote?: string
+  /** How many entries of `CYBORG_STARTING_WEAPONS` (from
+   * `./cyborgTraits.ts`) this class rolls against, e.g. 6 = 1d6 against
+   * entries 1-6. Omit when the class has its own dedicated table
+   * (`weaponTable` below) or doesn't roll a personal weapon at all
+   * (Orphaned Gearhead pilots a vehicle instead). */
+  weaponRollDie?: number
+  /** Set when the class prints its own distinct weapon table instead of
+   * a subset of the universal one — 'corpkiller' → `CYBORG_CORPKILLER_WEAPONS`,
+   * 'cyberslasher' → `CYBORG_CYBERSLASHER_WEAPONS`. */
+  weaponTable?: 'corpkiller' | 'cyberslasher'
+  /** Dice formula picking a tier NUMBER (not a table index) from
+   * `CYBORG_ARMOR_TIERS`, e.g. 'd2' or 'd4+1' — matches the class's own
+   * printed text. Omit when the class doesn't roll personal armor. */
+  armorRollFormula?: string
   /** Only Forsaken Gang-Goon has these — features unlocked at character
    * levels 1–4. Every other class's page has no leveled-feature table. */
   levelFeatures?: CyborgLevelFeature[]
@@ -227,7 +244,8 @@ export const CYBORG_CLASSES: CyborgClass[] = [
       { ability: 'toughness', modifier: -2, tag: 'ILL' },
     ],
     gearGrant: 'Start with one random Nano power. Any starting App or Cybertech is replaced with a random Nano.',
-    gearRollNote: 'Roll d6 for weapon and d2 for armor on the class’s own table (not transcribed here) — pick from the Shop instead, or roll on the book.',
+    weaponRollDie: 6,
+    armorRollFormula: 'd2',
     flavorPrompts: [
       'You got infected when… (a wild night with neo-pagan cultists; a star fell close to your building and you were a curious child; you found drugs that were neither drugs nor entirely free; you were kidnapped and subjected to horrible experiments; a G0 rat bit you; you were born this way.)',
       'You also have one of these: a strange leaf-looking knife; milkwhite eyes that see through lies; burnt orange, stone-like skin; a second mouth where your navel used to be; an elongated, semi-translucent skull; scales covering most of your body.',
@@ -247,7 +265,8 @@ export const CYBORG_CLASSES: CyborgClass[] = [
       { ability: 'toughness', modifier: -1, tag: 'UNHEALTHY LIVING' },
     ],
     gearGrant: 'Start with a cyberdeck (Knowledge+4 App slots) and a random App. Any rolled Nano or Cybertech is replaced with a new random App. 6d10×1¤ debt on top of your usual Debt roll.',
-    gearRollNote: 'Roll d8 for weapon and d2 for armor on the class’s own table (not transcribed here) — pick from the Shop instead, or roll on the book.',
+    weaponRollDie: 8,
+    armorRollFormula: 'd2',
     flavorPrompts: [
       'You built an App (e.g. Borgtrigga-0.5: provokes a Cy-rage test in one nearby target).',
       'On a deep dive, you’ve found a terrible truth (e.g. the public faces of the UCS board are fabricated — they don’t exist).',
@@ -266,8 +285,10 @@ export const CYBORG_CLASSES: CyborgClass[] = [
       { ability: 'presence', modifier: -1, tag: 'Emotionally scarred jarhead' },
       { ability: 'toughness', modifier: 2, tag: 'Tough as nails' },
     ],
-    gearGrant: 'Roll d4+1 for armor. Autofire tests are always −1DR. The Corp wants you dead.',
-    gearRollNote: 'You took something from your employer when you left the force — roll on the class’s own d6 heavy-weapon table (not transcribed here; e.g. an old-school heavy machine gun, d12a damage) or pick from the Shop.',
+    gearGrant: 'Autofire tests are always −1DR. The Corp wants you dead.',
+    gearRollNote: 'You took something from your employer when you left the force.',
+    weaponTable: 'corpkiller',
+    armorRollFormula: 'd4+1',
     flavorPrompts: ['Your deployment — where were you stationed, and what happened there?'],
   },
   {
@@ -299,7 +320,9 @@ export const CYBORG_CLASSES: CyborgClass[] = [
       { ability: 'knowledge', modifier: -2, tag: 'NOT A READER' },
     ],
     gearGrant: 'Start with one d12 roll for a random Cybertech. Replace any App or Nano with another d12 Cybertech roll.',
-    gearRollNote: 'Your trenchcoat hides most of your weapon — roll on the class’s own d6 melee-weapon table (not transcribed here; e.g. an ancient blade that deals double damage if you strike first) or pick from the Shop.',
+    gearRollNote: 'Your trenchcoat hides most of your weapon. No armor roll is printed for this class — this uses the generic d3 table (“D3 OR BY CLASS” default) rather than a fabricated class-specific one.',
+    weaponTable: 'cyberslasher',
+    armorRollFormula: 'd3',
     flavorPrompts: ['You try to start each day with… (yoga and meditating; a mix of stimulants; minding your favorite plants; obsessively laying out your clothes.)'],
   },
   {
@@ -312,7 +335,8 @@ export const CYBORG_CLASSES: CyborgClass[] = [
     glitchesDie: 3,
     abilityRerolls: [{ ability: 'strength', modifier: -2, tag: 'Small' }],
     gearGrant: 'Stealthy — all Presence and Agility tests are −2DR.',
-    gearRollNote: 'Roll d6 for weapon and d2 for armor on the class’s own table (not transcribed here) — pick from the Shop instead, or roll on the book.',
+    weaponRollDie: 6,
+    armorRollFormula: 'd2',
     levelFeatures: [
       { tier: 'I', name: 'Hits', effect: 'When attacking from surprise, test Agility DR10. On a success, you hit once with a melee weapon, dealing normal damage +3.' },
       { tier: 'II', name: 'Brawls', effect: 'Test Agility DR14 to sucker punch an opponent in melee. Deal normal damage and give all allies −2DR on their next attack against the same enemy.' },
